@@ -29,7 +29,7 @@ inherit the controller and viewmodels are DTOs that specific page must accept, i
 dotnet build ConsoleMVC.sln
 
 # Run
-dotnet run --project ConsoleMVC/ConsoleMVC.csproj
+dotnet run --project ConsoleMVC.csproj
 
 # Build release
 dotnet build ConsoleMVC.sln -c Release
@@ -54,4 +54,4 @@ You can install any package or library you deem to be necesasry and vital for th
 
 - .NET 10.0 (target framework `net10.0`)
 - C# with nullable reference types and implicit usings enabled
-- Single-project solution: `ConsoleMVC/ConsoleMVC.csproj`
+- Single-project solution: `ConsoleMVC.csproj`
