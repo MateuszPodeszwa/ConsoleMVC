@@ -8,12 +8,24 @@
 
         <!-- NuGet Package Metadata -->
         <PackageId>ConsoleMVC</PackageId>
+        <Title>ConsoleMVC - MVC Framework for Console Applications</Title>
         <Version>1.0.0</Version>
         <Authors>Mateusz Podeszwa</Authors>
-        <Description>An MVC framework for console applications, inspired by ASP.NET Core MVC. Provides Controller-ViewModel pattern with convention-based routing, auto-discovery, and Razor-like .cvw view templates.</Description>
-        <PackageTags>mvc;console;framework;template;controller;view</PackageTags>
+        <Description>An MVC framework for console applications, inspired by ASP.NET Core MVC. Provides Controller-ViewModel pattern with convention-based routing, reflection-based auto-discovery, and Razor-like .cvw view templates powered by a C# source generator.</Description>
+        <Copyright>Copyright (c) 2026 Mateusz Podeszwa</Copyright>
+        <PackageTags>mvc;console;framework;controller;view;viewmodel;source-generator;dotnet</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
+        <PackageProjectUrl>https://github.com/MateuszPodeszwa/ConsoleMVC</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/MateuszPodeszwa/ConsoleMVC</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
         <IsPackable>true</IsPackable>
     </PropertyGroup>
+
+    <!-- Include README in package -->
+    <ItemGroup>
+        <None Include="PACKAGE_README.md" Pack="true" PackagePath="" />
+    </ItemGroup>
 
     <!-- Include build props in package (auto-imports .cvw globbing for consumers) -->
     <ItemGroup>
