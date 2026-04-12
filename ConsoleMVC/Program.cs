@@ -1,9 +1,5 @@
-﻿namespace ConsoleMVC;
+using ConsoleMVC.Mvc;
 
-class Program
-{
-    static void Main(string[] args)
-    {
-        Console.WriteLine("Hello, World!");
-    }
-}
+var builder = MvcApplication.CreateBuilder(args);
+var app = builder.Build();
+app.Run();

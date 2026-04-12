@@ -47,6 +47,7 @@ Never do GIT Pushes unless specifically asked for.
 
 ## Other Project Infrormation
 
+Make sure that .gitignore is well-equipped for the project goal.
 You can install any package or library you deem to be necesasry and vital for the project to fulfill its goal. You can install any extension you seem to be necessary for the project.
 
 ## Tech Stack

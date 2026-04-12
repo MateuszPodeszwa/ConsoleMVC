@@ -1,5 +1,21 @@
+## .NET
 bin/
 obj/
 /packages/
-riderModule.iml
+
+## IDE - JetBrains Rider
+.idea/
+*.iml
 /_ReSharper.Caches/
+
+## IDE - Visual Studio
+.vs/
+*.user
+*.suo
+
+## IDE - VS Code
+.vscode/
+
+## OS
+.DS_Store
+Thumbs.db
