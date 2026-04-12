@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>ConsoleMVC.Mvc</RootNamespace>
+
+        <!-- NuGet Package Metadata -->
+        <PackageId>ConsoleMVC</PackageId>
+        <Version>1.0.0</Version>
+        <Authors>Mateusz Podeszwa</Authors>
+        <Description>An MVC framework for console applications, inspired by ASP.NET Core MVC. Provides Controller-ViewModel pattern with convention-based routing, auto-discovery, and Razor-like .cvw view templates.</Description>
+        <PackageTags>mvc;console;framework;template;controller;view</PackageTags>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <!-- Include build props in package (auto-imports .cvw globbing for consumers) -->
+    <ItemGroup>
+        <None Include="build/ConsoleMVC.props" Pack="true" PackagePath="build/" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../ConsoleMVC.Generators/ConsoleMVC.Generators.csproj"
+                          ReferenceOutputAssembly="false"
+                          PrivateAssets="all" />
+    </ItemGroup>
+
+    <!-- Bundle the source generator DLL into the NuGet package's analyzers folder -->
+    <ItemGroup>
+        <None Include="../ConsoleMVC.Generators/bin/$(Configuration)/netstandard2.0/ConsoleMVC.Generators.dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false" />
+    </ItemGroup>
+
+</Project>

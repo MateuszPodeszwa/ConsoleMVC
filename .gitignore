@@ -2,6 +2,7 @@
 bin/
 obj/
 /packages/
+nupkg/
 
 ## IDE - JetBrains Rider
 .idea/

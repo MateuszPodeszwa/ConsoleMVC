@@ -1,0 +1,13 @@
+<Project>
+
+    <!-- Auto-include .cvw view files as AdditionalFiles for the source generator -->
+    <ItemGroup>
+        <AdditionalFiles Include="Views/**/*.cvw" />
+    </ItemGroup>
+
+    <!-- Expose RootNamespace to the source generator so it can use the consumer's namespace -->
+    <ItemGroup>
+        <CompilerVisibleProperty Include="RootNamespace" />
+    </ItemGroup>
+
+</Project>

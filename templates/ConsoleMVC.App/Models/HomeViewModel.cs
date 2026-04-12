@@ -1,4 +1,4 @@
-namespace ConsoleMVC.Models;
+namespace ConsoleMVC.App.Models;
 
 public class HomeViewModel
 {

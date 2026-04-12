@@ -1,4 +1,4 @@
-@model ConsoleMVC.Models.HomeViewModel
+@model ConsoleMVC.App.Models.HomeViewModel
 
 Console.WriteLine($"=== {Model.Title} ===");
 Console.WriteLine();

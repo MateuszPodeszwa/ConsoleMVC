@@ -1,7 +1,7 @@
-using ConsoleMVC.Models;
+using ConsoleMVC.App.Models;
 using ConsoleMVC.Mvc;
 
-namespace ConsoleMVC.Controllers;
+namespace ConsoleMVC.App.Controllers;
 
 public class HomeController : Controller
 {

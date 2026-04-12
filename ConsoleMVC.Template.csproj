@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageType>Template</PackageType>
+        <PackageId>ConsoleMVC.Template</PackageId>
+        <Version>1.0.0</Version>
+        <Authors>Mateusz Podeszwa</Authors>
+        <Description>dotnet new template for ConsoleMVC — an MVC framework for console applications.</Description>
+        <PackageTags>dotnet-new;template;consolemvc;mvc;console</PackageTags>
+
+        <TargetFramework>net10.0</TargetFramework>
+        <IncludeContentInPack>true</IncludeContentInPack>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <ContentTargetFolders>content</ContentTargetFolders>
+        <NoDefaultExcludes>true</NoDefaultExcludes>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="templates/**/*" />
+        <Compile Remove="**/*" />
+    </ItemGroup>
+
+</Project>
