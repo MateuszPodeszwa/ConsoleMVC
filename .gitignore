@@ -20,3 +20,7 @@ nupkg/
 ## OS
 .DS_Store
 Thumbs.db
+
+## AI Related
+CLAUDE.md
+AGENTS.md
