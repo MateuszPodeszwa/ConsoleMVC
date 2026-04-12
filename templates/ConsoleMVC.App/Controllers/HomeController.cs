@@ -3,8 +3,15 @@ using ConsoleMVC.Mvc;
 
 namespace ConsoleMVC.App.Controllers;
 
+/// <summary>
+/// The default controller for the application, handling the home page and about page actions.
+/// </summary>
 public class HomeController : Controller
 {
+    /// <summary>
+    /// Displays the main welcome page with navigation options.
+    /// </summary>
+    /// <returns>A <see cref="ViewResult"/> rendering the Index view with the home view model.</returns>
     public ActionResult Index()
     {
         var model = new HomeViewModel
@@ -17,6 +24,10 @@ public class HomeController : Controller
         return View(model);
     }
 
+    /// <summary>
+    /// Displays the about page describing the ConsoleMVC framework.
+    /// </summary>
+    /// <returns>A <see cref="ViewResult"/> rendering the About view with descriptive content.</returns>
     public ActionResult About()
     {
         var model = new HomeViewModel

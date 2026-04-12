@@ -3,14 +3,35 @@ using System.Reflection;
 namespace ConsoleMVC.Mvc;
 
 /// <summary>
-/// The application host. Discovers controllers and views at startup,
-/// then runs the main loop: route → action → render → navigate.
+/// The application host for a ConsoleMVC console application. Responsible for discovering
+/// controllers and views at startup and running the main application loop.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The application loop follows a continuous cycle of:
+/// <list type="number">
+///   <item><description>Resolve the controller and action for the current route.</description></item>
+///   <item><description>Invoke the action method to obtain an <see cref="ActionResult"/>.</description></item>
+///   <item><description>Process the result — either render a view or redirect to another action.</description></item>
+///   <item><description>Repeat until a view returns <see cref="NavigationResult.Quit"/>.</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// Instances are created via the builder pattern using
+/// <see cref="CreateBuilder"/> and <see cref="MvcApplicationBuilder.Build"/>,
+/// mirroring ASP.NET Core's <c>WebApplication</c> approach.
+/// </para>
+/// </remarks>
 public class MvcApplication
 {
     private readonly Router _router = new();
     private RouteContext _currentRoute;
 
+    /// <summary>
+    /// Initialises a new instance of the <see cref="MvcApplication"/> class using
+    /// the configuration specified in the given builder.
+    /// </summary>
+    /// <param name="builder">The builder containing the application configuration.</param>
     internal MvcApplication(MvcApplicationBuilder builder)
     {
         _currentRoute = new RouteContext
@@ -21,16 +42,28 @@ public class MvcApplication
     }
 
     /// <summary>
-    /// Create a new application builder, mirroring ASP.NET Core's WebApplication.CreateBuilder().
+    /// Creates a new <see cref="MvcApplicationBuilder"/> for configuring and building
+    /// an <see cref="MvcApplication"/> instance.
     /// </summary>
+    /// <param name="args">The command-line arguments passed to the application.</param>
+    /// <returns>A new <see cref="MvcApplicationBuilder"/> instance.</returns>
+    /// <remarks>
+    /// This mirrors ASP.NET Core's <c>WebApplication.CreateBuilder(args)</c> pattern.
+    /// </remarks>
     public static MvcApplicationBuilder CreateBuilder(string[] args)
     {
         return new MvcApplicationBuilder();
     }
 
     /// <summary>
-    /// Start the application main loop.
+    /// Starts the application main loop. The framework discovers all controllers and views
+    /// in the entry assembly, then begins the route-action-render cycle starting from the
+    /// configured default route.
     /// </summary>
+    /// <remarks>
+    /// The loop continues until a view returns <see cref="NavigationResult.Quit"/>,
+    /// at which point the method returns and the application exits.
+    /// </remarks>
     public void Run()
     {
         _router.DiscoverAll(Assembly.GetEntryAssembly()!);
