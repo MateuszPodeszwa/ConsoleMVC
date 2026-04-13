@@ -260,10 +260,10 @@ app.Run();
 
 | Package | Description | Purpose |
 |---------|-------------|---------|
-| [`ConsoleMVC`](https://github.com/MateuszPodeszwa/ConsoleMVC/packages) | Framework library + source generator | Referenced by your project |
-| [`ConsoleMVC.Template`](https://github.com/MateuszPodeszwa/ConsoleMVC/packages) | `dotnet new` project template | Used to scaffold new projects |
+| [`ConsoleMVC.Framework`](https://www.nuget.org/packages/ConsoleMVC.Framework) | Framework library + source generator | Referenced by your project |
+| [`ConsoleMVC.Template`](https://www.nuget.org/packages/ConsoleMVC.Template) | `dotnet new` project template | Used to scaffold new projects |
 
-Both packages are hosted on [GitHub Packages](https://github.com/MateuszPodeszwa/ConsoleMVC/packages).
+Both packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
 
 ## License
 
@@ -284,9 +284,9 @@ ConsoleMVC/
   LICENSE
   readme.md
   src/
-    ConsoleMVC/                           # Framework library (NuGet: ConsoleMVC)
+    ConsoleMVC/                           # Framework library (NuGet: ConsoleMVC.Framework)
       ConsoleMVC.csproj                   #   Packs lib + generator + build props
-      build/ConsoleMVC.props              #   Auto-imported by consuming projects
+      build/ConsoleMVC.Framework.props    #   Auto-imported by consuming projects
       PACKAGE_README.md                   #   README shown on NuGet gallery
       *.cs                                #   Framework source (Controller, Router, etc.)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
@@ -324,27 +324,16 @@ dotnet pack src/ConsoleMVC/ConsoleMVC.csproj -c Release -o nupkg
 dotnet pack ConsoleMVC.Template.csproj -c Release -o nupkg
 ```
 
-**3. Publish to GitHub Packages:**
+**3. Publish to NuGet.org:**
 
-Ensure the GitHub NuGet source is configured (one-time setup):
 ```bash
-dotnet nuget add source \
-  --username MateuszPodeszwa \
-  --password YOUR_GITHUB_PAT \
-  --store-password-in-clear-text \
-  --name github \
-  "https://nuget.pkg.github.com/MateuszPodeszwa/index.json"
+dotnet nuget push "nupkg/ConsoleMVC.Framework.X.Y.Z.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org
+dotnet nuget push "nupkg/ConsoleMVC.Template.X.Y.Z.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org
 ```
 
-Push the packages:
-```bash
-dotnet nuget push "nupkg/ConsoleMVC.X.Y.Z.nupkg" --api-key YOUR_GITHUB_PAT --source "github"
-dotnet nuget push "nupkg/ConsoleMVC.Template.X.Y.Z.nupkg" --api-key YOUR_GITHUB_PAT --source "github"
-```
+Replace `X.Y.Z` with the new version number and `YOUR_NUGET_API_KEY` with an API key from your [nuget.org account](https://www.nuget.org/account/apikeys).
 
-Replace `X.Y.Z` with the new version number and `YOUR_GITHUB_PAT` with a Personal Access Token (classic) that has the `write:packages` scope.
-
-**4. Verify** the packages appear at https://github.com/MateuszPodeszwa/ConsoleMVC/packages.
+**4. Verify** the packages appear on your [NuGet.org profile](https://www.nuget.org/profiles/MateuszPodeszwa).
 
 ### Updating the Template
 
@@ -361,7 +350,7 @@ When modifying `ViewSourceGenerator.cs`:
 - The generator targets `netstandard2.0` — avoid APIs not available in that target
 - `Environment.NewLine` and similar banned symbols cannot be used (Roslyn analyzer restriction)
 - After changes, you must repack the `ConsoleMVC` package since the generator DLL is bundled inside it
-- Clear the local NuGet cache (`rm -rf ~/.nuget/packages/consolemvc`) when testing locally to avoid stale generator DLLs
+- Clear the local NuGet cache (`rm -rf ~/.nuget/packages/consolemvc.framework`) when testing locally to avoid stale generator DLLs
 
 ### Version Strategy
 

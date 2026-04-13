@@ -5,11 +5,12 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>ConsoleMVC.Mvc</RootNamespace>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
         <!-- NuGet Package Metadata -->
-        <PackageId>ConsoleMVC</PackageId>
+        <PackageId>ConsoleMVC.Framework</PackageId>
         <Title>ConsoleMVC - MVC Framework for Console Applications</Title>
-        <Version>1.0.1</Version>
+        <Version>1.0.2</Version>
         <Authors>Mateusz Podeszwa</Authors>
         <Description>An MVC framework for console applications, inspired by ASP.NET Core MVC. Provides Controller-ViewModel pattern with convention-based routing, reflection-based auto-discovery, and Razor-like .cvw view templates powered by a C# source generator.</Description>
         <Copyright>Copyright (c) 2026 Mateusz Podeszwa</Copyright>
@@ -29,7 +30,7 @@
 
     <!-- Include build props in package (auto-imports .cvw globbing for consumers) -->
     <ItemGroup>
-        <None Include="build/ConsoleMVC.props" Pack="true" PackagePath="build/" />
+        <None Include="build/ConsoleMVC.Framework.props" Pack="true" PackagePath="build/" />
     </ItemGroup>
 
     <ItemGroup>

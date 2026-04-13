@@ -30,5 +30,5 @@ A ready-to-run console application structured with the MVC pattern:
 
 ## Learn More
 
-- [ConsoleMVC NuGet Package](https://www.nuget.org/packages/ConsoleMVC)
+- [ConsoleMVC.Framework NuGet Package](https://www.nuget.org/packages/ConsoleMVC.Framework)
 - [GitHub Repository](https://github.com/MateuszPodeszwa/ConsoleMVC)
