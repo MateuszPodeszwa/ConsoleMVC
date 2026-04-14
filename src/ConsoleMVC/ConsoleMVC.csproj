@@ -10,7 +10,7 @@
         <!-- NuGet Package Metadata -->
         <PackageId>ConsoleMVC.Framework</PackageId>
         <Title>ConsoleMVC - MVC Framework for Console Applications</Title>
-        <Version>1.0.3</Version>
+        <Version>1.1.0</Version>
         <Authors>Mateusz Podeszwa</Authors>
         <Description>An MVC framework for console applications, inspired by ASP.NET Core MVC. Provides Controller-ViewModel pattern with convention-based routing, reflection-based auto-discovery, and Razor-like .cvw view templates powered by a C# source generator. JetBrains Rider users can install the ConsoleMVC CVWSupport plugin for .cvw file support.</Description>
         <Copyright>Copyright (c) 2026 Mateusz Podeszwa</Copyright>
