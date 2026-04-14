@@ -15,6 +15,8 @@ var input = Console.ReadLine()?.Trim();
 return input switch
 {
     "1" => NavigationResult.To("Home", "About"),
-    "2" => NavigationResult.Quit(),
+    "2" => NavigationResult.To("Greet", "Index"),
+    "3" => NavigationResult.To("Calc", "Index"),
+    "4" => NavigationResult.Quit(),
     _ => NavigationResult.To("Home", "Index")
 };

@@ -28,6 +28,12 @@ A ready-to-run console application structured with the MVC pattern:
 - **Views/** — `.cvw` view templates with `@model` directive (compiled at build time)
 - **Models/** — ViewModel DTOs passed from controllers to views
 
+The template includes working examples of:
+
+- **Navigation** — moving between controllers and actions (`Home`, `About`)
+- **Form data posting with model binding** — a greeting form that collects input and posts it to a controller as a `GreetFormModel` class
+- **Form data posting with simple parameters** — a calculator that posts individual values (`int a`, `int b`, `string op`) directly to action method parameters
+
 ## IDE Support
 
 For `.cvw` file recognition, syntax highlighting, and icon support in JetBrains Rider, install the **ConsoleMVC CVWSupport** plugin:

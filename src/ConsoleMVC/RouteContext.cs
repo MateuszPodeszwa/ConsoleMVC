@@ -22,4 +22,12 @@ public class RouteContext
     /// </summary>
     /// <value>Defaults to <c>"Index"</c>.</value>
     public string Action { get; init; } = "Index";
+
+    /// <summary>
+    /// Gets the form data submitted by the previous view, or <see langword="null"/>
+    /// if no form data was posted. The framework uses this to bind values to the
+    /// action method parameters. After binding, the data is also accessible here
+    /// for controllers that need raw access.
+    /// </summary>
+    public Dictionary<string, string>? FormData { get; init; }
 }

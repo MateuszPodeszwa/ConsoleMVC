@@ -1,0 +1,19 @@
+@model ConsoleMVC.App.Models.GreetResultModel
+
+Console.WriteLine("=== Greeting ===");
+Console.WriteLine();
+Console.WriteLine($"  {Model.Greeting}");
+Console.WriteLine();
+Console.WriteLine("  [1] Submit another greeting");
+Console.WriteLine("  [2] Back to Home");
+Console.WriteLine("  [3] Exit");
+Console.WriteLine();
+Console.Write("Select an option: ");
+var input = Console.ReadLine()?.Trim();
+
+return input switch
+{
+    "1" => NavigationResult.ToAction("Index"),
+    "2" => NavigationResult.To("Home", "Index"),
+    _ => NavigationResult.Quit()
+};

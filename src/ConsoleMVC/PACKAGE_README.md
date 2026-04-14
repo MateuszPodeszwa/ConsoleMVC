@@ -63,6 +63,7 @@ public class HomeViewModel
 - **No boilerplate** — Views are plain C# code with an `@model` directive, no class inheritance required
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — all the patterns you know from ASP.NET Core MVC
 - **Navigation** — Views return `NavigationResult` to control app flow (`NavigationResult.To()`, `NavigationResult.Quit()`)
+- **Form data posting** — Views collect user input via `Console.ReadLine()` and post it to controller actions using `NavigationResult.To("Controller", "Action", formData)`. The framework automatically binds the data to action method parameters — either as individual simple types (`int`, `string`, etc.) or as a complex model class with matching property names
 
 ## IDE Support
 

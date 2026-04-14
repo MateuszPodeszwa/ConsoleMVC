@@ -12,6 +12,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Convention over configuration** — Controllers and Views are auto-discovered at startup via reflection
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — the same patterns from ASP.NET Core MVC
 - **Razor-like view engine** — `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
+- **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 
 ## Getting Started
 
@@ -43,12 +44,23 @@ MyApp/
   Program.cs
   Controllers/
     HomeController.cs
+    GreetController.cs          # Form posting with model binding
+    CalcController.cs           # Form posting with simple parameter binding
   Models/
     HomeViewModel.cs
+    GreetFormModel.cs           # Bound from form data (complex model)
+    GreetResultModel.cs
+    CalcResultModel.cs
   Views/
     Home/
       IndexView.cvw
       AboutView.cvw
+    Greet/
+      IndexView.cvw             # Collects input, posts form data
+      ResultView.cvw
+    Calc/
+      IndexView.cvw             # Collects input, posts form data
+      ResultView.cvw
 ```
 
 ## How It Works
@@ -141,8 +153,137 @@ Every view must return a `NavigationResult` to tell the framework what to do nex
 | Method | Description |
 |--------|-------------|
 | `NavigationResult.To("Controller", "Action")` | Navigate to a specific controller and action |
+| `NavigationResult.To("Controller", "Action", formData)` | Navigate and post form data to the target action |
 | `NavigationResult.ToAction("Action")` | Navigate to a different action on the current controller |
+| `NavigationResult.ToAction("Action", formData)` | Navigate within the current controller and post form data |
 | `NavigationResult.Quit()` | Exit the application |
+
+### Form Data Posting
+
+Views can collect user input and post it to a controller action — just like HTML forms in web MVC. The view builds a `Dictionary<string, string>` of form data and passes it via `NavigationResult`. The framework then binds the values to the target action's method parameters automatically.
+
+**Collecting input in a view** — `Views/Greet/IndexView.cvw`:
+```
+@model object
+
+Console.Write("Name: ");
+var name = Console.ReadLine()?.Trim() ?? "";
+
+Console.Write("Favourite colour: ");
+var color = Console.ReadLine()?.Trim() ?? "";
+
+var formData = new Dictionary<string, string>
+{
+    ["Name"] = name,
+    ["Color"] = color
+};
+
+return NavigationResult.ToAction("Result", formData);
+```
+
+The framework supports two styles of parameter binding on the receiving action:
+
+#### Complex Model Binding
+
+Bind form data to a model class. The framework creates an instance and populates its properties from matching dictionary keys:
+
+```csharp
+public class GreetFormModel
+{
+    public string Name { get; set; } = "";
+    public string Color { get; set; } = "";
+}
+```
+
+```csharp
+public class GreetController : Controller
+{
+    public ActionResult Index()
+    {
+        return View();
+    }
+
+    public ActionResult Result(GreetFormModel model)
+    {
+        // model.Name and model.Color are automatically populated
+        if (string.IsNullOrWhiteSpace(model.Name))
+            return RedirectToAction("Index"); // Redirect back on validation failure
+
+        return View(new GreetResultModel { Greeting = $"Hello, {model.Name}!" });
+    }
+}
+```
+
+#### Simple Parameter Binding
+
+Bind form data directly to individual method parameters by name — useful when you don't need a model class:
+
+```
+@model object
+
+Console.Write("First number:  ");
+var a = Console.ReadLine()?.Trim() ?? "0";
+
+Console.Write("Operator (+, -, *, /): ");
+var op = Console.ReadLine()?.Trim() ?? "+";
+
+Console.Write("Second number: ");
+var b = Console.ReadLine()?.Trim() ?? "0";
+
+var formData = new Dictionary<string, string>
+{
+    ["a"] = a,
+    ["b"] = b,
+    ["op"] = op
+};
+
+return NavigationResult.ToAction("Result", formData);
+```
+
+```csharp
+public class CalcController : Controller
+{
+    public ActionResult Index()
+    {
+        return View();
+    }
+
+    // Each parameter is bound by name from the form data dictionary.
+    // Type conversion (string → int) is handled automatically.
+    public ActionResult Result(int a, int b, string op)
+    {
+        var result = op switch
+        {
+            "-" => a - b,
+            "*" => a * b,
+            "/" when b != 0 => a / b,
+            _ => a + b
+        };
+
+        return View(new CalcResultModel { Expression = $"{a} {op} {b}", Result = result.ToString() });
+    }
+}
+```
+
+#### Supported Types
+
+The model binder converts string values from the form data dictionary to the following types:
+
+| Type | Examples |
+|------|----------|
+| `string` | Passed as-is |
+| `int`, `long`, `short`, `byte` | Integer types |
+| `float`, `double`, `decimal` | Floating-point types |
+| `bool` | `"true"` / `"false"` |
+| `DateTime`, `DateTimeOffset`, `TimeSpan` | Date/time types |
+| `Guid` | GUID strings |
+| `enum` | Enum name or numeric value |
+| Nullable variants (`int?`, `bool?`, etc.) | Empty string → `null` |
+| Complex types (classes with properties) | Properties populated by name |
+
+Key matching is **case-insensitive** — a form data key `"name"` binds to a parameter `Name` or a property `Name`.
+
+When a key is missing or the value can't be converted, the parameter receives its default value (`null` for reference types, `0` for numeric types, `false` for `bool`, etc.).
 
 ### Conventions
 
@@ -175,6 +316,7 @@ public class HomeViewModel
 
 ### Application Flow
 
+**Basic navigation** (no form data):
 ```
 Start → Home/Index (default route)
           ↓
@@ -189,6 +331,19 @@ Start → Home/Index (default route)
     Controller.About() returns View(model)
           ↓
     ... continues until NavigationResult.Quit()
+```
+
+**Form data posting** (view collects input → controller receives it):
+```
+    Greet/Index view renders, collects user input
+          ↓
+    View returns NavigationResult.ToAction("Result", formData)
+          ↓
+    Framework binds formData → GreetController.Result(GreetFormModel model)
+          ↓
+    Controller processes data, returns View(resultModel)
+          ↓
+    Greet/Result view renders the result
 ```
 
 ### IDE Support for `.cvw` Files
@@ -288,10 +443,13 @@ ConsoleMVC/
       ConsoleMVC.csproj                   #   Packs lib + generator + build props
       build/ConsoleMVC.Framework.props    #   Auto-imported by consuming projects
       PACKAGE_README.md                   #   README shown on NuGet gallery
-      *.cs                                #   Framework source (Controller, Router, etc.)
+      *.cs                                #   Framework source (Controller, Router, ModelBinder, etc.)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
       ConsoleMVC.Generators.csproj
       ViewSourceGenerator.cs              #   Transforms .cvw → ConsoleView<T> at compile time
+  tests/
+    ConsoleMVC.Tests/                     # Unit and integration tests
+      ConsoleMVC.Tests.csproj
   templates/
     ConsoleMVC.App/                       # Template content (what users get from dotnet new)
       .template.config/template.json      #   Template engine configuration

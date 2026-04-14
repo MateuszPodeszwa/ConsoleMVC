@@ -132,6 +132,7 @@ public class ViewSourceGenerator : IIncrementalGenerator
 
             // Build the using directives block
             var usingBuilder = new StringBuilder();
+            usingBuilder.AppendLine("using System.Collections.Generic;");
             usingBuilder.AppendLine("using ConsoleMVC.Mvc;");
             foreach (var u in usings)
             {

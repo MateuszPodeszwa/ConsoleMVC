@@ -1,0 +1,19 @@
+@model ConsoleMVC.App.Models.CalcResultModel
+
+Console.WriteLine("=== Calculator ===");
+Console.WriteLine();
+Console.WriteLine($"  {Model.Expression} = {Model.Result}");
+Console.WriteLine();
+Console.WriteLine("  [1] Calculate again");
+Console.WriteLine("  [2] Back to Home");
+Console.WriteLine("  [3] Exit");
+Console.WriteLine();
+Console.Write("Select an option: ");
+var input = Console.ReadLine()?.Trim();
+
+return input switch
+{
+    "1" => NavigationResult.ToAction("Index"),
+    "2" => NavigationResult.To("Home", "Index"),
+    _ => NavigationResult.Quit()
+};

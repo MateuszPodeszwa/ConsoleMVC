@@ -76,8 +76,9 @@ public class MvcApplication
 
             var actionMethod = _router.ResolveAction(controller.GetType(), _currentRoute.Action);
 
-            // 2. Invoke the action
-            var result = (ActionResult)actionMethod.Invoke(controller, null)!;
+            // 2. Invoke the action, binding form data to parameters if present
+            var args = ModelBinder.BindParameters(actionMethod, _currentRoute.FormData);
+            var result = (ActionResult)actionMethod.Invoke(controller, args)!;
 
             // 3. Process the result
             if (result is ViewResult viewResult)
@@ -94,7 +95,8 @@ public class MvcApplication
                 _currentRoute = new RouteContext
                 {
                     Controller = navigation.Controller ?? _currentRoute.Controller,
-                    Action = navigation.Action ?? _currentRoute.Action
+                    Action = navigation.Action ?? _currentRoute.Action,
+                    FormData = navigation.FormData
                 };
             }
             else if (result is RedirectToActionResult redirect)

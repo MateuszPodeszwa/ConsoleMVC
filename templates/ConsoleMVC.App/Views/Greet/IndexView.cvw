@@ -1,0 +1,23 @@
+@model object
+
+Console.WriteLine("=== Greeting Form ===");
+Console.WriteLine();
+Console.WriteLine("Fill in the form below and press Enter after each field.");
+Console.WriteLine();
+
+Console.Write("  Name: ");
+var name = Console.ReadLine()?.Trim() ?? "";
+
+Console.Write("  Favourite colour: ");
+var color = Console.ReadLine()?.Trim() ?? "";
+
+// Collect form inputs into a dictionary and post to the Result action.
+// The framework will bind these values to the GreetFormModel parameter
+// on the GreetController.Result action method.
+var formData = new Dictionary<string, string>
+{
+    ["Name"] = name,
+    ["Color"] = color
+};
+
+return NavigationResult.ToAction("Result", formData);

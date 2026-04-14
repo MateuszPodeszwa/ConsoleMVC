@@ -1,0 +1,25 @@
+@model object
+
+Console.WriteLine("=== Calculator ===");
+Console.WriteLine();
+
+Console.Write("  First number:  ");
+var a = Console.ReadLine()?.Trim() ?? "0";
+
+Console.Write("  Operator (+, -, *, /): ");
+var op = Console.ReadLine()?.Trim() ?? "+";
+
+Console.Write("  Second number: ");
+var b = Console.ReadLine()?.Trim() ?? "0";
+
+// Post individual values to the Result action.
+// The framework binds each dictionary entry to the matching
+// parameter name on CalcController.Result(int a, int b, string op).
+var formData = new Dictionary<string, string>
+{
+    ["a"] = a,
+    ["b"] = b,
+    ["op"] = op
+};
+
+return NavigationResult.ToAction("Result", formData);
