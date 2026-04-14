@@ -6,7 +6,7 @@
         <Title>ConsoleMVC Application Template</Title>
         <Version>1.0.4</Version>
         <Authors>Mateusz Podeszwa</Authors>
-        <Description>A dotnet new project template for ConsoleMVC — an MVC framework for console applications inspired by ASP.NET Core MVC. Scaffolds a ready-to-run project with Controllers, Views (.cvw), and Models.</Description>
+        <Description>A dotnet new project template for ConsoleMVC — an MVC framework for console applications inspired by ASP.NET Core MVC. Scaffolds a ready-to-run project with Controllers, Views (.cvw), and Models. JetBrains Rider users can install the ConsoleMVC CVWSupport plugin for .cvw file support.</Description>
         <Copyright>Copyright (c) 2026 Mateusz Podeszwa</Copyright>
         <PackageTags>dotnet-new;template;consolemvc;mvc;console;controller;view;csharp</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>

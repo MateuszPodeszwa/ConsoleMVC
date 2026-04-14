@@ -28,6 +28,13 @@ A ready-to-run console application structured with the MVC pattern:
 - **Views/** — `.cvw` view templates with `@model` directive (compiled at build time)
 - **Models/** — ViewModel DTOs passed from controllers to views
 
+## IDE Support
+
+For `.cvw` file recognition, syntax highlighting, and icon support in JetBrains Rider, install the **ConsoleMVC CVWSupport** plugin:
+
+- [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport)
+- [Plugin Source Code](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport)
+
 ## Learn More
 
 - [ConsoleMVC.Framework NuGet Package](https://www.nuget.org/packages/ConsoleMVC.Framework)

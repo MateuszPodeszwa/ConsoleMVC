@@ -64,6 +64,13 @@ public class HomeViewModel
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — all the patterns you know from ASP.NET Core MVC
 - **Navigation** — Views return `NavigationResult` to control app flow (`NavigationResult.To()`, `NavigationResult.Quit()`)
 
+## IDE Support
+
+For `.cvw` file recognition, syntax highlighting, and icon support in JetBrains Rider, install the **ConsoleMVC CVWSupport** plugin:
+
+- [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport)
+- [Plugin Source Code](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport)
+
 ## Documentation
 
 For full documentation and source code, visit the [GitHub repository](https://github.com/MateuszPodeszwa/ConsoleMVC).
