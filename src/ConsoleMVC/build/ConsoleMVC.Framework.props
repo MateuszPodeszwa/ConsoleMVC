@@ -10,4 +10,9 @@
         <CompilerVisibleProperty Include="RootNamespace" />
     </ItemGroup>
 
+    <!-- IDE (Visual Studio / Rider) fast up-to-date check: treat .cvw edits as build inputs -->
+    <ItemGroup>
+        <UpToDateCheckInput Include="Views/**/*.cvw" />
+    </ItemGroup>
+
 </Project>

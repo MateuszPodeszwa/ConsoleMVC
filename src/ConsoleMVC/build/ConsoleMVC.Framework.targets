@@ -1,0 +1,25 @@
+<Project>
+
+    <!--
+        Track the set of .cvw view files so that MSBuild detects additions and
+        deletions — not just content edits — as changes requiring recompilation.
+        WriteOnlyWhenDifferent ensures the cache file's timestamp only updates
+        when the actual file list changes, avoiding unnecessary rebuilds.
+    -->
+    <Target Name="_UpdateCvwFileListCache" BeforeTargets="CoreCompile">
+        <ItemGroup>
+            <_CvwFile Include="@(AdditionalFiles)" Condition="'%(Extension)' == '.cvw'" />
+        </ItemGroup>
+        <WriteLinesToFile
+            File="$(IntermediateOutputPath)CvwFileList.cache"
+            Lines="@(_CvwFile)"
+            Overwrite="true"
+            WriteOnlyWhenDifferent="true" />
+    </Target>
+
+    <!-- Include the cache file as a compile input so timestamp changes trigger CoreCompile -->
+    <ItemGroup>
+        <CustomAdditionalCompileInputs Include="$(IntermediateOutputPath)CvwFileList.cache" />
+    </ItemGroup>
+
+</Project>
