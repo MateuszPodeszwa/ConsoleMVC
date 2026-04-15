@@ -1,5 +1,7 @@
 # ConsoleMVC
 
+> **Where this project is headed:** A console-native markup language called **C-View Markup** — think HTML-like syntax purpose-built for terminal UIs, with `@` expressions from Razor, layout primitives like `<box>`, `<table>`, and `<menu>`, and a rendering engine that compiles it all at build time. Read the full vision, roadmap, and how to get involved in **[Planned Features & Project Direction](plannedfeatures.md)**.
+
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
 ConsoleMVC brings the **Controller-ViewModel** pattern to console apps — with convention-based routing, reflection-based auto-discovery, and a Razor-like view engine powered by a C# source generator. If you've built ASP.NET Core MVC apps before, you already know how to use ConsoleMVC.
