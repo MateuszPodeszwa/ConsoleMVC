@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <RootNamespace>ConsoleMVC.Mvc</RootNamespace>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
 
         <!-- NuGet Package Metadata -->
         <PackageId>ConsoleMVC.Framework</PackageId>

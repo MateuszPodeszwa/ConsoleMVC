@@ -1,0 +1,89 @@
+name: Build and deploy documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "src/**"
+      - ".github/workflows/docs.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install MkDocs and Material theme
+        run: pip install mkdocs-material
+
+      - name: Build MkDocs site
+        run: mkdocs build -f docs/guides/mkdocs.yml -d ../../_site/guides
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.x"
+
+      - name: Install DocFX
+        run: dotnet tool install -g docfx
+
+      - name: Build solution
+        run: dotnet build ConsoleMVC.sln -c Release
+
+      - name: Run DocFX metadata
+        run: docfx metadata docs/api/docfx.json
+
+      - name: Run DocFX build
+        run: docfx build docs/api/docfx.json
+
+      - name: Copy DocFX output to site
+        run: cp -r docs/api/_site _site/api
+
+      - name: Write root redirect
+        run: |
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0; url=guides/">
+            <title>Redirecting&hellip;</title>
+          </head>
+          <body>
+            <p>Redirecting to <a href="guides/">guides</a>&hellip;</p>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
