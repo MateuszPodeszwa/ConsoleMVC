@@ -1,0 +1,49 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "files": [
+            "src/ConsoleMVC/ConsoleMVC.csproj",
+            "src/ConsoleMVC.Generators/ConsoleMVC.Generators.csproj"
+          ],
+          "src": "../../"
+        }
+      ],
+      "dest": "api"
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "api/**.yml",
+          "api/index.md"
+        ]
+      },
+      {
+        "files": [
+          "*.md",
+          "toc.yml"
+        ]
+      }
+    ],
+    "dest": "_site",
+    "globalMetadataFiles": [],
+    "template": [
+      "default",
+      "modern"
+    ],
+    "globalMetadata": {
+      "_appTitle": "ConsoleMVC API Reference",
+      "_enableSearch": true,
+      "_gitContribute": {
+        "repo": "https://github.com/MateuszPodeszwa/ConsoleMVC",
+        "branch": "main"
+      }
+    },
+    "postProcessors": [
+      "ExtractSearchIndex"
+    ]
+  }
+}
