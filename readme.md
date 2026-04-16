@@ -21,10 +21,13 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 ### Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
+- JetBrain's Rider (personally recommended for the [plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport/edit) support), VS plugin is planned
+- If using VS code or other, [add IDE support for cvw filles](#IDESupport)
 
 ### Installation
 
-Install the project template:
+Install/Update the project template.
+Always ensure the template stays [up-to-date](https://www.nuget.org/packages/ConsoleMVC.Template):
 
 ```bash
 dotnet new install ConsoleMVC.Template
@@ -348,7 +351,7 @@ Start → Home/Index (default route)
     Greet/Result view renders the result
 ```
 
-### IDE Support for `.cvw` Files
+### <a id="IDESupport"></a> IDE Support for `.cvw` Files
 
 To get C# syntax highlighting in `.cvw` files:
 
