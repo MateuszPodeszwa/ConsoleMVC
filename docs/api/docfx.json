@@ -17,16 +17,14 @@
     "content": [
       {
         "files": [
-          "**.yml",
-          "index.md"
+          "**.yml"
         ],
         "src": "_metadata",
         "dest": "."
       },
       {
         "files": [
-          "*.md",
-          "toc.yml"
+          "index.md"
         ]
       }
     ],
