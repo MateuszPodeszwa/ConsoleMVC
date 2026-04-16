@@ -35,6 +35,7 @@
     ],
     "globalMetadata": {
       "_appTitle": "ConsoleMVC API Reference",
+      "_appBasePath": "/ConsoleMVC/api",
       "_enableSearch": true,
       "_gitContribute": {
         "repo": "https://github.com/MateuszPodeszwa/ConsoleMVC",
