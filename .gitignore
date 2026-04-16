@@ -21,6 +21,10 @@ nupkg/
 .DS_Store
 Thumbs.db
 
+## DocFX intermediate output
+docs/api/_metadata/
+docs/api/_site/
+
 ## AI Related
 CLAUDE.md
 AGENTS.md

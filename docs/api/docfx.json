@@ -10,16 +10,18 @@
           "src": "../../"
         }
       ],
-      "dest": "reference"
+      "dest": "_metadata"
     }
   ],
   "build": {
     "content": [
       {
         "files": [
-          "reference/**.yml",
-          "reference/index.md"
-        ]
+          "**.yml",
+          "index.md"
+        ],
+        "src": "_metadata",
+        "dest": "."
       },
       {
         "files": [

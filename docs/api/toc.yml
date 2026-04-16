@@ -1,2 +1,3 @@
 - name: API Reference
-  href: reference/
+  href: toc.yml
+  homepage: index.md
