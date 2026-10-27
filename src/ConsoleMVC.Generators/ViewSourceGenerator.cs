@@ -1,10 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
+using ConsoleMVC.Generators.Diagnostics;
+using ConsoleMVC.Generators.Emit;
+using ConsoleMVC.Generators.Parsing;
+using ConsoleMVC.Generators.Schema;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
 
 #nullable enable
 
@@ -16,27 +17,25 @@ namespace ConsoleMVC.Generators;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Each <c>.cvw</c> file is expected to reside at <c>Views/{Controller}/{Action}View.cvw</c>
-/// and must begin with an <c>@model</c> directive declaring the fully-qualified view model type.
-/// Optional <c>@using</c> directives may follow to add additional namespace imports.
-/// All subsequent lines are treated as the body of the generated <c>Render</c> method.
+/// Each <c>.cvw</c> file must reside at <c>Views/{Controller}/{Action}View.cvw</c>. It may begin with an
+/// <c>@model</c> directive (defaulting to <c>object</c>) and <c>@using</c> directives; the rest of the file
+/// is the body of the generated <c>Render</c> method — C# code that may embed C-View Markup elements.
+/// </para>
+/// <para>
+/// The pipeline is: <see cref="CvwDocumentParser"/> (directives and body) → diagnostics →
+/// <see cref="ViewEmitter"/> (C# with <c>#line</c> mapping). See <c>docs/design/c-view-markup.md</c>.
 /// </para>
 /// <para>
 /// The generator reads the <c>RootNamespace</c> build property from the consuming project
-/// so that generated classes are placed under <c>{RootNamespace}.Views.{Controller}</c>,
-/// ensuring correct namespace alignment regardless of the project name.
-/// </para>
-/// <para>
-/// <b>Supported directives:</b>
-/// <list type="bullet">
-///   <item><description><c>@model FullTypeName</c> — declares the view model type (required).</description></item>
-///   <item><description><c>@using Namespace</c> — adds a <c>using</c> statement to the generated class.</description></item>
-/// </list>
+/// so that generated classes are placed under <c>{RootNamespace}.Views.{Controller}</c>.
 /// </para>
 /// </remarks>
 [Generator]
 public class ViewSourceGenerator : IIncrementalGenerator
 {
+    /// <summary>The namespace used when the consuming project does not define <c>RootNamespace</c>.</summary>
+    private const string FallbackRootNamespace = "ConsoleMVC";
+
     /// <summary>
     /// Registers the source generation pipeline. Collects <c>.cvw</c> additional files
     /// and the consuming project's <c>RootNamespace</c>, then generates a
@@ -45,118 +44,65 @@ public class ViewSourceGenerator : IIncrementalGenerator
     /// <param name="context">The initialisation context provided by the Roslyn compiler.</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Collect .cvw view files from AdditionalFiles
         var viewFiles = context.AdditionalTextsProvider
             .Where(static file => file.Path.EndsWith(".cvw", StringComparison.OrdinalIgnoreCase));
 
-        // Read the RootNamespace build property from the consuming project
         var rootNamespace = context.AnalyzerConfigOptionsProvider
             .Select(static (provider, _) =>
             {
                 provider.GlobalOptions.TryGetValue("build_property.RootNamespace", out var ns);
-                return ns ?? "ConsoleMVC";
+                return string.IsNullOrWhiteSpace(ns) ? FallbackRootNamespace : ns!.Trim();
             });
 
-        // Pair each view file with the root namespace for code generation
-        var viewsWithNamespace = viewFiles.Combine(rootNamespace);
-
-        context.RegisterSourceOutput(viewsWithNamespace, static (ctx, pair) =>
+        context.RegisterSourceOutput(viewFiles.Combine(rootNamespace), static (ctx, pair) =>
         {
             var (file, rootNs) = pair;
-
             var text = file.GetText(ctx.CancellationToken);
-            if (text == null) return;
-
-            var content = text.ToString();
-            var lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-
-            string? modelType = null;
-            var usings = new List<string>();
-            var codeStartIndex = 0;
-
-            // Parse directives (@model, @using) at the top of the file
-            for (var i = 0; i < lines.Length; i++)
-            {
-                var trimmed = lines[i].Trim();
-
-                if (string.IsNullOrWhiteSpace(trimmed))
-                {
-                    codeStartIndex = i + 1;
-                    continue;
-                }
-
-                if (trimmed.StartsWith("@model "))
-                {
-                    modelType = trimmed.Substring("@model ".Length).Trim();
-                    codeStartIndex = i + 1;
-                    continue;
-                }
-
-                if (trimmed.StartsWith("@using "))
-                {
-                    usings.Add(trimmed.Substring("@using ".Length).Trim());
-                    codeStartIndex = i + 1;
-                    continue;
-                }
-
-                // First non-directive, non-empty line — view body code starts here
-                codeStartIndex = i;
-                break;
-            }
-
-            // Files without an @model directive cannot be processed
-            if (modelType == null) return;
-
-            // Extract the view and controller names from the file path
-            // Expected pattern: .../Views/{Controller}/{Action}View.cvw
-            var fileName = Path.GetFileNameWithoutExtension(file.Path);
-            var pathParts = file.Path.Replace('\\', '/').Split('/');
-
-            string? controllerName = null;
-            for (var i = 0; i < pathParts.Length - 1; i++)
-            {
-                if (string.Equals(pathParts[i], "Views", StringComparison.OrdinalIgnoreCase)
-                    && i + 1 < pathParts.Length - 1)
-                {
-                    controllerName = pathParts[i + 1];
-                    break;
-                }
-            }
-
-            if (controllerName == null) return;
-
-            // Build the view body code with correct indentation
-            var codeLines = lines.Skip(codeStartIndex).ToArray();
-            var codeBody = string.Join("\n",
-                codeLines.Select(l => "        " + l));
-
-            // Build the using directives block
-            var usingBuilder = new StringBuilder();
-            usingBuilder.AppendLine("using System.Collections.Generic;");
-            usingBuilder.AppendLine("using ConsoleMVC.Mvc;");
-            foreach (var u in usings)
-            {
-                usingBuilder.AppendLine($"using {u};");
-            }
-
-            // Emit the generated ConsoleView<TModel> subclass
-            var source = $@"// <auto-generated>
-// Generated by ConsoleMVC ViewEngine from {controllerName}/{fileName}.cvw
-// Do not modify this file directly — edit the .cvw source instead.
-// </auto-generated>
-{usingBuilder}
-namespace {rootNs}.Views.{controllerName}
-{{
-    public class {fileName} : ConsoleView<{modelType}>
-    {{
-        public override NavigationResult Render({modelType} Model)
-        {{
-{codeBody}
-        }}
-    }}
-}}";
-
-            ctx.AddSource($"{controllerName}_{fileName}.g.cs", source);
+            if (text is not null)
+                GenerateView(ctx, file.Path, text, rootNs);
         });
+    }
+
+    /// <summary>
+    /// Validates, parses and emits a single view, reporting diagnostics against the <c>.cvw</c> file.
+    /// </summary>
+    private static void GenerateView(SourceProductionContext context, string path, SourceText text, string rootNamespace)
+    {
+        if (!ViewInfo.TryCreate(path, rootNamespace, out var info))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.MisplacedView, Location.Create(path, default, default), path));
+            return;
+        }
+
+        if (!SyntaxFacts.IsValidIdentifier(info.ControllerName))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ControllerName, "controller folder"));
+            return;
+        }
+
+        if (!SyntaxFacts.IsValidIdentifier(info.ClassName))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ClassName, "view"));
+            return;
+        }
+
+        if (!info.ClassName.EndsWith("View", StringComparison.Ordinal))
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.ViewNameSuffix, Location.Create(path, default, default), info.ClassName));
+
+        var document = CvwDocumentParser.Parse(text.ToString(), MarkupSchema.Default);
+
+        foreach (var diagnostic in document.Diagnostics)
+        {
+            var span = TextSpan.FromBounds(
+                Math.Min(diagnostic.Span.Start, text.Length),
+                Math.Min(diagnostic.Span.End, text.Length));
+            var location = Location.Create(path, span, text.Lines.GetLinePositionSpan(span));
+            context.ReportDiagnostic(Diagnostic.Create(diagnostic.Descriptor, location, diagnostic.Arguments));
+        }
+
+        if (document.HasErrors)
+            return;
+
+        context.AddSource(info.HintName, ViewEmitter.Emit(document, info));
     }
 }
