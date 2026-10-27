@@ -60,6 +60,21 @@ public interface IMarkupRenderer
     /// <param name="element">The element to show instead; usually the same element in a new state.</param>
     /// <example><code>renderer.Render(select); /* a key is pressed */ renderer.Rewrite(select);</code></example>
     void Rewrite(Element element) => Render(element);
+
+    /// <summary>
+    /// Gets the height of the output in rows, or <see cref="int.MaxValue"/> when it has none (a file, a pipe, a test).
+    /// <c>&lt;scroll&gt;</c> uses it to fit a page in the window.
+    /// </summary>
+    /// <example><code>var rows = renderer.Height;</code></example>
+    int Height => int.MaxValue;
+
+    /// <summary>
+    /// Switches the output to the terminal's alternate screen, or back, for <c>builder.FullScreen</c>.
+    /// </summary>
+    /// <param name="on"><see langword="true"/> to enter full-screen mode, <see langword="false"/> to leave it.</param>
+    /// <returns><see langword="true"/> when the output switched; the default implementation returns <see langword="false"/>.</returns>
+    /// <example><code>if (renderer.SetFullScreen(true)) { try { Run(); } finally { renderer.SetFullScreen(false); } }</code></example>
+    bool SetFullScreen(bool on) => false;
 }
 
 /// <summary>
@@ -163,6 +178,34 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
 
     /// <summary>Gets the current layout width (at least <see cref="MinimumWidth"/>).</summary>
     public int Width => Math.Max(_widthProvider(), MinimumWidth);
+
+    /// <inheritdoc />
+    public int Height => Math.Max(_heightProvider(), 1);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The screen history starts again on the new screen: the alternate screen starts empty, and the normal one is
+    /// restored by the terminal as it was.
+    /// </remarks>
+    public bool SetFullScreen(bool on)
+    {
+        lock (_sync)
+        {
+            bool switched;
+            using (ForeignOutputTracker.Suppress())
+                switched = _target.TrySetAlternateScreen(on);
+
+            if (switched)
+            {
+                _history.Clear();
+                _historyComplete = true;
+                _ownsScreen = on;
+                _lastElementLines = -1;
+            }
+
+            return switched;
+        }
+    }
 
     /// <inheritdoc />
     public void Render(Element element)

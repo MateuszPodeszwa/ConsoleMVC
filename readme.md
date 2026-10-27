@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.26: `<markdown text="@Model.Notes" />` draws Markdown (headings, lists, emphasis, code, links). 1.25 added charts (`<bar-chart>`, `<sparkline>`), 1.24 `<progress>` and `<spinner>` that update while an action works and views that refresh on a timer (`@refresh 5s`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.27: full-screen mode on the terminal's alternate screen (`builder.FullScreen = true`) and `<scroll>`, which pages long content with the arrow keys. 1.26 added `<markdown>`, 1.25 charts (`<bar-chart>`, `<sparkline>`), 1.24 `<progress>`, `<spinner>` and `@refresh`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -18,6 +18,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Partial views and layouts**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time, and a `_Layout.cvw` that frames every screen
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
+- **Full screen and scrolling**: `builder.FullScreen = true` runs on the terminal's alternate screen and restores the user's scrollback afterwards, and `<scroll>` pages long content with the arrow keys
 - **Keyboard shortcuts**: `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` works on every screen, in menus and fields alike, and `<shortcuts />` lists them
 - **Markdown**: `<markdown text="@Model.Notes" />` draws headings, lists, quotes, code, `**bold**`, `*italic*` and links, wrapped to the terminal and sanitised
 - **Charts**: `<bar-chart>` with `<bar label value />` (bars ending in eighths of a cell) and `<sparkline values="@Model.History" />` for dashboards
@@ -86,7 +87,7 @@ MyApp/
     Home/
       IndexView.cvw             # <menu> navigation
       AboutView.cvw             # <markdown> from the model
-      FeaturesView.cvw          # <table> generated from the model
+      FeaturesView.cvw          # <table> generated from the model, paged by <scroll>
       StatusView.cvw            # @refresh 1s, <spinner>, <progress>, <sparkline> and <bar-chart>
     Greet/
       IndexView.cvw             # <input>, <select> and <checkbox>, posts the Form
@@ -646,6 +647,8 @@ Dashboards can draw their numbers as charts:
 
 See [charts](docs/guides/docs/c-view-markup.md#bar-chart-and-bar) and the [design](docs/design/charts.md).
 
+Long content is paged with `<scroll height="15">…</scroll>`: the arrow keys, Page Up, Page Down, Home and End scroll it and Enter continues; piped output gets everything at once. See [`<scroll>`](docs/guides/docs/c-view-markup.md#scroll) and the [design](docs/design/full-screen.md).
+
 Text written in Markdown (help pages, release notes) is drawn with `<markdown text="@Model.Notes" />`: headings, lists, quotes, fenced code, `**bold**`, `*italic*`, `` `code` `` and links, wrapped to the terminal. See [`<markdown />`](docs/guides/docs/c-view-markup.md#markdown) and the [design](docs/design/markdown.md).
 
 See the [Live Screens guide](docs/guides/docs/live-screens.md) and the [design](docs/design/live-elements.md).
@@ -784,6 +787,7 @@ var builder = MvcApplication.CreateBuilder(args);
 builder.DefaultController = "Dashboard";        // Default: "Home"
 builder.DefaultAction = "Overview";             // Default: "Index"
 builder.ClearScreenBetweenViews = false;        // Default: true
+builder.FullScreen = true;                      // Default: false
 builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
 builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
 builder.Input = ConsoleTextInput.Instance;              // Default: the console
@@ -801,6 +805,7 @@ app.Run();
 | `Services` | Services for controller constructors and `@inject` (see [Dependency Injection](#dependency-injection)) |
 | `Theme` | Named styles used by `class="…"` in markup (see [Layout and Themes](#layout-and-themes)) |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
+| `FullScreen` | Run on the terminal's alternate screen; the user's scrollback is restored when the application ends |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |
 | `Configuration` | Settings from `appsettings.json`, `appsettings.{Environment}.json`, environment variables (`Shop__Name`) and the command line (`--Shop:Name=Corner`), later ones winning; registered as `IConfiguration` (see [Configuration Files and Logging](docs/guides/docs/hosting.md)) |

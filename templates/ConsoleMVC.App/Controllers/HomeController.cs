@@ -77,6 +77,7 @@ public class HomeController(ILiveDisplay live) : Controller
                 new("<bar-chart>", "Compares values as horizontal bars"),
                 new("<sparkline>", "Draws a series of values on one line"),
                 new("<markdown>", "Draws Markdown: headings, lists, emphasis, code and links"),
+                new("<scroll>", "Shows long content a page at a time"),
                 new("class=\"…\"", "Applies a named style from the theme")
             ]
         };

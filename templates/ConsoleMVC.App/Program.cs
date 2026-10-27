@@ -14,6 +14,9 @@ builder.Services.Configure<GreetingOptions>(builder.Configuration.GetSection(Gre
 // Logs go to a file, because the console shows the application (levels: the "Logging" section of appsettings.json)
 builder.Logging.AddFile("logs/app.log");
 
+// Run on the terminal's alternate screen, like a full-screen editor: your scrollback comes back when the app ends
+builder.FullScreen = true;
+
 using var app = builder.Build();
 
 // Keyboard shortcuts that work on every screen; the layout lists them with <shortcuts />

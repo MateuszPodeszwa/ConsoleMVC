@@ -384,6 +384,15 @@ internal sealed class MarkupSchema
                 new AttributeSchema("label-colour", "LabelColour", colour)
             ]),
 
+            // ---- 1.27: scrolling (a pager: waits for the user, so only at the top level of a view)
+            new ElementSchema("scroll", Rendering + "ScrollElement", ContentModel.Block,
+            [
+                ThemeClass(),
+                new AttributeSchema("height", "Height", new IntegerAttributeType(1, 1000)),
+                new AttributeSchema("color", "StatusColour", colour),
+                new AttributeSchema("colour", "StatusColour", colour)
+            ], topLevelOnly: true, topLevelStatement: "this.ShowScroll({0});"),
+
             // ---- 1.26: Markdown
             new ElementSchema("markdown", Rendering + "MarkdownElement", ContentModel.Void,
             [

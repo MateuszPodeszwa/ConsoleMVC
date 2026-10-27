@@ -554,6 +554,37 @@ Draws Markdown for the terminal: help pages, release notes, descriptions from a 
 Everything is sanitised, so Markdown from users cannot send terminal escape sequences, and unusual input cannot slow
 the screen down. HTML, tables and images are shown as text.
 
+### `<scroll>`
+
+Shows long content a page at a time. In a terminal the user scrolls with the arrow keys (or J and K), Page Up and
+Page Down (or B and Space), Home and End, and continues with Enter, Esc or Q; the page they end on stays on the screen
+and the view goes on below it. When the content fits, or input or output is piped, everything is drawn at once.
+
+```
+<scroll height="15">
+    @foreach (var entry in Model.Log)
+    {
+        <text>@entry</text>
+    }
+</scroll>
+```
+
+```
+12:00:01 Started
+12:00:04 Connected to the database
+…
+Lines 1-15 of 240  ↑↓ PgUp PgDn Home End  Enter continues
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `height` | lines per page, 1 to 1000 | the window height less 3 rows |
+| `color` / `colour` | colour of the status line | dark grey |
+| `class` | theme style (its colour colours the status line) | none |
+
+Like a field, `<scroll>` waits for the user, so it goes at the top level of a view or partial, not inside `<box>` or
+`<columns>`. Any elements can go inside it.
+
 ### `<errors />`
 
 Shows validation messages from the view's `ModelState` (see [Validation](https://github.com/MateuszPodeszwa/ConsoleMVC#validation)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.

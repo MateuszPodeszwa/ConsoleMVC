@@ -208,6 +208,14 @@ public class MvcApplicationBuilder
     public bool ClearScreenBetweenViews { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets whether the application runs on the terminal's alternate screen, like a full-screen editor: the
+    /// user's scrollback is left untouched and comes back when the application ends (also after an error or Ctrl+C).
+    /// Defaults to <see langword="false"/>. Ignored when the output is not a terminal that supports it.
+    /// </summary>
+    /// <example><code>builder.FullScreen = true;</code></example>
+    public bool FullScreen { get; set; }
+
+    /// <summary>
     /// Builds and returns a fully configured <see cref="MvcApplication"/> instance
     /// ready to be started with <see cref="MvcApplication.Run"/>.
     /// </summary>

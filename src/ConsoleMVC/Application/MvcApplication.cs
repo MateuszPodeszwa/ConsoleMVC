@@ -57,6 +57,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     private ActionDelegate? _pipeline;
     private int _running;
     private readonly bool _clearScreenBetweenViews;
+    private readonly bool _fullScreen;
     private RouteContext _currentRoute;
 
     /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
@@ -81,6 +82,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         _applicationAssembly = builder.ApplicationAssembly;
         _services = services;
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
+        _fullScreen = builder.FullScreen;
     }
 
     /// <summary>
@@ -353,6 +355,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         MvcApplicationLog.Starting(logger, _currentRoute, Environment.EnvironmentName);
 
         HotReloadHandler.Updated += OnHotReload;
+        using var screen = _fullScreen ? FullScreenSession.Enter(renderer) : null;
         try
         {
             await RunLoopAsync(pipeline, assembly, renderer, refreshing, theme, logger, cancellationToken).ConfigureAwait(false);

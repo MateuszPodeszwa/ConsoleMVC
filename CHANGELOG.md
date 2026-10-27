@@ -2,6 +2,19 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.27.0]
+
+### Added
+
+- **Full-screen mode** ([design](docs/design/full-screen.md), [guide](docs/guides/docs/configuration.md)):
+  `builder.FullScreen = true` runs the application on the terminal's alternate screen and restores the normal screen
+  when it ends, fails or is stopped with Ctrl+C. `IRenderTarget.TrySetAlternateScreen` (implemented by
+  `AnsiRenderTarget`), `IMarkupRenderer.SetFullScreen` and `IMarkupRenderer.Height`.
+- **`<scroll>`** (`ScrollElement`, `ConsoleViewBase.ShowScroll`): long content shown a page at a time, scrolled with
+  the arrow keys, J and K, Page Up and Page Down, Space, Home and End, and left with Enter, Esc or Q. Everything is drawn
+  at once when it fits or input or output is piped.
+- The template runs full screen and pages the feature tour's table.
+
 ## [1.26.0]
 
 ### Added

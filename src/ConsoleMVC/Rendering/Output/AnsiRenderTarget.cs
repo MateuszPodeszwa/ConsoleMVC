@@ -81,6 +81,16 @@ public sealed class AnsiRenderTarget : IRenderTarget
     /// <inheritdoc />
     public void Flush() => _writer.Flush();
 
+    /// <inheritdoc />
+    /// <remarks>Writes <c>ESC[?1049h</c> (and moves the cursor home) or <c>ESC[?1049l</c>, which terminals that know no
+    /// alternate screen ignore.</remarks>
+    public bool TrySetAlternateScreen(bool on)
+    {
+        _writer.Write(on ? "\u001b[?1049h\u001b[H" : "\u001b[?1049l");
+        _writer.Flush();
+        return true;
+    }
+
     /// <summary>
     /// Builds the semicolon-separated SGR parameters for a style, e.g. <c>"1;91"</c>. Returns an
     /// empty string for styles that need no codes.

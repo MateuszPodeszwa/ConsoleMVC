@@ -6,6 +6,8 @@
 </box>
 <br />
 
+@* <scroll> shows long content a page at a time (12 lines here; without height, a window full): arrow keys, Page Up/Down, Enter *@
+<scroll height="12">
 <table border="rounded" color="darkgrey" max-width="100">
     <row header>
         <cell>Element</cell>
@@ -19,6 +21,7 @@
         </row>
     }
 </table>
+</scroll>
 <br />
 
 @* <columns> places content side by side, and stacks it when the terminal is narrower than stack-below *@

@@ -129,6 +129,10 @@ public sealed record ThemeStyle
                 if (Foreground is { } chartColour) chart.Colour = chartColour;
                 break;
 
+            case ScrollElement scroll:
+                if (Foreground is { } statusColour) scroll.StatusColour = statusColour;
+                break;
+
             case MarkdownElement markdown:
                 if (Foreground is { } headingColour) markdown.HeadingColour = headingColour;
                 break;

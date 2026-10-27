@@ -69,6 +69,7 @@ public class HomeViewModel
 - **No boilerplate**: Views are plain C# code with an `@model` directive, no class inheritance required
 - **C-View Markup**: `<box>`, `<text>`, `<separator>`, `<br>` and `<table>` elements with colours, borders, alignment and word wrapping, plus `@` expressions and `@if`/`@foreach`; validated at compile time with errors pointing at the `.cvw` file, including `nav` targets that name a missing controller or action (CVW119), the same mistakes in `RedirectToAction` and `NavigationResult` calls (CVW120), and missing views (CVW121, with a fix that creates the view)
 - **Responsive screens**: resizing the terminal lays the current screen out again at the new width
+- **Full screen and scrolling**: `builder.FullScreen = true` uses the terminal's alternate screen, and `<scroll>` pages long content with the arrow keys
 - **Layout and themes**: `<columns>` (stacking on narrow terminals), `min-width`/`max-width`, and theme classes with `class="title"`
 - **Layouts**: `Views/Shared/_Layout.cvw` frames every screen, with `<body />` where the view goes
 - **Partial views**: reusable markup in `Views/Shared/{Name}.cvw`, rendered with `<partial name="Header" model="@Model.Title" />` and checked at build time

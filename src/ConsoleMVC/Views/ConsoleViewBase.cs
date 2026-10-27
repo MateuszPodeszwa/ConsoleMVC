@@ -105,6 +105,19 @@ public abstract class ConsoleViewBase
     }
 
     /// <summary>
+    /// Shows a <c>&lt;scroll&gt;</c> a page at a time and waits until the user continues. Generated code calls this for
+    /// every top-level <c>&lt;scroll&gt;</c>. It does not draw a layout's footer: the footer still comes before the first field.
+    /// </summary>
+    /// <param name="scroll">The content to show.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="scroll"/> is <see langword="null"/>.</exception>
+    /// <example><code>ShowScroll(logElement);</code></example>
+    protected internal void ShowScroll(ScrollElement scroll)
+    {
+        ArgumentNullException.ThrowIfNull(scroll);
+        scroll.Show(Renderer, Input);
+    }
+
+    /// <summary>
     /// Gets the application's keyboard shortcuts that have a description (<c>app.MapKey(ConsoleKey.F1, "Help/Index", "Help")</c>),
     /// as <c>&lt;shortcuts /&gt;</c> shows them.
     /// </summary>
