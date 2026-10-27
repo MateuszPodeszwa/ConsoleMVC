@@ -38,9 +38,17 @@ internal sealed class MarkupParser
     };
 
     private readonly string _text;
+    /// <summary>The deepest element nesting accepted before parsing stops with CVW113 (guards against stack overflow).</summary>
+    public const int MaxNestingDepth = 100;
+
     private readonly MarkupSchema _schema;
     private readonly List<ParseDiagnostic> _diagnostics;
     private int _position;
+    private int _depth;
+    private bool _depthReported;
+
+    /// <summary>Offset just past the most recent expression, so <c>@a@b</c> is not mistaken for an e-mail address.</summary>
+    private int _lastExpressionEnd = -1;
 
     /// <summary>
     /// Creates a parser.
@@ -85,6 +93,15 @@ internal sealed class MarkupParser
             if (char.IsWhiteSpace(c))
             {
                 _position++;
+                continue;
+            }
+
+            // Preprocessor directive (#region, #if …): copied as-is, never lexed, and it does not change whether
+            // the next line starts a statement
+            if (c == '#' && IsFirstOnLine(_position))
+            {
+                var lineEnd = _text.IndexOf('\n', _position);
+                _position = lineEnd < 0 ? _text.Length : lineEnd;
                 continue;
             }
 
@@ -162,7 +179,32 @@ internal sealed class MarkupParser
     /// </summary>
     private ElementNode ParseElement()
     {
+        _depth++;
+        try
+        {
+            return ParseElementCore();
+        }
+        finally
+        {
+            _depth--;
+        }
+    }
+
+    private ElementNode ParseElementCore()
+    {
         var start = _position;
+
+        if (_depth > MaxNestingDepth)
+        {
+            if (!_depthReported)
+                Report(CvwDiagnostics.NestingTooDeep, new SourceSpan(start, 1), MaxNestingDepth);
+
+            _depthReported = true;
+            _position = _text.Length;
+            _schema.TryGetElement(MarkupSchema.TextTag, out var placeholder);
+            return new ElementNode(placeholder, new SourceSpan(start, 0), Array.Empty<AttributeNode>(), Array.Empty<Node>());
+        }
+
         _position++; // '<'
         var tag = ReadName();
         _schema.TryGetElement(tag, out var schema);
@@ -344,10 +386,23 @@ internal sealed class MarkupParser
         if (c is not ('"' or '\''))
         {
             var start = _position;
-            while (_position < _text.Length && !char.IsWhiteSpace(Peek()) && Peek() != '>' && !(Peek() == '/' && Peek(1) == '>'))
-                _position++;
+            var value = new StringBuilder();
 
-            parts.Add(new AttributeValuePart(false, _text.Substring(start, _position - start), SourceSpan.FromBounds(start, _position)));
+            while (_position < _text.Length && !char.IsWhiteSpace(Peek()) && Peek() != '>' && !(Peek() == '/' && Peek(1) == '>'))
+            {
+                if (Peek() == '&' && CharacterEntities.TryDecode(_text, _position, out var entity, out var entityLength))
+                {
+                    value.Append(entity);
+                    _position += entityLength;
+                }
+                else
+                {
+                    value.Append(Peek());
+                    _position++;
+                }
+            }
+
+            parts.Add(new AttributeValuePart(false, value.ToString(), SourceSpan.FromBounds(start, _position)));
             return parts;
         }
 
@@ -370,7 +425,7 @@ internal sealed class MarkupParser
                 literal.Append('@');
                 _position += 2;
             }
-            else if (Peek() == '@' && (Peek(1) == '(' || IsIdentifierStart(Peek(1))))
+            else if (Peek() == '@' && (Peek(1) == '(' || IsIdentifierStart(Peek(1))) && !IsEmailAt(_position))
             {
                 FlushLiteral();
                 var expression = ParseExpressionAfterAt();
@@ -433,9 +488,8 @@ internal sealed class MarkupParser
 
             if (c == '<' && StartsWith("<!--"))
             {
-                FlushText();
+                // Comments vanish without splitting the surrounding text, so whitespace collapses across them
                 SkipComment("<!--", "-->", "markup comment");
-                textStart = _position;
                 continue;
             }
 
@@ -505,7 +559,6 @@ internal sealed class MarkupParser
     private bool TryHandleAt(ElementSchema element, List<Node> nodes, StringBuilder text, Action flushText)
     {
         var next = Peek(1);
-        var previous = _position > 0 ? _text[_position - 1] : ' ';
 
         // @@ → literal @
         if (next == '@')
@@ -515,8 +568,15 @@ internal sealed class MarkupParser
             return false;
         }
 
+        // @* comment *@ — vanishes without splitting the surrounding text
+        if (next == '*')
+        {
+            SkipComment("@*", "*@", "@* comment *@");
+            return false;
+        }
+
         // name@example.com → literal @
-        if (char.IsLetterOrDigit(previous) || !(next == '(' || next == '{' || next == '*' || IsIdentifierStart(next)))
+        if (IsEmailAt(_position) || !(next == '(' || next == '{' || IsIdentifierStart(next)))
         {
             text.Append('@');
             _position++;
@@ -524,12 +584,6 @@ internal sealed class MarkupParser
         }
 
         flushText();
-
-        if (next == '*')
-        {
-            SkipComment("@*", "*@", "@* comment *@");
-            return true;
-        }
 
         if (next == '{')
         {
@@ -611,7 +665,7 @@ internal sealed class MarkupParser
 
             // Continuations: else / else if, catch / finally, do … while (…);
             var afterBlock = _position;
-            SkipWhitespace();
+            SkipWhitespaceAndComments();
             var continuation = PeekIdentifier(_position);
 
             if ((keyword == "if" && continuation == "else")
@@ -661,11 +715,21 @@ internal sealed class MarkupParser
 
             var start = _position + 1;
             _position = close + 1;
-            return new ExpressionNode(_text.Substring(start, close - start), SourceSpan.FromBounds(start, close));
+            _lastExpressionEnd = _position;
+
+            var code = _text.Substring(start, close - start);
+            if (code.Trim().Length == 0)
+            {
+                Report(CvwDiagnostics.EmptyExpression, SourceSpan.FromBounds(at, _position));
+                return null;
+            }
+
+            return new ExpressionNode(code, SourceSpan.FromBounds(start, close));
         }
 
         var expressionStart = _position;
         ScanImplicitExpression();
+        _lastExpressionEnd = _position;
         return new ExpressionNode(_text.Substring(expressionStart, _position - expressionStart),
             SourceSpan.FromBounds(expressionStart, _position));
     }
@@ -831,6 +895,45 @@ internal sealed class MarkupParser
             end++;
 
         return _text.Substring(position, end - position);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> when the <c>@</c> at <paramref name="position"/> is part of an e-mail
+    /// address (preceded by a letter or digit that is not the end of an expression).
+    /// </summary>
+    private bool IsEmailAt(int position) =>
+        position > 0 && char.IsLetterOrDigit(_text[position - 1]) && position != _lastExpressionEnd;
+
+    /// <summary>Returns <see langword="true"/> when only spaces or tabs precede <paramref name="position"/> on its line.</summary>
+    private bool IsFirstOnLine(int position)
+    {
+        for (var i = position - 1; i >= 0; i--)
+        {
+            var c = _text[i];
+            if (c == '\n')
+                return true;
+            if (c is not (' ' or '\t' or '\r'))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>Skips whitespace and C# comments (used between <c>}</c> and <c>else</c>, <c>catch</c>, …).</summary>
+    private void SkipWhitespaceAndComments()
+    {
+        while (true)
+        {
+            SkipWhitespace();
+
+            if (Peek() == '/' && Peek(1) is '/' or '*')
+            {
+                _position = CSharpLexer.Skip(_text, _position).End;
+                continue;
+            }
+
+            return;
+        }
     }
 
     private void SkipWhitespace()

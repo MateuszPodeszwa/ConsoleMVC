@@ -63,7 +63,18 @@ public static class ViewHarness
     /// <param name="path">The file path, which determines controller and class names.</param>
     /// <param name="extraSource">Additional C# compiled alongside (e.g. model classes).</param>
     /// <returns>The generator and compiler results.</returns>
-    public static GenerationResult Generate(string cvw, string path = DefaultPath, string extraSource = "")
+    public static GenerationResult Generate(string cvw, string path = DefaultPath, string extraSource = "") =>
+        GenerateFiles([(path, cvw)], extraSource);
+
+    /// <summary>
+    /// Runs the generator over several <c>.cvw</c> files at once and compiles the output.
+    /// </summary>
+    /// <param name="files">The view files as (path, contents) pairs.</param>
+    /// <param name="extraSource">Additional C# compiled alongside.</param>
+    /// <param name="rootNamespace">The <c>RootNamespace</c> build property.</param>
+    /// <returns>The generator and compiler results; <see cref="GenerationResult.GeneratedSource"/> holds all generated files.</returns>
+    public static GenerationResult GenerateFiles(IEnumerable<(string Path, string Text)> files, string extraSource = "",
+        string rootNamespace = "TestApp")
     {
         var compilation = CSharpCompilation.Create(
             "TestApp_" + Guid.NewGuid().ToString("N"),
@@ -73,12 +84,13 @@ public static class ViewHarness
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: [new ViewSourceGenerator().AsSourceGenerator()],
-            additionalTexts: [new InMemoryAdditionalText(path, cvw)],
+            additionalTexts: [..files.Select(f => (AdditionalText)new InMemoryAdditionalText(f.Path, f.Text))],
             parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest),
-            optionsProvider: new RootNamespaceOptionsProvider("TestApp"));
+            optionsProvider: new RootNamespaceOptionsProvider(rootNamespace));
 
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var generatorDiagnostics);
-        var generated = driver.GetRunResult().GeneratedTrees.FirstOrDefault()?.ToString();
+        var trees = driver.GetRunResult().GeneratedTrees;
+        var generated = trees.Length == 0 ? null : string.Join("\n", trees.Select(t => t.ToString()));
 
         using var stream = new MemoryStream();
         var emit = output.Emit(stream);

@@ -376,3 +376,9 @@ EmitElement(el, parent):
 | 12 | Generator | Generated code relied on `ImplicitUsings`; with them disabled, `Console` was unresolved. | Generated files import `System`, `System.Collections.Generic` and `System.Linq` explicitly. |
 | 13 | Generator | The controller name was taken from the first `Views` folder in the path, so a project inside a folder named `Views` got the wrong namespace; nested folders could produce duplicate classes. | The controller is the folder directly inside `Views`; anything else raises CVW001. |
 | 14 | Generator | Generated public classes triggered CS1591 in projects with XML documentation enabled. | Generated files suppress CS1591. |
+| 15 | Generator | Generated file names could collide, making the generator fail and drop every view. | Hint names include the namespace and a path hash; duplicate classes report CVW004. |
+| 16 | Generator | `#line` paths were C#-escaped, breaking non-ASCII and Windows paths. | Paths are written verbatim. |
+| 17 | Generator | No `#nullable` directive in generated code. | `#nullable restore`. |
+| 18 | Parser | Comments before `else`, preprocessor lines, e-mails in attributes, `@a@b`, entities in unquoted values, whitespace across comments. | Each handled; see regression tests. |
+| 19 | Rendering | Lines wider than their width at small widths or large padding; percentage children sized twice; `Length` overflow. | Padding shrinks to fit, lines are clipped, relative children make auto parents fill, 64-bit arithmetic. |
+| 20 | Binding | Newer value types and `Uri` never bound; undefined enum numbers accepted. | Added to the simple types; enums validated. |
