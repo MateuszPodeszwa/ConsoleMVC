@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.18: the `ConsoleMVC.Testing` package runs your application in tests with scripted input and snapshot files. 1.17 made a `nav` typo a build warning (CVW119), 1.16 added `appsettings.json`, options and `ILogger<T>`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.19: `dotnet new consolemvc --tests` adds a ready-made test project. 1.18 added the `ConsoleMVC.Testing` package (scripted input and snapshot files), 1.17 made a `nav` typo a build warning (CVW119). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -53,6 +53,8 @@ cd MyApp
 dotnet run
 ```
 
+Add `--tests` for a test project too (`MyApp/MyApp.Tests`, using [ConsoleMVC.Testing](docs/guides/docs/testing.md)): `dotnet new consolemvc -n MyApp --tests`, then `dotnet test MyApp.Tests`.
+
 This scaffolds a ready-to-run application with the following structure:
 
 ```
@@ -60,6 +62,7 @@ MyApp/
   MyApp.csproj
   Program.cs
   appsettings.json              # Settings read by builder.Configuration
+  MyApp.Tests/                  # Only with --tests: xUnit tests using ConsoleMVC.Testing
   Controllers/
     HomeController.cs
     GreetController.cs          # Form posting with model binding
@@ -831,11 +834,11 @@ dotnet test ConsoleMVC.sln
 - `src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj`: update `<Version>`
 - `ConsoleMVC.Template.csproj`: update `<Version>`
 
-If the template references a new framework version, also update the `<PackageReference>` version in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj`.
+Also update the `<PackageReference>` versions in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj` (ConsoleMVC.Framework) and `templates/ConsoleMVC.App/ConsoleMVC.App.Tests/ConsoleMVC.App.Tests.csproj` (ConsoleMVC.Testing).
 
 **2. Merge to `main`.** The [Publish packages](.github/workflows/publish.yml) workflow notices that the version has no `vX.Y.Z` tag yet and:
 
-- checks that the three `<Version>` values and the template's framework reference agree;
+- checks that the three `<Version>` values and the template's package references agree;
 - builds with `-warnaserror` and runs every test;
 - packs `ConsoleMVC.Framework`, `ConsoleMVC.Testing` and `ConsoleMVC.Template`;
 - pushes them to **NuGet.org** with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key: GitHub issues a short-lived token that nuget.org exchanges for a one-hour key) and to **GitHub Packages** with the built-in `GITHUB_TOKEN`;
@@ -882,6 +885,8 @@ When modifying the template content (files in `templates/ConsoleMVC.App/`):
 
 - All namespaces in template files must use `ConsoleMVC.App`: this is the `sourceName` in `template.json` and gets replaced with the user's project name at scaffolding time
 - The `@model` directives in `.cvw` files must also use `ConsoleMVC.App.Models.ClassName`
+- The `--tests` option is a `symbols` entry in `template.json`; files under `ConsoleMVC.App.Tests/` are excluded without it, and `<!--#if (tests) -->` blocks in the project file are kept only with it
+- If a change alters the home menu, regenerate `ConsoleMVC.App.Tests/__snapshots__/home-menu.txt` (CI checks it by generating a project with `--tests`)
 - After changes, repack and republish the `ConsoleMVC.Template` package
 
 ### Updating the Source Generator

@@ -33,3 +33,38 @@ jobs:
 
       - name: Test
         run: dotnet test ConsoleMVC.sln --configuration Release --no-build --verbosity normal
+
+  # Packs the framework, the testing package and the template, then checks that `dotnet new consolemvc` (with and
+  # without --tests) builds, and that the generated tests pass, including the snapshot shipped with the template
+  template:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Pack into a local feed
+        run: |
+          dotnet build src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj --configuration Release
+          dotnet pack src/ConsoleMVC/ConsoleMVC.csproj --configuration Release --no-build --output "$RUNNER_TEMP/feed"
+          dotnet pack src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj --configuration Release --no-build --output "$RUNNER_TEMP/feed"
+          dotnet pack ConsoleMVC.Template.csproj --configuration Release --output "$RUNNER_TEMP/feed"
+
+      - name: Generate and test projects from the template
+        run: |
+          dotnet new install "$RUNNER_TEMP"/feed/ConsoleMVC.Template.*.nupkg
+          mkdir "$RUNNER_TEMP/generated" && cd "$RUNNER_TEMP/generated"
+          dotnet new nugetconfig
+          dotnet nuget add source "$RUNNER_TEMP/feed" --name local --configfile nuget.config
+          dotnet new consolemvc -n Plain
+          dotnet build Plain/Plain.csproj -warnaserror
+          dotnet new consolemvc -n Shop --tests
+          dotnet build Shop/Shop.csproj -warnaserror
+          dotnet test Shop/Shop.Tests

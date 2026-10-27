@@ -2,7 +2,15 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.19.0]
+
+### Added
+
+- **`dotnet new consolemvc --tests`** adds `MyApp.Tests`, an xUnit project using ConsoleMVC.Testing: a snapshot of the
+  home menu (shipped, so continuous integration passes from the first commit), the greeting form driven with typed
+  lines and arrow keys, and a validation test. The application's project excludes the test folder.
+- CI generates projects from the packed template, with and without `--tests`, builds them with `-warnaserror` and
+  runs the generated tests; the publish workflow checks the test project's ConsoleMVC.Testing version.
 
 ### Documentation
 

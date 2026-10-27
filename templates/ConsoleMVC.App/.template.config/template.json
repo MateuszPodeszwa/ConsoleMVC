@@ -10,5 +10,23 @@
         "type": "project"
     },
     "sourceName": "ConsoleMVC.App",
-    "preferNameDirectory": true
+    "preferNameDirectory": true,
+    "symbols": {
+        "tests": {
+            "type": "parameter",
+            "datatype": "bool",
+            "defaultValue": "false",
+            "description": "Adds an xUnit test project (MyApp.Tests) that runs the application with ConsoleMVC.Testing and checks a snapshot."
+        }
+    },
+    "sources": [
+        {
+            "modifiers": [
+                {
+                    "condition": "(!tests)",
+                    "exclude": ["ConsoleMVC.App.Tests/**"]
+                }
+            ]
+        }
+    ]
 }

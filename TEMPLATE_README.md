@@ -17,7 +17,15 @@ dotnet new consolemvc -n MyApp
 # Run it
 cd MyApp
 dotnet run
+
+# Or create it with a test project (MyApp.Tests) and run the tests
+dotnet new consolemvc -n MyApp --tests
+dotnet test MyApp/MyApp.Tests
 ```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--tests` | off | Adds `MyApp.Tests`, an xUnit project that runs the application with [ConsoleMVC.Testing](https://www.nuget.org/packages/ConsoleMVC.Testing): a snapshot of the home menu (`__snapshots__/home-menu.txt`) and the greeting form driven with typed lines and arrow keys |
 
 ## What You Get
 

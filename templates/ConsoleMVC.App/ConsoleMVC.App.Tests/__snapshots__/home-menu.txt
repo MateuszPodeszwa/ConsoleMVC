@@ -1,0 +1,12 @@
+Home                                                                  ConsoleMVC
+╭─ Welcome to ConsoleMVC ────────────────────────────────╮
+│  A structured MVC framework for console applications.  │
+╰────────────────────────────────────────────────────────╯
+
+────────────────────────────────────────────────────────────────────────────────
+[1] About
+[2] Greeting form
+[3] Calculator
+[4] Feature tour (tables)
+[q] Exit
+Select an option: 

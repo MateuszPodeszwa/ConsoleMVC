@@ -15,6 +15,14 @@ This creates a working application with a home menu, a greeting form (text input
 calculator, a feature tour with tables and columns, a shared layout and partial view, a service registered for
 dependency injection, and settings in `appsettings.json`.
 
+Add `--tests` to get a test project as well, `MyApp/MyApp.Tests`, which runs the application with scripted input and
+checks a snapshot of the home menu (see [Testing](testing.md)):
+
+```bash
+dotnet new consolemvc -n MyApp --tests
+dotnet test MyApp/MyApp.Tests
+```
+
 If you prefer to add ConsoleMVC to an existing project, install the framework package directly:
 
 ```bash

@@ -5,10 +5,14 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+<!--#if (tests) -->
+        <!-- The test project lives in a subfolder; keep its files out of the application -->
+        <DefaultItemExcludes>$(DefaultItemExcludes);ConsoleMVC.App.Tests/**</DefaultItemExcludes>
+<!--#endif -->
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="ConsoleMVC.Framework" Version="1.18.0" />
+        <PackageReference Include="ConsoleMVC.Framework" Version="1.19.0" />
     </ItemGroup>
 
     <!-- builder.Configuration reads these from the application's folder -->
