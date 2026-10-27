@@ -67,7 +67,7 @@ return NavigationResult.To("Orders", "Details", new { id = 42 });   // from a vi
 
 ## Posting forms
 
-`<input name="…">`, `<select>`, `<radio>` and `<checkbox>` store each value in the view's `Form`; post it with a menu option marked `post` or from C#:
+`<input name="…">`, `<number>`, `<date>`, `<select>`, `<radio>` and `<checkbox>` store each value in the view's `Form`; post it with a menu option marked `post` or from C#:
 
 ```
 <input name="Name" label="Name: " required />

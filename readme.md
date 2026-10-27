@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.19: `dotnet new consolemvc --tests` adds a ready-made test project. 1.18 added the `ConsoleMVC.Testing` package (scripted input and snapshot files), 1.17 made a `nav` typo a build warning (CVW119). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.20: `<number>`, `<date>` and searchable `<select filter>`. 1.19 added `dotnet new consolemvc --tests`, 1.18 the `ConsoleMVC.Testing` package (scripted input and snapshot files). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -18,7 +18,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Partial views and layouts**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time, and a `_Layout.cvw` that frames every screen
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
-- **Declarative input and navigation**: `<input>` collects form values, `<select>`, `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Declarative input and navigation**: `<input>`, `<number>` and `<date>` collect form values, `<select>` (with type-to-filter), `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation**: posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
@@ -86,7 +86,7 @@ MyApp/
       IndexView.cvw             # <input>, <select> and <checkbox>, posts the Form
       ResultView.cvw
     Calc/
-      IndexView.cvw             # <input> fields, posts the Form
+      IndexView.cvw             # <number> and <radio> fields, posts the Form
       ResultView.cvw
     Shared/
       _Layout.cvw               # Frames every view: breadcrumbs, app name, separator
@@ -751,7 +751,7 @@ app.Run();
 
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
-- **Richer inputs** (`<number>`, `<date>`, a searchable `<select filter>`) and **more compile-time checks** for `RedirectToAction` and `View` names
+- **More compile-time checks** for `RedirectToAction` and `View` names
 - **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
 - **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
 

@@ -21,7 +21,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 - [Navigation history](docs/design/navigation-history.md): Back options and `<breadcrumbs />`; [route values](docs/design/route-values.md) such as `nav="Orders/Details?id=@order.Id"`
 - [Responsive screens](docs/design/responsive-redraw.md) that redraw when the terminal is resized
 - [Compile-time route checks](docs/design/route-checks.md): a `nav` typo is a build warning (CVW119)
-- [Choice inputs](docs/design/choice-inputs.md): `<select>` (also `multiple`), `<radio>` and `<checkbox>`, answered with the arrow keys in a terminal and typed otherwise
+- [Choice inputs](docs/design/choice-inputs.md): `<select>` (also `multiple`), `<radio>` and `<checkbox>`, answered with the arrow keys in a terminal and typed otherwise; [number and date fields and filtered lists](docs/design/richer-inputs.md)
 - [Form validation](docs/design/form-validation.md) with DataAnnotations and `ModelState`
 - [Dependency injection](docs/guides/docs/dependency-injection.md) with `builder.Services` and `@inject`
 - [Configuration and logging](docs/guides/docs/hosting.md): `appsettings.json`, environment variables, the command line, options and `ILogger<T>`
@@ -37,7 +37,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 ### Near-term
 
-- [ ] **Richer inputs**: `<number>` and `<date>` fields that step with the arrow keys and check ranges, and a searchable `<select filter>` for long lists
 - [ ] **More compile-time checks**: `RedirectToAction("Detials")` and `View("Nme")` in C# checked like `nav` targets, and a code fix that creates a missing view
 
 ### Medium-term

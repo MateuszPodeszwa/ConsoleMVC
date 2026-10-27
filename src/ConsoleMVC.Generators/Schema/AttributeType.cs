@@ -102,6 +102,62 @@ internal sealed class IntegerAttributeType : AttributeType
     }
 }
 
+/// <summary>A decimal number in the invariant culture, e.g. <c>0</c>, <c>-5</c> or <c>2.5</c>; emitted as a <c>decimal</c>.</summary>
+internal sealed class DecimalAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "a number such as 0, -5 or 2.5";
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        code = "";
+        error = "expected " + Description;
+
+        if (!decimal.TryParse(literal?.Trim(), NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                CultureInfo.InvariantCulture, out var value))
+            return false;
+
+        code = value.ToString(CultureInfo.InvariantCulture) + "m";
+        return true;
+    }
+}
+
+/// <summary>
+/// A date for <c>&lt;date&gt;</c>: <c>yyyy-MM-dd</c>, <c>today</c>, <c>today+N</c> or <c>today-N</c>; checked at build
+/// time and emitted as a string, which the element resolves when it is shown.
+/// </summary>
+internal sealed class DateAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "a date such as 2026-10-27, today, today+7 or today-30";
+
+    /// <inheritdoc />
+    public override bool AllowsInterpolation => true;
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        code = "";
+        error = "expected " + Description;
+        var text = (literal ?? "").Trim().ToLowerInvariant();
+
+        var valid = text == "today"
+                    || (text.StartsWith("today", StringComparison.Ordinal) && text.Length > 6 && text[5] is '+' or '-'
+                        && int.TryParse(text.Substring(6), NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                    || DateTime.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+        if (!valid)
+            return false;
+
+        code = CSharpLiteral.String(text);
+        return true;
+    }
+
+    /// <inheritdoc />
+    public override string WrapExpression(string expressionCode) =>
+        "global::ConsoleMVC.Rendering.MarkupValue.Format(" + expressionCode + ")";
+}
+
 /// <summary><c>true</c>/<c>false</c>, or a valueless flag meaning <c>true</c>.</summary>
 internal sealed class BooleanAttributeType : AttributeType
 {

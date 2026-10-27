@@ -72,7 +72,7 @@ public class HomeViewModel
 - **Layout and themes**: `<columns>` (stacking on narrow terminals), `min-width`/`max-width`, and theme classes with `class="title"`
 - **Layouts**: `Views/Shared/_Layout.cvw` frames every screen, with `<body />` where the view goes
 - **Partial views**: reusable markup in `Views/Shared/{Name}.cvw`, rendered with `<partial name="Header" model="@Model.Title" />` and checked at build time
-- **Declarative input and navigation**: `<input>` fields (required, default, masked), `<select>` and `<radio>` lists and `<checkbox>` (answered with the arrow keys in a terminal) collect a `Form`, and `<menu>` reads the choice and navigates
+- **Declarative input and navigation**: `<input>` fields (required, default, masked), `<number>` and `<date>` with ranges, `<select>` (with type-to-filter) and `<radio>` lists and `<checkbox>` (answered with the arrow keys in a terminal) collect a `Form`, and `<menu>` reads the choice and navigates
 - **Secure output**: model values are sanitised so they cannot inject terminal escape sequences
 - **Reusable rendering engine**: the `ConsoleMVC.Rendering` namespace can draw elements in any console app
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, all the patterns you know from ASP.NET Core MVC

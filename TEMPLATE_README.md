@@ -46,7 +46,7 @@ The template includes working examples of:
 - **Form data posting with model binding**: a greeting form with a text `<input>`, a colour `<select>` (arrow keys in a terminal) and a `<checkbox>`, posted to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
 - **Configuration**: the greeting's salutation comes from the `Greeting` section of `appsettings.json` through `IOptions<GreetingOptions>`; try `dotnet run -- --Greeting:Salutation=Hi`
 - **Dependency injection**: `GreetController` receives `IGreetingService` through its constructor and the result view reads it with `@inject`
-- **Form data posting with simple parameters**: a calculator that posts individual values (`int a`, `int b`, `string op`) directly to action method parameters
+- **Form data posting with simple parameters**: a calculator with two `<number>` fields and a `<radio>` for the operator, posting individual values (`int a`, `int b`, `string op`) directly to action method parameters
 
 ## IDE Support
 

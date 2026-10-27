@@ -2,6 +2,20 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.20.0]
+
+### Added
+
+- **Number and date fields** ([design](docs/design/richer-inputs.md), [guide](docs/guides/docs/c-view-markup.md#number-and-date)):
+  `<number>` (`min`, `max`, `step`, `decimals`, Up/Down and typed digits in a terminal) and `<date>` (`min`, `max`,
+  `default` as `2026-10-27`, `today` or `today+N`; Left/Right/Up/Down and `t` in a terminal; typed `today`,
+  `tomorrow` or `+7`). Answers are invariant (`2.5`, `2026-10-27`). `NumberElement`, `DateElement`
+  (`TryParse`, `Clock`), `NumberElement.Validate`.
+- **`<select filter>`**: typing narrows the choices in a terminal, and a typed answer may be part of one name;
+  **`<select size="N">`** scrolls a long list with "more above/below" lines and PageUp/PageDown.
+- Build-time checks of `min`, `max`, `step` and date values (CVW101).
+- The template's calculator uses `<number>` and `<radio>`.
+
 ## [1.19.0]
 
 ### Added
