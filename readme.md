@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.10: screens redraw when the terminal is resized. 1.9 added C-View Markup 1.0 with column layouts and themes, on top of partial views (1.7), live reload (1.8), async actions and middleware (1.6), dependency injection (1.5) and form validation (1.4). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.11: layouts frame every screen. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -15,7 +15,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, the same patterns from ASP.NET Core MVC
 - **Razor-like view engine**: `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
 - **C-View Markup**: declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
-- **Partial views**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time
+- **Partial views and layouts**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time, and a `_Layout.cvw` that frames every screen
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
 - **Declarative input and navigation**: `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
@@ -169,6 +169,19 @@ return input switch
 | `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional; defaults to `object`. |
 | `@using Namespace` | Adds a `using` statement to the generated class. |
 | `@inject Type Name` | Declares a property filled from the application's services (see [Dependency Injection](#dependency-injection)). |
+| `@layout Name` | Draws the view inside `Views/Shared/Name.cvw`; `@layout none` for no layout. Defaults to `_Layout` when it exists (see [Layouts](#layouts)). |
+
+#### Layouts
+
+`Views/Shared/_Layout.cvw` frames every screen. `<body />` marks where the view goes:
+
+```
+<text class="muted" align="right">My App</text>
+<body />
+<separator class="muted" />
+```
+
+The part before `<body />` is drawn before the view; the part after it is drawn just before the view's first `<input>` or `<menu>` (or at the end if it has neither), so a footer sits between the content and what the user answers. Views choose another layout with `@layout Name` or none with `@layout none`. See [Layouts](docs/guides/docs/c-view-markup.md#layouts-and-body) and the [design](docs/design/layout-views.md).
 
 #### Layout and Themes
 
@@ -707,7 +720,7 @@ app.Run();
 
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
-- **Layout views** that frame every screen, and **navigation history** with a "back" key and breadcrumbs
+- **Navigation history** with a "back" key and breadcrumbs
 - **Route values** in navigation (`nav="Orders/Details?id=@order.Id"`) and **compile-time route checks**
 - **More inputs** (`<select>`, `<checkbox>`, `<radio>`) with arrow-key selection
 - **Hosting integration** (configuration and logging) and a **`ConsoleMVC.Testing`** package for snapshot tests

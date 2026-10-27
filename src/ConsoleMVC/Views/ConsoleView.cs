@@ -29,6 +29,7 @@ public abstract class ConsoleView : ConsoleViewBase
     {
         ArgumentNullException.ThrowIfNull(menu);
 
+        BeforeInteraction?.Invoke();
         var option = menu.Choose(Renderer, Input);
         if (option is null || option.Quit)
             return NavigationResult.Quit();
@@ -59,6 +60,39 @@ public abstract class ConsoleView : ConsoleViewBase
     /// Thrown when <paramref name="model"/> is not compatible with the view's model type.
     /// </exception>
     internal abstract NavigationResult RenderInternal(object? model);
+
+    /// <summary>The layout whose footer is still to be drawn, or <see langword="null"/>.</summary>
+    private ConsoleLayoutView? _pendingLayout;
+
+    /// <summary>
+    /// Draws <paramref name="layout"/>'s header now and its footer before the view first waits for the user (or when it
+    /// returns). Generated code calls this at the start of <c>Render</c> for a view with a layout.
+    /// </summary>
+    /// <param name="layout">The layout, e.g. <c>new MyApp.Views.Shared._Layout()</c>.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="layout"/> is <see langword="null"/>.</exception>
+    /// <example><code>this.UseLayout(new global::MyApp.Views.Shared._Layout());</code></example>
+    protected internal void UseLayout(ConsoleLayoutView layout)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+
+        _pendingLayout = layout;
+        BeforeInteraction = CompleteLayout;
+        ShareStateWith(layout);
+        layout.BeforeInteraction = null; // the layout's own footer must not trigger itself
+        layout.RenderHeader();
+    }
+
+    /// <summary>Draws the pending layout footer, once.</summary>
+    private protected void CompleteLayout()
+    {
+        var layout = _pendingLayout;
+        if (layout is null)
+            return;
+
+        _pendingLayout = null;
+        BeforeInteraction = null;
+        layout.RenderFooter();
+    }
 }
 
 /// <summary>
@@ -84,7 +118,7 @@ public abstract class ConsoleView<TModel> : ConsoleView
     /// <inheritdoc />
     internal override NavigationResult RenderInternal(object? model)
     {
-        return model switch
+        var navigation = model switch
         {
             TModel typed => Render(typed),
             null when default(TModel) is null => Render(default!),
@@ -95,5 +129,9 @@ public abstract class ConsoleView<TModel> : ConsoleView
                 $"View '{GetType().Name}' expects a model of type '{typeof(TModel).FullName}', but the controller " +
                 $"passed '{model.GetType().FullName}'. Pass the correct model to View(), or change the view's @model directive.")
         };
+
+        // A view that never waited for the user still gets its layout's footer
+        CompleteLayout();
+        return navigation;
     }
 }

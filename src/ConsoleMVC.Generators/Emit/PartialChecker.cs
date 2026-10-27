@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using ConsoleMVC.Generators.Diagnostics;
+using ConsoleMVC.Generators.Parsing;
 using ConsoleMVC.Generators.Schema;
 using ConsoleMVC.Generators.Syntax;
 
@@ -26,6 +27,8 @@ internal static class PartialChecker
     public static IReadOnlyList<ParseDiagnostic> Check(CvwDocument document, ViewInfo info, PartialCatalogue partials)
     {
         var diagnostics = new List<ParseDiagnostic>();
+        CheckLayout(document, info, partials, diagnostics);
+
         foreach (var element in Elements(document.Body))
         {
             if (element.Schema.Tag == MarkupSchema.MenuTag && info.IsPartial)
@@ -72,6 +75,13 @@ internal static class PartialChecker
             return;
         }
 
+        if (partial.IsLayout)
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.UnknownPartial, nameAttribute.Span,
+                $"'{partial.Name}' is a layout, not a partial; a view uses it with '@layout {partial.Name}'"));
+            return;
+        }
+
         if (partial.HasErrors)
         {
             diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.UnknownPartial, nameAttribute.Span,
@@ -87,6 +97,123 @@ internal static class PartialChecker
 
         if (partial.ModelType is not null && element.Attributes.All(a => a.Schema.Property != "Model"))
             diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.PartialModelMissing, element.Span, partial.Name, partial.ModelType));
+    }
+
+    /// <summary>The name a view's <c>@layout</c> directive uses for "no layout".</summary>
+    public const string NoLayout = "none";
+
+    /// <summary>The layout used by views without an <c>@layout</c> directive, when it exists.</summary>
+    public const string DefaultLayout = "_Layout";
+
+    /// <summary>
+    /// Returns the layout a full view is drawn in: the one named by <c>@layout</c>, else <c>_Layout</c> when it exists;
+    /// <see langword="null"/> for <c>@layout none</c>, partials, layouts, and unknown names (reported by <see cref="Check"/>).
+    /// </summary>
+    /// <param name="document">The parsed view.</param>
+    /// <param name="info">Where the view lives.</param>
+    /// <param name="partials">The project's partial views and layouts.</param>
+    public static PartialEntry? ResolveLayout(CvwDocument document, ViewInfo info, PartialCatalogue partials)
+    {
+        if (info.IsPartial)
+            return null;
+
+        var name = document.Layout?.Value ?? DefaultLayout;
+        if (name == NoLayout)
+            return null;
+
+        return partials.TryGet(name, out var layout) && layout.IsLayout && !layout.HasErrors ? layout : null;
+    }
+
+    /// <summary>
+    /// Checks <c>&lt;body /&gt;</c> placement (only in <c>Views/Shared</c>, once, outside any C# block), that layouts have
+    /// no <c>@model</c> or <c>@layout</c>, and that a view's <c>@layout</c> names an existing layout.
+    /// </summary>
+    private static void CheckLayout(CvwDocument document, ViewInfo info, PartialCatalogue partials, List<ParseDiagnostic> diagnostics)
+    {
+        var bodies = Elements(document.Body).Where(e => e.Schema.Tag == MarkupSchema.BodyTag).ToList();
+
+        if (bodies.Count > 0 && !info.IsPartial)
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidLayout, bodies[0].Span,
+                "<body /> belongs in a layout: put this file in Views/Shared and use it with @layout"));
+            return;
+        }
+
+        if (bodies.Count > 1)
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidLayout, bodies[1].Span, "A layout has exactly one <body />"));
+
+        if (bodies.Count == 1)
+        {
+            var index = IndexOf(document.Body, bodies[0]);
+            if (index >= 0 && BraceDepth(document.Body.Take(index)) != 0)
+            {
+                diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidLayout, bodies[0].Span,
+                    "<body /> cannot be inside a C# block (if, for, { }), because the view is drawn between the parts before and after it"));
+            }
+
+            if (document.Model is not null)
+                diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidLayout, document.Model.Span,
+                    "A layout has no model; read shared values from ViewData instead"));
+
+            if (document.Layout is not null)
+                diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidLayout, document.Layout.Span, "A layout cannot use another layout"));
+
+            return;
+        }
+
+        if (document.Layout is null || document.Layout.Value == NoLayout)
+            return;
+
+        if (info.IsPartial)
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.UnknownLayout, document.Layout.Span,
+                "Partial views are drawn inside a view and its layout, so they cannot have a layout"));
+            return;
+        }
+
+        if (!partials.TryGet(document.Layout.Value, out var layout) || !layout.IsLayout)
+        {
+            var available = partials.LayoutNames.ToList();
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.UnknownLayout, document.Layout.Span,
+                $"No layout named '{document.Layout.Value}': a layout is a .cvw file in Views/Shared with a <body /> (available: " +
+                (available.Count == 0 ? "none" : string.Join(", ", available)) + "), or use '@layout none'"));
+        }
+    }
+
+    private static int IndexOf(IReadOnlyList<Node> nodes, Node node)
+    {
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            if (ReferenceEquals(nodes[i], node))
+                return i;
+        }
+
+        return -1;
+    }
+
+    /// <summary>The number of unclosed <c>{</c> in the C# code of <paramref name="nodes"/>, ignoring strings and comments.</summary>
+    private static int BraceDepth(IEnumerable<Node> nodes)
+    {
+        var depth = 0;
+        foreach (var code in nodes.OfType<CodeNode>().Select(c => c.Code))
+        {
+            var position = 0;
+            while (position < code.Length)
+            {
+                var skip = CSharpLexer.Skip(code, position);
+                if (skip.Kind != TriviaKind.None)
+                {
+                    position = skip.End;
+                    continue;
+                }
+
+                if (code[position] == '{') depth++;
+                else if (code[position] == '}') depth--;
+                position++;
+            }
+        }
+
+        return depth;
     }
 
     /// <summary>Returns every element in <paramref name="nodes"/>, including nested ones.</summary>

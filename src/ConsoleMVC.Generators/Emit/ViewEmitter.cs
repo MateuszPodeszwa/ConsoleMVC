@@ -105,12 +105,22 @@ internal sealed class ViewEmitter
         Line("");
         Line($"namespace {_info.Namespace}");
         Line("{");
-        var baseClass = _info.IsPartial ? "ConsolePartialView" : "ConsoleView";
-        Line($"    public partial class {_info.ClassName} : global::ConsoleMVC.Mvc.{baseClass}<{ModelType()}>");
+        var isLayout = _info.IsPartial && _document.HasBodyPlaceholder;
+        Line(isLayout
+            ? $"    public partial class {_info.ClassName} : global::ConsoleMVC.Mvc.ConsoleLayoutView"
+            : $"    public partial class {_info.ClassName} : global::ConsoleMVC.Mvc.{(_info.IsPartial ? "ConsolePartialView" : "ConsoleView")}<{ModelType()}>");
         Line("    {");
 
         foreach (var inject in _document.Injects)
             EmitInject(inject);
+
+        if (isLayout)
+        {
+            EmitLayoutMethods();
+            Line("    }");
+            Line("}");
+            return _output.ToString();
+        }
 
         // Map the method to the first line so "not all code paths return a value" points at the .cvw file
         Map(_document.Model?.Span.Start ?? 0, includeColumn: false);
@@ -120,6 +130,10 @@ internal sealed class ViewEmitter
         Hidden();
         Line("        {");
 
+        var layout = PartialChecker.ResolveLayout(_document, _info, _partials);
+        if (layout is not null)
+            Line($"this.UseLayout(new global::{layout.FullClassName}());");
+
         EmitNodes(_document.Body, parentVariable: null);
 
         Line("#line default");
@@ -128,6 +142,32 @@ internal sealed class ViewEmitter
         Line("}");
 
         return _output.ToString();
+    }
+
+    /// <summary>
+    /// Emits a layout's <c>RenderHeader</c> (the nodes before <c>&lt;body /&gt;</c>) and <c>RenderFooter</c> (the nodes after it).
+    /// </summary>
+    private void EmitLayoutMethods()
+    {
+        var body = _document.Body;
+        var index = 0;
+        while (index < body.Count && !(body[index] is ElementNode { Schema.Tag: MarkupSchema.BodyTag }))
+            index++;
+
+        EmitLayoutMethod("RenderHeader", body.Take(index).ToList());
+        EmitLayoutMethod("RenderFooter", body.Skip(index + 1).ToList());
+    }
+
+    private void EmitLayoutMethod(string name, IReadOnlyList<Node> nodes)
+    {
+        Map(_document.Layout?.Span.Start ?? 0, includeColumn: false);
+        Line($"        public override void {name}()");
+        Hidden();
+        Line("        {");
+        EmitNodes(nodes, parentVariable: null);
+        Line("#line default");
+        Line("        }");
+        Hidden();
     }
 
     /// <summary>

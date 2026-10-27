@@ -292,10 +292,27 @@ Renders a **partial view**: a reusable piece of markup in `Views/Shared/{Name}.c
 | `name` | the partial's file name, written literally (required) | |
 | `model` | an expression (`@Model.User`) or literal text (passed as a `string`) | none |
 
+* A file in `Views/Shared` that contains `<body />` is a [layout](#layouts-and-body), not a partial.
 * The partial is checked when you build: an unknown name (CVW114) lists the available partials, a partial with `@model` needs a `model` attribute (CVW115), and a model of the wrong type is a compiler error in the view that passes it.
 * A partial shares the view's `Form`, `ModelState`, `ViewData`, renderer and input: an `<input>` in a partial fills the view's form, and `<errors />` shows the view's errors.
 * Partials may use `@inject`, C# code and other partials (a partial cannot render itself: CVW116).
 * Like `<input>`, `<partial>` is written at the top level of the view (it may be inside a C# `if` or loop), not inside another element.
+
+### Layouts and `<body />`
+
+A layout frames every screen. It is a `.cvw` file in `Views/Shared` with a `<body />` placeholder where the view goes:
+
+```
+@* Views/Shared/_Layout.cvw *@
+<text class="muted" align="right">My App</text>
+<body />
+<separator class="muted" />
+```
+
+* `Views/Shared/_Layout.cvw` is used by every view. A view picks another with `@layout Plain`, or none with `@layout none`.
+* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>` or `<menu>`), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
+* A layout shares the view's `ViewData`, `ModelState`, `Form`, theme and services, and may use C# and `@inject`. It runs before the view's own code, so it sees `ViewData` set by the controller. It has no `@model`.
+* `<body />` appears once, at the top level of the layout, not inside an element or a C# block. Partials have no layout, and layouts cannot nest.
 
 ## Themes and `class`
 
@@ -372,6 +389,8 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW114 | `<partial>` names no partial view in `Views/Shared`, or its name is not written literally |
 | CVW115 | A partial that declares `@model` is used without a `model` attribute |
 | CVW116 | A partial view renders itself |
+| CVW117 | `<body />` outside a layout in `Views/Shared`, used twice or inside a C# block; or a layout with `@model` or `@layout` |
+| CVW118 | `@layout` names no layout (lists the available ones), or a partial uses `@layout` |
 
 ## Resizing the terminal
 

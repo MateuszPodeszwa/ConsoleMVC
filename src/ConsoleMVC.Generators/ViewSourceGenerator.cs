@@ -108,7 +108,8 @@ public class ViewSourceGenerator : IIncrementalGenerator
 
         var text = file.GetText(cancellationToken)?.ToString() ?? "";
         var document = CvwDocumentParser.Parse(text, MarkupSchema.Default);
-        return new PartialEntry(info.ClassName, info.FullClassName, document.Model?.Value, file.Path, document.HasErrors);
+        return new PartialEntry(info.ClassName, info.FullClassName, document.Model?.Value, file.Path, document.HasErrors,
+            document.HasBodyPlaceholder);
     }
 
     /// <summary>

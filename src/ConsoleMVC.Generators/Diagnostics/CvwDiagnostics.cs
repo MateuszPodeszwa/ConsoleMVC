@@ -163,6 +163,18 @@ internal static class CvwDiagnostics
         "Partial '{0}' renders itself with <partial name=\"{0}\" />, which would never end",
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
+    /// <summary>CVW117: a <c>&lt;body /&gt;</c> placeholder or a layout file is used incorrectly.</summary>
+    public static readonly DiagnosticDescriptor InvalidLayout = new(
+        "CVW117", "Invalid layout",
+        "{0}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>CVW118: <c>@layout</c> names a layout that does not exist.</summary>
+    public static readonly DiagnosticDescriptor UnknownLayout = new(
+        "CVW118", "Unknown layout",
+        "{0}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
     /// <summary>CVW108: malformed tag syntax.</summary>
     public static readonly DiagnosticDescriptor MalformedTag = new(
         "CVW108", "Malformed tag",

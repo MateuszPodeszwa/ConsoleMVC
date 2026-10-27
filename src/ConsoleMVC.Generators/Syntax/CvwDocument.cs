@@ -70,11 +70,14 @@ internal sealed class CvwDocument
     /// <param name="injects">The valid <c>@inject</c> directives in order.</param>
     /// <param name="body">The parsed body nodes.</param>
     /// <param name="diagnostics">Problems found while parsing.</param>
+    /// <param name="layout">The <c>@layout</c> directive, or <see langword="null"/> if absent.</param>
     public CvwDocument(string text, DirectiveValue? model, IReadOnlyList<DirectiveValue> usings,
-        IReadOnlyList<InjectDirective> injects, IReadOnlyList<Node> body, IReadOnlyList<ParseDiagnostic> diagnostics)
+        IReadOnlyList<InjectDirective> injects, IReadOnlyList<Node> body, IReadOnlyList<ParseDiagnostic> diagnostics,
+        DirectiveValue? layout = null)
     {
         Text = text;
         Model = model;
+        Layout = layout;
         Usings = usings;
         Injects = injects;
         Body = body;
@@ -86,6 +89,23 @@ internal sealed class CvwDocument
 
     /// <summary>Gets the <c>@model</c> directive, or <see langword="null"/> when the view declares none.</summary>
     public DirectiveValue? Model { get; }
+
+    /// <summary>Gets the <c>@layout</c> directive (a layout name or <c>none</c>), or <see langword="null"/> when absent.</summary>
+    public DirectiveValue? Layout { get; }
+
+    /// <summary>Gets a value indicating whether the body contains a <c>&lt;body /&gt;</c> placeholder (a layout file).</summary>
+    public bool HasBodyPlaceholder => Elements(Body).Any(e => e.Schema.Tag == Schema.MarkupSchema.BodyTag);
+
+    /// <summary>Returns every element in <paramref name="nodes"/>, including nested ones.</summary>
+    internal static IEnumerable<ElementNode> Elements(IEnumerable<Node> nodes)
+    {
+        foreach (var element in nodes.OfType<ElementNode>())
+        {
+            yield return element;
+            foreach (var child in Elements(element.Children))
+                yield return child;
+        }
+    }
 
     /// <summary>Gets the model type name, defaulting to <see cref="DefaultModelType"/>.</summary>
     public string ModelType => Model?.Value ?? DefaultModelType;

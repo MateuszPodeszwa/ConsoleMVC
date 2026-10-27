@@ -96,6 +96,7 @@ public abstract class ConsoleViewBase
     {
         ArgumentNullException.ThrowIfNull(input);
 
+        BeforeInteraction?.Invoke();
         var value = input.Read(Renderer, Input) ?? "";
         Form[input.Name] = value;
         return value;
@@ -147,15 +148,31 @@ public abstract class ConsoleViewBase
     protected internal void PreparePartial(ConsolePartialView partial)
     {
         ArgumentNullException.ThrowIfNull(partial);
+        ShareStateWith(partial);
+    }
 
-        partial.ViewData = ViewData;
-        partial.ModelState = ModelState;
-        partial.Renderer = Renderer;
-        partial.Input = Input;
-        partial.Form = Form;
-        partial.Theme = Theme;
-        partial.Services = Services;
+    /// <summary>
+    /// Called before this view, or a partial it renders, first waits for the user (an <c>&lt;input&gt;</c> or a
+    /// <c>&lt;menu&gt;</c>). A view with a layout uses it to draw the layout's footer.
+    /// </summary>
+    internal Action? BeforeInteraction { get; set; }
 
-        ServiceInjector.InjectProperties(partial, Services ?? NoServices.Value);
+    /// <summary>
+    /// Gives <paramref name="other"/> (a partial or a layout) this view's renderer, input, view data, model state, form,
+    /// theme and services, and fills its <c>@inject</c> properties.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when a service <paramref name="other"/> injects is not registered.</exception>
+    internal void ShareStateWith(ConsoleViewBase other)
+    {
+        other.BeforeInteraction = BeforeInteraction;
+        other.ViewData = ViewData;
+        other.ModelState = ModelState;
+        other.Renderer = Renderer;
+        other.Input = Input;
+        other.Form = Form;
+        other.Theme = Theme;
+        other.Services = Services;
+
+        ServiceInjector.InjectProperties(other, Services ?? NoServices.Value);
     }
 }

@@ -70,6 +70,7 @@ public class HomeViewModel
 - **C-View Markup**: `<box>`, `<text>`, `<separator>`, `<br>` and `<table>` elements with colours, borders, alignment and word wrapping, plus `@` expressions and `@if`/`@foreach`; validated at compile time with errors pointing at the `.cvw` file
 - **Responsive screens**: resizing the terminal lays the current screen out again at the new width
 - **Layout and themes**: `<columns>` (stacking on narrow terminals), `min-width`/`max-width`, and theme classes with `class="title"`
+- **Layouts**: `Views/Shared/_Layout.cvw` frames every screen, with `<body />` where the view goes
 - **Partial views**: reusable markup in `Views/Shared/{Name}.cvw`, rendered with `<partial name="Header" model="@Model.Title" />` and checked at build time
 - **Declarative input and navigation**: `<input>` fields (required, default, masked) collect a `Form`, and `<menu>` reads the choice and navigates
 - **Secure output**: model values are sanitised so they cannot inject terminal escape sequences

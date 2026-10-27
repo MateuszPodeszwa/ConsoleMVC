@@ -27,6 +27,9 @@ internal sealed class MarkupSchema
     /// <summary>The tag name of the partial view element, which the emitter handles itself.</summary>
     public const string PartialTag = "partial";
 
+    /// <summary>The tag name of a layout's placeholder for the view, which the emitter handles itself.</summary>
+    public const string BodyTag = "body";
+
     /// <summary>The tag name of the menu element, which partial views may not contain.</summary>
     public const string MenuTag = "menu";
 
@@ -220,7 +223,8 @@ internal sealed class MarkupSchema
             [
                 new AttributeSchema("name", "Name", text, required: true),
                 new AttributeSchema("model", "Model", new ModelAttributeType())
-            ], topLevelOnly: true)
+            ], topLevelOnly: true),
+            new ElementSchema(BodyTag, "", ContentModel.Void, [], topLevelOnly: true)
         ]);
     }
 

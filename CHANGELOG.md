@@ -2,6 +2,18 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.11.0]
+
+### Added
+
+- **Layout views** ([design](docs/design/layout-views.md), [guide](docs/guides/docs/c-view-markup.md#layouts-and-body)):
+  a `.cvw` file in `Views/Shared` with a `<body />` placeholder frames views. `Views/Shared/_Layout.cvw` is the
+  default; views choose with `@layout Name` or `@layout none`. The header is drawn before the view and the footer just
+  before the view first waits for the user (`ConsoleLayoutView`, `ConsoleView.UseLayout`).
+- Diagnostics CVW117 (invalid `<body />` or layout) and CVW118 (unknown layout); CVW114 reports a `<partial>` that
+  names a layout.
+- The template has a `_Layout.cvw` with an app bar and a separator above every menu.
+
 ## [1.10.0]
 
 ### Added

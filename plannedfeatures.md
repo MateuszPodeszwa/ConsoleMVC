@@ -17,7 +17,8 @@ But we can take this much further.
 The original big idea, **C-View Markup**, is real: `.cvw` views describe screens with `<box>`, `<text>`, `<table>`, `<columns>`, `<input>` and `<menu>`, compile to plain C# at build time, and are checked by the compiler. Around it, ConsoleMVC now has:
 
 - [C-View Markup 1.0](docs/guides/docs/c-view-markup.md): text, boxes, tables, column layouts that stack on narrow terminals, themes with `class="…"`, inputs, menus and validation messages
-- [Partial views](docs/design/partial-views.md): reusable markup in `Views/Shared`, checked at build time
+- [Partial views](docs/design/partial-views.md) and [layouts](docs/design/layout-views.md): reusable markup in `Views/Shared`, checked at build time
+- [Responsive screens](docs/design/responsive-redraw.md) that redraw when the terminal is resized
 - [Form validation](docs/design/form-validation.md) with DataAnnotations and `ModelState`
 - [Dependency injection](docs/guides/docs/dependency-injection.md) with `builder.Services` and `@inject`
 - [Async actions and middleware](docs/guides/docs/async-and-middleware.md)
@@ -31,7 +32,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 ### Near-term
 
-- [ ] **Layout views**: a shared frame for every screen (`@layout MainLayout` with a `<body />` placeholder), like `_Layout.cshtml` in ASP.NET Core
 - [ ] **Navigation history**: `NavigationResult.Back()` and an automatic "back" key, plus breadcrumbs (`<breadcrumbs />`) built from the history
 - [ ] **Route values in navigation**: `nav="Orders/Details?id=@order.Id"` binds `id` to the action, without a form
 - [ ] **More inputs**: `<select>`, `<checkbox>` and `<radio>`, with arrow-key selection where the terminal supports it
