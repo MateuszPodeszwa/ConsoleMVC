@@ -53,6 +53,14 @@ Press Enter to continue...
 
 Control flow and code blocks are allowed in containers such as `<box>` but not inside `<text>`; use an expression there instead, for example `@(Model.IsAdmin ? "admin" : "user")`.
 
+### Preprocessor directives
+
+`#region`, `#if`/`#else`/`#endif`, `#pragma` and other directive lines may be used in view code. Markup on the line after a directive is recognised as usual, so `#if DEBUG` around a `<text>` element works.
+
+### Reserved names
+
+Generated code declares local variables starting with `__cvw_`; do not use that prefix for your own variables in views.
+
 ### Whitespace
 
 Text inside `<text>` follows HTML rules: runs of spaces and new lines collapse into a single space, and whitespace at the start and end is removed. Use `<br />` for a line break. Values inserted with `@expressions` keep their own spaces and line breaks.
@@ -231,6 +239,9 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW001 | The `.cvw` file is not at `Views/{Controller}/{Action}View.cvw` (warning; the file is skipped) |
 | CVW002 | A folder or file name is not a valid C# identifier |
 | CVW003 | The file name does not end with `View`, so the router cannot find it (warning) |
+| CVW004 | Two views generate the same class (for example `Views/Home` and `Views/home`, or an `Areas/X/Views/Home` copy); the later file is skipped |
+| CVW005 | The project's `RootNamespace` is not a valid C# namespace (set `<RootNamespace>` in the project file) |
+| CVW006 | `@model` is declared more than once; the last one is used (warning) |
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |
@@ -243,6 +254,8 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW109 | Element rule broken (an `<option>` needs exactly one of `nav` or `quit`) |
 | CVW110 | Text or an expression directly inside `<table>`, `<row>` or `<menu>` |
 | CVW111 | Required attribute missing (`<option key>`, `<input name>`) |
+| CVW112 | `@()` contains no expression |
+| CVW113 | Markup nested more than 100 levels deep |
 
 ## Rendering outside views
 

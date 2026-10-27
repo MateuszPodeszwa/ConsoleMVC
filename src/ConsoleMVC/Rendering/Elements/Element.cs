@@ -41,4 +41,11 @@ public abstract class Element
     /// <param name="width">The width available to the element, in columns.</param>
     /// <returns>The rendered lines, each at most <paramref name="width"/> columns wide.</returns>
     public abstract IReadOnlyList<RenderedLine> Layout(int width);
+
+    /// <summary>
+    /// Gets a value indicating whether this element's width is relative to its container (a percentage).
+    /// An auto-sized container holding such an element fills the width available to it, so the percentage
+    /// is applied to that width once rather than to a width already derived from the child.
+    /// </summary>
+    protected internal virtual bool HasRelativeWidth => false;
 }

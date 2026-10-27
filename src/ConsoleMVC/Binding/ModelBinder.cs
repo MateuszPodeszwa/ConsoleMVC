@@ -96,12 +96,39 @@ internal static class ModelBinder
         try
         {
             result = converter.ConvertFromInvariantString(value);
-            return true;
         }
         catch (Exception e) when (e is FormatException or ArgumentException or NotSupportedException or OverflowException)
         {
             return false;
         }
+
+        // EnumConverter accepts any number; only defined values (or flag combinations) are valid input
+        if (targetType.IsEnum && result is not null && !IsValidEnumValue(targetType, result))
+        {
+            result = null;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> for defined enum members and, for <see cref="FlagsAttribute"/> enums,
+    /// combinations of defined flags.
+    /// </summary>
+    private static bool IsValidEnumValue(Type enumType, object value)
+    {
+        if (Enum.IsDefined(enumType, value))
+            return true;
+
+        if (!enumType.IsDefined(typeof(FlagsAttribute), inherit: false))
+            return false;
+
+        var allFlags = Enum.GetValues(enumType).Cast<object>()
+            .Aggregate(0UL, (mask, member) => mask | Convert.ToUInt64(member, System.Globalization.CultureInfo.InvariantCulture));
+        var bits = Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture);
+
+        return (bits & ~allFlags) == 0;
     }
 
     /// <summary>
@@ -119,7 +146,14 @@ internal static class ModelBinder
                || t == typeof(DateTime)
                || t == typeof(DateTimeOffset)
                || t == typeof(TimeSpan)
-               || t == typeof(Guid);
+               || t == typeof(DateOnly)
+               || t == typeof(TimeOnly)
+               || t == typeof(Half)
+               || t == typeof(Int128)
+               || t == typeof(UInt128)
+               || t == typeof(Guid)
+               || t == typeof(Uri)
+               || t == typeof(Version);
     }
 
     private static object? BindParameter(ParameterInfo parameter, IReadOnlyDictionary<string, string> values)

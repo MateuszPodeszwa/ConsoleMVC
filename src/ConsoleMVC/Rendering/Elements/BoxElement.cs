@@ -68,9 +68,20 @@ public sealed class BoxElement : ContainerElement
     /// <inheritdoc />
     public override IReadOnlyList<RenderedLine> Layout(int width)
     {
-        var boxWidth = MeasureWidth(width);
-        var innerWidth = Math.Max(boxWidth - Chrome, 1);
-        var padding = Span.Spaces(Math.Max(Padding, 0));
+        var borderColumns = Border.IsVisible ? 2 : 0;
+        var available = Math.Max(width, 0);
+        var boxWidth = Math.Max(MeasureWidth(width), Math.Min(borderColumns + 1, available));
+
+        // Keep the requested padding unless it leaves no room for content; then reduce it only as far as
+        // needed for the content to fit (or to one column, if even that is not possible)
+        var effectivePadding = Math.Max(Padding, 0);
+        if (boxWidth - borderColumns - 2 * effectivePadding < 1)
+        {
+            var contentWidth = Math.Max(MeasureChildren(Math.Max(boxWidth - borderColumns, 0)), 1);
+            effectivePadding = Math.Clamp((boxWidth - borderColumns - contentWidth) / 2, 0, effectivePadding);
+        }
+        var innerWidth = Math.Max(boxWidth - borderColumns - 2 * effectivePadding, 1);
+        var padding = Span.Spaces(effectivePadding);
         var borderStyle = TextStyle.Plain.WithForeground(BorderColour);
         var lines = new List<RenderedLine>();
 
@@ -93,8 +104,12 @@ public sealed class BoxElement : ContainerElement
             ]));
         }
 
-        return lines;
+        // Safety net for widths smaller than the border itself: never draw past the width given
+        return lines.Select(line => line.Clip(available)).ToList();
     }
+
+    /// <inheritdoc />
+    protected internal override bool HasRelativeWidth => Width.Kind == LengthKind.Percent;
 
     /// <summary>Builds the top border, embedding the (possibly truncated) title.</summary>
     private RenderedLine TopBorder(int boxWidth, TextStyle borderStyle)

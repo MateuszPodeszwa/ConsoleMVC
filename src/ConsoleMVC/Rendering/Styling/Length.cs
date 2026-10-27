@@ -130,7 +130,7 @@ public readonly record struct Length
         var resolved = Kind switch
         {
             LengthKind.Fixed => Value,
-            LengthKind.Percent => available * Value / 100,
+            LengthKind.Percent => (int)((long)available * Value / 100),
             _ => natural
         };
 

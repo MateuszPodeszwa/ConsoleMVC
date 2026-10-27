@@ -341,9 +341,10 @@ The model binder converts string values from the form data dictionary to the fol
 | `int`, `long`, `short`, `byte` | Integer types |
 | `float`, `double`, `decimal` | Floating-point types |
 | `bool` | `"true"` / `"false"` |
-| `DateTime`, `DateTimeOffset`, `TimeSpan` | Date/time types |
-| `Guid` | GUID strings |
-| `enum` | Enum name or numeric value |
+| `Half`, `Int128`, `UInt128` | Additional numeric types |
+| `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan` | Date/time types |
+| `Guid`, `Uri`, `Version` | GUID, URI and version strings |
+| `enum` | Enum name or numeric value; numbers must be defined members (or, for `[Flags]` enums, a combination of them) |
 | Nullable variants (`int?`, `bool?`, etc.) | Empty string → `null` |
 | Complex types (classes with properties) | Properties populated by name |
 

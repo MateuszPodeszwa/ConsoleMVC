@@ -52,6 +52,37 @@ public sealed class RenderedLine
         Width >= width ? this : new RenderedLine(Spans.Append(Span.Spaces(width - Width)));
 
     /// <summary>
+    /// Returns a new line cut to at most <paramref name="width"/> columns, keeping each span's style. A wide
+    /// character that would straddle the limit is dropped. Lines that already fit are returned unchanged.
+    /// </summary>
+    /// <param name="width">The maximum width in columns.</param>
+    /// <returns>The clipped line.</returns>
+    /// <example><code>var fitted = line.Clip(40);</code></example>
+    public RenderedLine Clip(int width)
+    {
+        if (Width <= width)
+            return this;
+
+        var remaining = Math.Max(width, 0);
+        var spans = new List<Span>();
+
+        foreach (var span in Spans)
+        {
+            if (remaining == 0)
+                break;
+
+            var text = TextWidth.TakeColumns(span.Text, remaining, out _);
+            spans.Add(span with { Text = text });
+            remaining -= TextWidth.Of(text);
+
+            if (text.Length < span.Text.Length)
+                break;
+        }
+
+        return new RenderedLine(spans);
+    }
+
+    /// <summary>
     /// Returns the text of the line without any styling information.
     /// </summary>
     /// <returns>The concatenated text of every span.</returns>

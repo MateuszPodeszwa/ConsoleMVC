@@ -36,8 +36,32 @@ internal sealed class ViewInfo
     /// <summary>Gets the namespace of the generated class: <c>{RootNamespace}.Views.{Controller}</c>.</summary>
     public string Namespace { get; }
 
-    /// <summary>Gets the hint name for the generated source file, e.g. <c>Home_IndexView.g.cs</c>.</summary>
-    public string HintName => ControllerName + "_" + ClassName + ".g.cs";
+    /// <summary>Gets the fully-qualified name of the generated class.</summary>
+    public string FullClassName => Namespace + "." + ClassName;
+
+    /// <summary>
+    /// Gets the hint name for the generated source file, e.g. <c>MyApp.Views.Home.IndexView.1a2b3c4d.g.cs</c>.
+    /// The path hash keeps hint names unique even for views whose names differ only in case or placement.
+    /// </summary>
+    public string HintName => FullClassName + "." + StablePathHash(FilePath) + ".g.cs";
+
+    /// <summary>
+    /// A 32-bit FNV-1a hash of the path, as eight hex digits. Stable across processes (unlike <c>string.GetHashCode</c>).
+    /// </summary>
+    private static string StablePathHash(string path)
+    {
+        unchecked
+        {
+            var hash = 2166136261u;
+            foreach (var c in path)
+            {
+                hash ^= c;
+                hash *= 16777619u;
+            }
+
+            return hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
 
     /// <summary>
     /// Derives view information from a file path of the form <c>…/Views/{Controller}/{Name}.cvw</c>.

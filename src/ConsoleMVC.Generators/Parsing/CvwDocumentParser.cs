@@ -24,8 +24,10 @@ namespace ConsoleMVC.Generators.Parsing;
 /// </example>
 internal static class CvwDocumentParser
 {
-    private const string ModelDirective = "@model ";
-    private const string UsingDirective = "@using ";
+    private const string ModelDirective = "@model";
+    private const string UsingDirective = "@using";
+    private const string CommentStart = "@*";
+    private const string CommentEnd = "*@";
 
     /// <summary>
     /// Parses <paramref name="text"/>.
@@ -55,14 +57,38 @@ internal static class CvwDocumentParser
                 continue;
             }
 
-            if (trimmed.StartsWith(ModelDirective, StringComparison.Ordinal))
+            // @* comment *@ lines (possibly spanning several lines) may appear among the directives
+            if (trimmed.StartsWith(CommentStart, StringComparison.Ordinal))
             {
-                model = ReadArgument(text, position, line, ModelDirective);
+                var commentStart = text.IndexOf(CommentStart, position, StringComparison.Ordinal);
+                var commentEnd = text.IndexOf(CommentEnd, commentStart + CommentStart.Length, StringComparison.Ordinal);
+                if (commentEnd < 0)
+                    break; // unterminated: let the body parser report it
+
+                var afterComment = commentEnd + CommentEnd.Length;
+                var restOfLine = text.IndexOf('\n', afterComment);
+                if (restOfLine < 0)
+                    restOfLine = text.Length;
+
+                if (text.Substring(afterComment, restOfLine - afterComment).Trim().Length > 0)
+                    break; // code follows the comment on the same line: the body starts here
+
+                position = restOfLine + 1;
+                continue;
+            }
+
+            if (IsDirective(trimmed, ModelDirective))
+            {
+                var value = ReadArgument(text, position, line, ModelDirective);
+                if (model is not null)
+                    diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.DuplicateModel, value.Span, value.Value));
+
+                model = value;
                 position = lineEnd + 1;
                 continue;
             }
 
-            if (trimmed.StartsWith(UsingDirective, StringComparison.Ordinal))
+            if (IsDirective(trimmed, UsingDirective))
             {
                 usings.Add(ReadArgument(text, position, line, UsingDirective));
                 position = lineEnd + 1;
@@ -79,7 +105,19 @@ internal static class CvwDocumentParser
         return new CvwDocument(text, model, usings, body, diagnostics);
     }
 
-    /// <summary>Extracts the trimmed argument of a directive line together with its exact source span.</summary>
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="trimmedLine"/> is <paramref name="directive"/> followed by
+    /// whitespace (space or tab) and an argument.
+    /// </summary>
+    private static bool IsDirective(string trimmedLine, string directive) =>
+        trimmedLine.Length > directive.Length
+        && trimmedLine.StartsWith(directive, StringComparison.Ordinal)
+        && char.IsWhiteSpace(trimmedLine[directive.Length]);
+
+    /// <summary>
+    /// Extracts the trimmed argument of a directive line together with its exact source span. A trailing
+    /// <c>;</c> (as in <c>@using System.Text;</c>) is ignored.
+    /// </summary>
     private static DirectiveValue ReadArgument(string text, int lineStart, string line, string directive)
     {
         var start = lineStart + line.IndexOf(directive, StringComparison.Ordinal) + directive.Length;
@@ -87,6 +125,9 @@ internal static class CvwDocumentParser
 
         while (start < end && char.IsWhiteSpace(text[start]))
             start++;
+
+        while (end > start && (text[end - 1] == ';' || char.IsWhiteSpace(text[end - 1])))
+            end--;
 
         return new DirectiveValue(text.Substring(start, end - start), SourceSpan.FromBounds(start, end));
     }

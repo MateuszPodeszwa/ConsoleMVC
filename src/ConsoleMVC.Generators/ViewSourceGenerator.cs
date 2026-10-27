@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using ConsoleMVC.Generators.Diagnostics;
 using ConsoleMVC.Generators.Emit;
 using ConsoleMVC.Generators.Parsing;
@@ -54,13 +57,73 @@ public class ViewSourceGenerator : IIncrementalGenerator
                 return string.IsNullOrWhiteSpace(ns) ? FallbackRootNamespace : ns!.Trim();
             });
 
-        context.RegisterSourceOutput(viewFiles.Combine(rootNamespace), static (ctx, pair) =>
+        // Views that would generate the same class as an earlier view (by path order) are reported and skipped.
+        // Only the list of paths feeds this step, so editing a view's contents keeps the per-file caching.
+        var duplicates = viewFiles
+            .Select(static (file, _) => file.Path)
+            .Collect()
+            .Combine(rootNamespace)
+            .Select(static (pair, _) => FindDuplicates(pair.Left, pair.Right));
+
+        context.RegisterSourceOutput(viewFiles.Combine(rootNamespace).Combine(duplicates), static (ctx, pair) =>
         {
-            var (file, rootNs) = pair;
+            var ((file, rootNs), duplicateOf) = pair;
+
+            if (duplicateOf.TryGetValue(file.Path, out var original))
+            {
+                ViewInfo.TryCreate(file.Path, rootNs, out var info);
+                ctx.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.DuplicateView,
+                    Location.Create(file.Path, default, default), file.Path, info.FullClassName, original));
+                return;
+            }
+
             var text = file.GetText(ctx.CancellationToken);
             if (text is not null)
                 GenerateView(ctx, file.Path, text, rootNs);
         });
+    }
+
+    /// <summary>
+    /// Maps each view path that collides with an earlier one (same class name, ignoring case, because the router
+    /// matches names case-insensitively) to the path of the earlier view.
+    /// </summary>
+    private static EquatableMap FindDuplicates(ImmutableArray<string> paths, string rootNamespace)
+    {
+        var first = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var duplicates = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var path in paths.OrderBy(p => p, StringComparer.Ordinal))
+        {
+            if (!ViewInfo.TryCreate(path, rootNamespace, out var info))
+                continue;
+
+            if (first.TryGetValue(info.FullClassName, out var original))
+                duplicates[path] = original;
+            else
+                first[info.FullClassName] = path;
+        }
+
+        return new EquatableMap(duplicates);
+    }
+
+    /// <summary>
+    /// A read-only path map with value equality, so the incremental pipeline can tell when it has not changed.
+    /// </summary>
+    private sealed class EquatableMap : IEquatable<EquatableMap>
+    {
+        private readonly Dictionary<string, string> _map;
+
+        public EquatableMap(Dictionary<string, string> map) => _map = map;
+
+        public bool TryGetValue(string key, out string value) => _map.TryGetValue(key, out value!);
+
+        public bool Equals(EquatableMap? other) =>
+            other is not null && _map.Count == other._map.Count
+            && _map.All(pair => other._map.TryGetValue(pair.Key, out var value) && value == pair.Value);
+
+        public override bool Equals(object? obj) => Equals(obj as EquatableMap);
+
+        public override int GetHashCode() => _map.Count;
     }
 
     /// <summary>
@@ -74,13 +137,19 @@ public class ViewSourceGenerator : IIncrementalGenerator
             return;
         }
 
-        if (!SyntaxFacts.IsValidIdentifier(info.ControllerName))
+        if (!IsValidNamespace(rootNamespace))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidRootNamespace, Location.Create(path, default, default), rootNamespace));
+            return;
+        }
+
+        if (!IsValidName(info.ControllerName))
         {
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ControllerName, "controller folder"));
             return;
         }
 
-        if (!SyntaxFacts.IsValidIdentifier(info.ClassName))
+        if (!IsValidName(info.ClassName))
         {
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ClassName, "view"));
             return;
@@ -105,4 +174,11 @@ public class ViewSourceGenerator : IIncrementalGenerator
 
         context.AddSource(info.HintName, ViewEmitter.Emit(document, info));
     }
+
+    /// <summary>A name usable as a C# identifier: valid characters and not a reserved keyword such as <c>class</c>.</summary>
+    private static bool IsValidName(string name) =>
+        SyntaxFacts.IsValidIdentifier(name) && SyntaxFacts.GetKeywordKind(name) == SyntaxKind.None;
+
+    /// <summary>A dotted namespace whose every part is a valid name.</summary>
+    private static bool IsValidNamespace(string ns) => ns.Split('.').All(IsValidName);
 }

@@ -37,8 +37,19 @@ public abstract class ContainerElement : Element
     /// </summary>
     /// <param name="maxWidth">The maximum width available to each child.</param>
     /// <returns>The widest child width, or 0 when there are no children.</returns>
-    protected int MeasureChildren(int maxWidth) =>
-        _children.Count == 0 ? 0 : _children.Max(c => c.MeasureWidth(maxWidth));
+    /// <remarks>
+    /// When any child has a relative (percentage) width, the container wants all of
+    /// <paramref name="maxWidth"/>; see <see cref="Element.HasRelativeWidth"/>.
+    /// </remarks>
+    protected int MeasureChildren(int maxWidth)
+    {
+        if (_children.Count == 0)
+            return 0;
+
+        return _children.Any(c => c.HasRelativeWidth)
+            ? Math.Max(maxWidth, 0)
+            : _children.Max(c => c.MeasureWidth(maxWidth));
+    }
 
     /// <summary>
     /// Lays out every child at <paramref name="width"/> and concatenates their lines.

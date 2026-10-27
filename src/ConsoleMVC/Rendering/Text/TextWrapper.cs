@@ -91,31 +91,43 @@ public static class TextWrapper
                 }
                 else
                 {
-                    // Keep paragraph indentation if it leaves room for at least one character
-                    var indent = Math.Min(pendingSpaces, width - 1);
+                    // Keep paragraph indentation, but only while the first character still fits after it
+                    var firstWidth = TextWidth.Of(Rune.GetRuneAt(word, 0));
+                    var indent = Math.Max(Math.Min(pendingSpaces, width - firstWidth), 0);
                     line.Append(' ', indent);
                     lineWidth = indent;
                 }
 
-                // Break words that do not fit on an empty line
+                // Break words that do not fit; the last piece stays on the current line
                 while (lineWidth + TextWidth.Of(word) > width)
                 {
                     var chunk = TextWidth.TakeColumns(word, width - lineWidth, out var consumed);
                     if (consumed == 0)
                     {
-                        // A double-width character that cannot fit in the remaining single column
-                        if (lineWidth == 0)
+                        if (lineWidth > 0)
                         {
-                            chunk = word[..(char.IsSurrogatePair(word, 0) ? 2 : 1)];
-                            consumed = chunk.Length;
+                            // Not even one character fits after what is already on the line
+                            lines.Add(line.ToString());
+                            line.Clear();
+                            lineWidth = 0;
+                            continue;
                         }
+
+                        // A double-width character wider than the whole line: place it on its own
+                        chunk = word.Substring(0, char.IsSurrogatePair(word, 0) ? 2 : 1);
+                        consumed = chunk.Length;
                     }
 
                     line.Append(chunk);
+                    lineWidth += TextWidth.Of(chunk);
+                    word = word.Substring(consumed);
+
+                    if (word.Length == 0)
+                        break;
+
                     lines.Add(line.ToString());
                     line.Clear();
                     lineWidth = 0;
-                    word = word[consumed..];
                 }
 
                 line.Append(word);

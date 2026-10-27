@@ -88,7 +88,8 @@ public abstract class InlineElement : Element
     /// <inheritdoc />
     public override int MeasureWidth(int maxWidth)
     {
-        var widest = Content.Split('\n').Max(TextWidth.Of);
+        // Trailing spaces are dropped by wrapping and truncation, so they must not count here either
+        var widest = Content.Split('\n').Max(paragraph => TextWidth.Of(paragraph.TrimEnd(' ')));
         return Math.Min(widest, Math.Max(maxWidth, 0));
     }
 
@@ -118,7 +119,8 @@ public abstract class InlineElement : Element
                 _ => 0
             };
 
-            lines[i] = new RenderedLine([Span.Spaces(indent), new Span(rows[i], style)]);
+            // Clip: a double-width character cannot be shown in a single column
+            lines[i] = new RenderedLine([Span.Spaces(indent), new Span(rows[i], style)]).Clip(Math.Max(width, 0));
         }
 
         return lines;
