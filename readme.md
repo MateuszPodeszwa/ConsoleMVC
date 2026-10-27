@@ -20,6 +20,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation** — posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
 - **Dependency injection** — register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
+- **Async actions and middleware** — actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
 
 ## Getting Started
 
@@ -88,7 +89,7 @@ using Microsoft.Extensions.DependencyInjection;
 var builder = MvcApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IGreetingService, GreetingService>(); // optional: your services
 using var app = builder.Build();
-app.Run();
+await app.RunAsync();                                               // or app.Run()
 ```
 
 The framework scans the assembly at startup, discovers all controllers and views, and begins the main loop at the default route (`Home/Index`).
@@ -472,6 +473,44 @@ public class GreetController(IGreetingService greetings) : Controller
 
 See the [Dependency Injection guide](docs/guides/docs/dependency-injection.md) and the [design](docs/design/dependency-injection.md).
 
+### Async Actions and Middleware
+
+Actions may be asynchronous, and a `CancellationToken` parameter receives the token passed to `RunAsync`:
+
+```csharp
+public async Task<ActionResult> Index(CancellationToken cancellationToken) =>
+    View(await store.ListAsync(cancellationToken));
+```
+
+Middleware runs around every action, outermost first, as in ASP.NET Core:
+
+```csharp
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next(context);                 // the next middleware, then the action
+    }
+    catch (HttpRequestException)
+    {
+        context.RedirectTo("Offline", "Errors");
+    }
+});
+
+app.UseMiddleware<RequireSignInMiddleware>(); // class-based: IActionMiddleware, created per screen
+await app.RunAsync();
+```
+
+| API | Purpose |
+|-----|---------|
+| `Task<ActionResult>` / `ValueTask<ActionResult>` | Asynchronous actions (also `Task<ViewResult>` and other result types) |
+| `app.RunAsync(token)` | Run the application; cancelling the token stops it before the next screen |
+| `app.Use((context, next) => …)` | Inline middleware |
+| `app.UseMiddleware<T>()` | Class-based middleware (`IActionMiddleware`), constructed per cycle with scoped services |
+| `context.Result` / `context.RedirectTo(…)` | Replace the action's result, or skip the action by setting it without calling `next` |
+
+Views render after the pipeline. See the [guide](docs/guides/docs/async-and-middleware.md) and the [design](docs/design/async-and-middleware.md).
+
 ### Conventions
 
 ConsoleMVC uses naming conventions to wire everything together — no manual registration required:
@@ -648,7 +687,7 @@ ConsoleMVC/
       PACKAGE_README.md                   #   README shown on NuGet gallery
       Application/ Controllers/ Results/  #   MVC framework (namespace ConsoleMVC.Mvc)
       Routing/ Binding/ Views/
-      Validation/ DependencyInjection/
+      Validation/ DependencyInjection/ Middleware/
       Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
       ConsoleMVC.Generators.csproj

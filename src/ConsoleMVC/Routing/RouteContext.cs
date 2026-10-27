@@ -30,4 +30,9 @@ public class RouteContext
     /// for controllers that need raw access.
     /// </summary>
     public Dictionary<string, string>? FormData { get; init; }
+
+    /// <summary>Returns the route as <c>Controller/Action</c>.</summary>
+    /// <returns>For example <c>"Home/Index"</c>.</returns>
+    /// <example><code>logger.LogInformation("Showing {Route}", context.Route);</code></example>
+    public override string ToString() => $"{Controller}/{Action}";
 }

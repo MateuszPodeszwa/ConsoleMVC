@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 using ConsoleMVC.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -44,6 +43,8 @@ public class MvcApplication : IDisposable
     private readonly Router _router = new();
     private readonly Assembly? _applicationAssembly;
     private readonly ServiceProvider _services;
+    private readonly List<Func<ActionDelegate, ActionDelegate>> _middleware = [];
+    private ActionDelegate? _pipeline;
     private readonly bool _clearScreenBetweenViews;
     private RouteContext _currentRoute;
 
@@ -95,9 +96,49 @@ public class MvcApplication : IDisposable
     }
 
     /// <summary>
-    /// Starts the application main loop. The framework discovers all controllers and views
-    /// in the application assembly, then begins the route-action-render cycle starting from the
-    /// configured default route.
+    /// Adds a middleware that runs around every action, in registration order (the first one added is the outermost).
+    /// Call <paramref name="middleware"/>'s <c>next</c> argument to continue to the action, or set
+    /// <see cref="ActionContext.Result"/> without calling it to skip the action.
+    /// </summary>
+    /// <param name="middleware">The middleware: receives the cycle's context and the rest of the pipeline.</param>
+    /// <returns>This application, for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="middleware"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the application is already running.</exception>
+    /// <example>
+    /// <code>
+    /// app.Use(async (context, next) =>
+    /// {
+    ///     try { await next(context); }
+    ///     catch (IOException) { context.RedirectTo("Offline", "Errors"); }
+    /// });
+    /// </code>
+    /// </example>
+    public MvcApplication Use(Func<ActionContext, ActionDelegate, Task> middleware)
+    {
+        ArgumentNullException.ThrowIfNull(middleware);
+        if (_pipeline is not null)
+            throw new InvalidOperationException("Middleware must be added before the application starts running.");
+
+        _middleware.Add(next => context => middleware(context, next));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a class-based middleware. A new <typeparamref name="TMiddleware"/> is created for every navigation cycle
+    /// from the cycle's services (or with <see cref="ActivatorUtilities"/> when it is not registered), so its
+    /// constructor may take scoped services.
+    /// </summary>
+    /// <typeparam name="TMiddleware">The middleware type.</typeparam>
+    /// <returns>This application, for chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the application is already running.</exception>
+    /// <example><code>app.UseMiddleware&lt;RequireSignInMiddleware&gt;();</code></example>
+    public MvcApplication UseMiddleware<TMiddleware>() where TMiddleware : IActionMiddleware =>
+        Use((context, next) => ActivatorUtilities
+            .GetServiceOrCreateInstance<TMiddleware>(context.Services)
+            .InvokeAsync(context, next));
+
+    /// <summary>
+    /// Starts the application main loop and blocks until it ends. Equivalent to waiting for <see cref="RunAsync"/>.
     /// </summary>
     /// <remarks>
     /// The loop continues until a view returns <see cref="NavigationResult.Quit"/>,
@@ -108,8 +149,39 @@ public class MvcApplication : IDisposable
     /// Thrown when routing fails, an action returns an unsupported result, a view receives an
     /// incompatible model, or a redirect loop is detected.
     /// </exception>
-    public void Run()
+    /// <example><code>app.Run();</code></example>
+    public void Run() => RunAsync().GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Starts the application main loop. The framework discovers all controllers and views
+    /// in the application assembly, then begins the route-action-render cycle starting from the
+    /// configured default route. Asynchronous actions are awaited.
+    /// </summary>
+    /// <param name="cancellationToken">
+    /// Stops the loop before the next navigation cycle, and is passed to actions that declare a
+    /// <see cref="CancellationToken"/> parameter.
+    /// </param>
+    /// <returns>A task that completes when a view returns <see cref="NavigationResult.Quit"/>.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when routing fails, an action returns an unsupported result, a view receives an
+    /// incompatible model, a redirect loop is detected, or the application is already running.
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// using var cancellation = new CancellationTokenSource();
+    /// Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
+    /// await app.RunAsync(cancellation.Token);
+    /// </code>
+    /// </example>
+    public async Task RunAsync(CancellationToken cancellationToken = default)
     {
+        if (_pipeline is not null)
+            throw new InvalidOperationException("The application is already running.");
+
+        _pipeline = ActionPipeline.Build(_middleware, InvokeActionAsync);
+        cancellationToken.ThrowIfCancellationRequested();
+
         _router.DiscoverAll(ResolveApplicationAssembly());
         var renderer = _services.GetRequiredService<IMarkupRenderer>();
         var input = _services.GetRequiredService<ITextInput>();
@@ -117,12 +189,23 @@ public class MvcApplication : IDisposable
 
         while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             // One scope per navigation cycle: the action and the view it renders share scoped services
-            using var scope = _services.CreateScope();
+            await using var scope = _services.CreateAsyncScope();
             using var cycle = new CycleInstances();
 
-            var result = InvokeCurrentAction(scope.ServiceProvider, cycle);
+            var context = new ActionContext(_currentRoute, scope.ServiceProvider, cancellationToken);
+            try
+            {
+                await _pipeline(context).ConfigureAwait(false);
+            }
+            finally
+            {
+                cycle.Track(context.Controller);
+            }
 
+            var result = context.Result;
             switch (result)
             {
                 case ViewResult viewResult:
@@ -134,8 +217,8 @@ public class MvcApplication : IDisposable
 
                     _currentRoute = new RouteContext
                     {
-                        Controller = navigation.Controller ?? _currentRoute.Controller,
-                        Action = navigation.Action ?? _currentRoute.Action,
+                        Controller = navigation.Controller ?? context.Route.Controller,
+                        Action = navigation.Action ?? context.Route.Action,
                         FormData = navigation.FormData
                     };
                     break;
@@ -145,7 +228,7 @@ public class MvcApplication : IDisposable
                     {
                         throw new InvalidOperationException(
                             $"More than {MaxConsecutiveRedirects} consecutive redirects without rendering a view " +
-                            $"(last: '{_currentRoute.Controller}/{_currentRoute.Action}' → '{redirect.ControllerName}/{redirect.ActionName}'). " +
+                            $"(last: '{context.Route}' → '{redirect.ControllerName}/{redirect.ActionName}'). " +
                             "This usually means an action redirects to itself.");
                     }
 
@@ -156,9 +239,14 @@ public class MvcApplication : IDisposable
                     };
                     break;
 
+                case null when context.Controller is null:
+                    throw new InvalidOperationException(
+                        $"No result was produced for '{context.Route}': a middleware neither called next(context) " +
+                        "nor set context.Result.");
+
                 default:
                     throw new InvalidOperationException(
-                        $"Action '{_currentRoute.Controller}/{_currentRoute.Action}' returned " +
+                        $"Action '{context.Route}' returned " +
                         $"{(result is null ? "null" : $"an unsupported result of type '{result.GetType().Name}'")}. " +
                         "Return View(...) or RedirectToAction(...).");
             }
@@ -176,39 +264,49 @@ public class MvcApplication : IDisposable
             "e.g. builder.ApplicationAssembly = typeof(Program).Assembly;");
 
     /// <summary>
-    /// Resolves the controller and action for the current route, binds form data and invokes the action.
+    /// The end of the pipeline: resolves the controller and action for the context's route, binds and validates
+    /// form data, invokes the action (awaiting it when asynchronous) and stores its result in the context.
     /// </summary>
-    private ActionResult? InvokeCurrentAction(IServiceProvider services, CycleInstances cycle)
+    private async Task InvokeActionAsync(ActionContext context)
     {
-        var controller = cycle.Track(_router.ResolveController(_currentRoute.Controller, services));
-        var actionMethod = _router.ResolveAction(controller.GetType(), _currentRoute.Action);
+        var route = context.Route;
+        var controller = _router.ResolveController(route.Controller, context.Services);
+        context.Controller = controller;
+        var actionMethod = _router.ResolveAction(controller.GetType(), route.Action);
 
         // Normalise the route to the declared action name so View() resolves the right view
         // regardless of the casing used in navigation.
         controller.RouteContext = new RouteContext
         {
-            Controller = _currentRoute.Controller,
+            Controller = route.Controller,
             Action = actionMethod.Name,
-            FormData = _currentRoute.FormData
+            FormData = route.FormData
         };
 
         // Bind posted values, then validate them before the action runs
         var modelState = new ModelStateDictionary();
-        var args = ModelBinder.BindParameters(actionMethod, _currentRoute.FormData, modelState);
-        if (_currentRoute.FormData is not null)
+        var args = ModelBinder.BindParameters(actionMethod, route.FormData, modelState);
+        if (route.FormData is not null)
             ModelValidator.Validate(actionMethod, args, modelState);
 
+        SupplyCancellationTokens(actionMethod, args, context.Cancellation);
         controller.ModelState = modelState;
+        context.ModelState = modelState;
 
-        try
+        context.Result = await ActionInvoker.InvokeAsync(actionMethod, controller, args).ConfigureAwait(false);
+    }
+
+    /// <summary>Passes the run's token to every <see cref="CancellationToken"/> parameter of the action.</summary>
+    private static void SupplyCancellationTokens(MethodInfo method, object?[]? args, CancellationToken token)
+    {
+        if (args is null)
+            return;
+
+        var parameters = method.GetParameters();
+        for (var i = 0; i < parameters.Length; i++)
         {
-            return (ActionResult?)actionMethod.Invoke(controller, args);
-        }
-        catch (TargetInvocationException e) when (e.InnerException is not null)
-        {
-            // Surface the action's own exception with its original stack trace
-            ExceptionDispatchInfo.Capture(e.InnerException).Throw();
-            throw; // unreachable
+            if (parameters[i].ParameterType == typeof(CancellationToken))
+                args[i] = token;
         }
     }
 
@@ -253,6 +351,9 @@ public class MvcApplication : IDisposable
         /// <summary>Remembers <paramref name="instance"/> for disposal when it is <see cref="IDisposable"/>.</summary>
         public T Track<T>(T instance)
         {
+            if (instance is null)
+                return instance;
+
             if (instance is IDisposable disposable)
                 _disposables.Add(disposable);
 

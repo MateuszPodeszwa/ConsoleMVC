@@ -15,7 +15,8 @@ namespace ConsoleMVC.Mvc;
 /// </para>
 /// <para>
 /// <b>Action resolution:</b> An action is a public instance method declared on a controller
-/// (not on <see cref="Controller"/> or <see cref="object"/>), that returns <see cref="ActionResult"/>,
+/// (not on <see cref="Controller"/> or <see cref="object"/>), that returns <see cref="ActionResult"/> (or
+/// <see cref="Task{TResult}"/> / <see cref="ValueTask{TResult}"/> of one),
 /// is not a property accessor and is not marked <see cref="NonActionAttribute"/>. Overloaded
 /// actions are not supported because navigation identifies actions by name only.
 /// </para>
@@ -111,7 +112,7 @@ public class Router
         {
             throw new InvalidOperationException(
                 $"Action '{actionName}' not found on controller '{controllerType.Name}'. " +
-                "Ensure the method is public, returns ActionResult and is not marked [NonAction].");
+                "Ensure the method is public, returns ActionResult (or Task<ActionResult>) and is not marked [NonAction].");
         }
 
         if (candidates.Length > 1)
@@ -209,7 +210,7 @@ public class Router
         && method.DeclaringType is not null
         && method.DeclaringType != typeof(Controller)
         && method.DeclaringType != typeof(object)
-        && typeof(ActionResult).IsAssignableFrom(method.ReturnType)
+        && ActionInvoker.IsActionReturnType(method.ReturnType)
         && !method.IsDefined(typeof(NonActionAttribute), inherit: true);
 
     /// <summary>

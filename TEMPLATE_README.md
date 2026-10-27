@@ -23,7 +23,7 @@ dotnet run
 
 A ready-to-run console application structured with the MVC pattern:
 
-- **Program.cs** — entry point using the familiar `CreateBuilder().Build().Run()` pattern
+- **Program.cs** — entry point using the familiar `CreateBuilder()`, `Build()`, `RunAsync()` pattern, with a middleware that shows the current page in the terminal title
 - **Controllers/** — controller classes that handle actions and return results
 - **Views/** — `.cvw` views using C-View Markup (`<box>`, `<text>`, `<table>`, `<input>`, `<menu>`) and C#, compiled at build time
 - **Models/** — ViewModel DTOs passed from controllers to views

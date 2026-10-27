@@ -2,6 +2,19 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.6.0]
+
+### Added
+
+- **Asynchronous actions** ([design](docs/design/async-and-middleware.md),
+  [guide](docs/guides/docs/async-and-middleware.md)): actions may return `Task<T>` or `ValueTask<T>` of an
+  `ActionResult` type; `CancellationToken` parameters receive the run's token.
+- `MvcApplication.RunAsync(CancellationToken)`; `Run()` waits for it.
+- **Middleware**: `MvcApplication.Use(...)` and `UseMiddleware<T>()` with `ActionContext`, `ActionDelegate` and
+  `IActionMiddleware` — wrap, replace or short-circuit actions and handle their exceptions.
+- `RouteContext.ToString()` returns `Controller/Action`.
+- The template's `Program.cs` uses `RunAsync` and a middleware that shows the current page in the terminal title.
+
 ## [1.5.0]
 
 ### Added
