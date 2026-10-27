@@ -208,6 +208,10 @@ internal static class ModelBinder
             .Where(p => p.CanWrite && p.GetIndexParameters().Length == 0 && IsSimpleType(p.PropertyType))
             .ToArray();
 
+        // Collections are not bound from form data (one value per key); the parameter receives null
+        if (type.IsArray)
+            return null;
+
         var (instance, boundByConstructor) = CreateModel(type, properties, values, modelState);
 
         foreach (var property in properties.Where(p => !boundByConstructor.Contains(p.Name)))
@@ -241,7 +245,7 @@ internal static class ModelBinder
         var constructor = type.IsAbstract
             ? null
             : type.GetConstructors()
-                .Where(c => c.GetParameters().All(p => IsSimpleType(p.ParameterType)))
+                .Where(c => c.GetParameters().All(p => p.Name is not null && IsSimpleType(p.ParameterType)))
                 .OrderByDescending(c => c.GetParameters().Length)
                 .FirstOrDefault();
 

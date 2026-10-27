@@ -32,7 +32,7 @@ namespace ConsoleMVC.Mvc;
 /// app.Run();
 /// </code>
 /// </example>
-public class MvcApplication : IDisposable
+public class MvcApplication : IDisposable, IAsyncDisposable
 {
     /// <summary>
     /// The maximum number of consecutive redirects (without rendering a view) before the
@@ -40,11 +40,13 @@ public class MvcApplication : IDisposable
     /// </summary>
     public const int MaxConsecutiveRedirects = 32;
 
-    private readonly Router _router = new();
+    private Router _router = new();
+    private int _reloadRequested;
     private readonly Assembly? _applicationAssembly;
     private readonly ServiceProvider _services;
     private readonly List<Func<ActionDelegate, ActionDelegate>> _middleware = [];
     private ActionDelegate? _pipeline;
+    private int _running;
     private readonly bool _clearScreenBetweenViews;
     private RouteContext _currentRoute;
 
@@ -82,6 +84,12 @@ public class MvcApplication : IDisposable
     public IServiceProvider Services => _services;
 
     /// <summary>
+    /// Gets how many times controllers and views have been discovered: once when the application starts, and again
+    /// after each hot reload update (<c>dotnet watch</c>).
+    /// </summary>
+    internal int DiscoveryCount { get; private set; }
+
+    /// <summary>
     /// Creates a new <see cref="MvcApplicationBuilder"/> for configuring and building
     /// an <see cref="MvcApplication"/> instance.
     /// </summary>
@@ -117,7 +125,7 @@ public class MvcApplication : IDisposable
     {
         ArgumentNullException.ThrowIfNull(middleware);
         if (_pipeline is not null)
-            throw new InvalidOperationException("Middleware must be added before the application starts running.");
+            throw new InvalidOperationException("Middleware must be added before the application first runs.");
 
         _middleware.Add(next => context => middleware(context, next));
         return this;
@@ -133,9 +141,15 @@ public class MvcApplication : IDisposable
     /// <exception cref="InvalidOperationException">Thrown when the application is already running.</exception>
     /// <example><code>app.UseMiddleware&lt;RequireSignInMiddleware&gt;();</code></example>
     public MvcApplication UseMiddleware<TMiddleware>() where TMiddleware : IActionMiddleware =>
-        Use((context, next) => ActivatorUtilities
-            .GetServiceOrCreateInstance<TMiddleware>(context.Services)
-            .InvokeAsync(context, next));
+        Use((context, next) =>
+        {
+            // A registered middleware belongs to the container; one created here is disposed with the cycle
+            var middleware = context.Services.GetService<TMiddleware>();
+            if (middleware is null)
+                middleware = context.Own(ActivatorUtilities.CreateInstance<TMiddleware>(context.Services));
+
+            return middleware.InvokeAsync(context, next);
+        });
 
     /// <summary>
     /// Starts the application main loop and blocks until it ends. Equivalent to waiting for <see cref="RunAsync"/>.
@@ -176,79 +190,128 @@ public class MvcApplication : IDisposable
     /// </example>
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        if (_pipeline is not null)
+        cancellationToken.ThrowIfCancellationRequested();
+        if (Interlocked.Exchange(ref _running, 1) == 1)
             throw new InvalidOperationException("The application is already running.");
 
-        _pipeline = ActionPipeline.Build(_middleware, InvokeActionAsync);
-        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            var pipeline = _pipeline ??= ActionPipeline.Build(_middleware, InvokeActionAsync);
+            await RunOnceAsync(pipeline, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            Volatile.Write(ref _running, 0);
+        }
+    }
 
-        _router.DiscoverAll(ResolveApplicationAssembly());
+    /// <summary>Discovers controllers and views, then runs navigation cycles until a view quits.</summary>
+    private async Task RunOnceAsync(ActionDelegate pipeline, CancellationToken cancellationToken)
+    {
+
+        var assembly = ResolveApplicationAssembly();
+        Discover(assembly);
         var renderer = _services.GetRequiredService<IMarkupRenderer>();
         var input = _services.GetRequiredService<ITextInput>();
+        var theme = _services.GetRequiredService<Theme>();
+
+        HotReloadHandler.Updated += OnHotReload;
+        try
+        {
+            await RunLoopAsync(pipeline, assembly, renderer, input, theme, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            HotReloadHandler.Updated -= OnHotReload;
+        }
+    }
+
+    /// <summary>Marks the router for rediscovery; called on a hot reload thread.</summary>
+    private void OnHotReload() => Interlocked.Exchange(ref _reloadRequested, 1);
+
+    /// <summary>Discovers controllers and views into a fresh router, so stale cached actions are dropped.</summary>
+    private void Discover(Assembly assembly)
+    {
+        var router = new Router();
+        router.DiscoverAll(assembly);
+        _router = router;
+        DiscoveryCount++;
+    }
+
+    /// <summary>
+    /// Runs navigation cycles until a view quits: the pipeline, then rendering the view or following the redirect.
+    /// </summary>
+    private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, IMarkupRenderer renderer, ITextInput input,
+        Theme theme, CancellationToken cancellationToken)
+    {
         var consecutiveRedirects = 0;
 
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // dotnet watch applied an edit: pick up new or changed controllers and views from this screen on
+            if (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
+                Discover(assembly);
+
             // One scope per navigation cycle: the action and the view it renders share scoped services
             await using var scope = _services.CreateAsyncScope();
-            using var cycle = new CycleInstances();
-
             var context = new ActionContext(_currentRoute, scope.ServiceProvider, cancellationToken);
+
             try
             {
-                await _pipeline(context).ConfigureAwait(false);
+                await pipeline(context).ConfigureAwait(false);
+
+                var result = context.Result;
+                switch (result)
+                {
+                    case ViewResult viewResult:
+                        consecutiveRedirects = 0;
+
+                        var navigation = RenderView(viewResult, renderer, input, theme, context);
+                        if (navigation.Exit)
+                            return;
+
+                        _currentRoute = new RouteContext
+                        {
+                            Controller = navigation.Controller ?? context.Route.Controller,
+                            Action = navigation.Action ?? context.Route.Action,
+                            FormData = navigation.FormData
+                        };
+                        break;
+
+                    case RedirectToActionResult redirect:
+                        if (++consecutiveRedirects > MaxConsecutiveRedirects)
+                        {
+                            throw new InvalidOperationException(
+                                $"More than {MaxConsecutiveRedirects} consecutive redirects without rendering a view " +
+                                $"(last: '{context.Route}' → '{redirect.ControllerName}/{redirect.ActionName}'). " +
+                                "This usually means an action redirects to itself.");
+                        }
+
+                        _currentRoute = new RouteContext
+                        {
+                            Controller = redirect.ControllerName,
+                            Action = redirect.ActionName
+                        };
+                        break;
+
+                    case null when context.Controller is null:
+                        throw new InvalidOperationException(
+                            $"No result was produced for '{context.Route}': a middleware neither called next(context) " +
+                            "nor set context.Result.");
+
+                    default:
+                        throw new InvalidOperationException(
+                            $"Action '{context.Route}' returned " +
+                            $"{(result is null ? "null" : $"an unsupported result of type '{result.GetType().Name}'")}. " +
+                            "Return View(...) or RedirectToAction(...).");
+                }
             }
             finally
             {
-                cycle.Track(context.Controller);
-            }
-
-            var result = context.Result;
-            switch (result)
-            {
-                case ViewResult viewResult:
-                    consecutiveRedirects = 0;
-
-                    var navigation = RenderView(viewResult, renderer, input, scope.ServiceProvider, cycle);
-                    if (navigation.Exit)
-                        return;
-
-                    _currentRoute = new RouteContext
-                    {
-                        Controller = navigation.Controller ?? context.Route.Controller,
-                        Action = navigation.Action ?? context.Route.Action,
-                        FormData = navigation.FormData
-                    };
-                    break;
-
-                case RedirectToActionResult redirect:
-                    if (++consecutiveRedirects > MaxConsecutiveRedirects)
-                    {
-                        throw new InvalidOperationException(
-                            $"More than {MaxConsecutiveRedirects} consecutive redirects without rendering a view " +
-                            $"(last: '{context.Route}' → '{redirect.ControllerName}/{redirect.ActionName}'). " +
-                            "This usually means an action redirects to itself.");
-                    }
-
-                    _currentRoute = new RouteContext
-                    {
-                        Controller = redirect.ControllerName,
-                        Action = redirect.ActionName
-                    };
-                    break;
-
-                case null when context.Controller is null:
-                    throw new InvalidOperationException(
-                        $"No result was produced for '{context.Route}': a middleware neither called next(context) " +
-                        "nor set context.Result.");
-
-                default:
-                    throw new InvalidOperationException(
-                        $"Action '{context.Route}' returned " +
-                        $"{(result is null ? "null" : $"an unsupported result of type '{result.GetType().Name}'")}. " +
-                        "Return View(...) or RedirectToAction(...).");
+                // Controllers, views and middleware created for this cycle; the scope disposes its own services next
+                await context.DisposeOwnedAsync().ConfigureAwait(false);
             }
         }
     }
@@ -270,7 +333,7 @@ public class MvcApplication : IDisposable
     private async Task InvokeActionAsync(ActionContext context)
     {
         var route = context.Route;
-        var controller = _router.ResolveController(route.Controller, context.Services);
+        var controller = context.Own(_router.ResolveController(route.Controller, context.Services));
         context.Controller = controller;
         var actionMethod = _router.ResolveAction(controller.GetType(), route.Action);
 
@@ -313,14 +376,15 @@ public class MvcApplication : IDisposable
     /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.
     /// </summary>
-    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input,
-        IServiceProvider services, CycleInstances cycle)
+    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input, Theme theme,
+        ActionContext context)
     {
-        var view = cycle.Track(_router.ResolveView(viewResult.ControllerName, viewResult.ViewName, services));
+        var view = context.Own(_router.ResolveView(viewResult.ControllerName, viewResult.ViewName, context.Services));
         view.ViewData = viewResult.ViewData;
         view.ModelState = viewResult.ModelState;
         view.Renderer = renderer;
         view.Input = input;
+        view.Theme = theme;
 
         if (_clearScreenBetweenViews)
             renderer.Clear();
@@ -331,40 +395,28 @@ public class MvcApplication : IDisposable
     }
 
     /// <summary>
-    /// Disposes the root service provider and every singleton service it created.
+    /// Disposes the root service provider and every singleton service it created. Prefer <see cref="DisposeAsync"/>
+    /// (<c>await using var app = builder.Build();</c>) when services implement only <see cref="IAsyncDisposable"/>;
+    /// this method still disposes them, synchronously.
     /// </summary>
     /// <example><code>using var app = builder.Build();</code></example>
     public void Dispose()
     {
-        _services.Dispose();
+        // ServiceProvider.Dispose refuses services that implement only IAsyncDisposable; DisposeAsync handles both
+        // kinds and completes synchronously when no service needs to wait
+        _services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
         GC.SuppressFinalize(this);
     }
 
     /// <summary>
-    /// The controller and view created in one navigation cycle. They are created with
-    /// <see cref="ActivatorUtilities"/>, so the scope does not own them; this disposes them at the end of the cycle.
+    /// Disposes the root service provider and every singleton service it created, asynchronously.
     /// </summary>
-    private sealed class CycleInstances : IDisposable
+    /// <returns>A task that completes when everything is disposed.</returns>
+    /// <example><code>await using var app = builder.Build();</code></example>
+    public async ValueTask DisposeAsync()
     {
-        private readonly List<IDisposable> _disposables = [];
-
-        /// <summary>Remembers <paramref name="instance"/> for disposal when it is <see cref="IDisposable"/>.</summary>
-        public T Track<T>(T instance)
-        {
-            if (instance is null)
-                return instance;
-
-            if (instance is IDisposable disposable)
-                _disposables.Add(disposable);
-
-            return instance;
-        }
-
-        /// <summary>Disposes the tracked instances, most recent first.</summary>
-        public void Dispose()
-        {
-            for (var i = _disposables.Count - 1; i >= 0; i--)
-                _disposables[i].Dispose();
-        }
+        await _services.DisposeAsync().ConfigureAwait(false);
+        GC.SuppressFinalize(this);
     }
 }

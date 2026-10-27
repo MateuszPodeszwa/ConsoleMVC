@@ -1,27 +1,29 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.3: tables, form inputs and menus. See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.9: C-View Markup 1.0 with column layouts and themes, on top of partial views (1.7), live reload (1.8), async actions and middleware (1.6), dependency injection (1.5) and form validation (1.4). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
-ConsoleMVC brings the **Controller-ViewModel** pattern to console apps — with convention-based routing, reflection-based auto-discovery, and a Razor-like view engine powered by a C# source generator. If you've built ASP.NET Core MVC apps before, you already know how to use ConsoleMVC.
+ConsoleMVC brings the **Controller-ViewModel** pattern to console apps, with convention-based routing, reflection-based auto-discovery, and a Razor-like view engine powered by a C# source generator. If you've built ASP.NET Core MVC apps before, you already know how to use ConsoleMVC.
 
 ## Why ConsoleMVC?
 
 Console applications often end up as unstructured, hard-to-maintain code. UI frameworks like Spectre.Console help with presentation, but they don't solve the underlying architectural problem. ConsoleMVC provides:
 
-- **Separation of concerns** — Controllers handle logic, Views handle rendering, Models carry data
-- **Convention over configuration** — Controllers and Views are auto-discovered at startup via reflection
-- **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — the same patterns from ASP.NET Core MVC
-- **Razor-like view engine** — `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
-- **C-View Markup** — declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
-- **Partial views** — reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time
-- **Declarative input and navigation** — `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
-- **Safe by default** — model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
-- **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
-- **Validation** — posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
-- **Dependency injection** — register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
-- **Async actions and middleware** — actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
+- **Separation of concerns**: Controllers handle logic, Views handle rendering, Models carry data
+- **Convention over configuration**: Controllers and Views are auto-discovered at startup via reflection
+- **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, the same patterns from ASP.NET Core MVC
+- **Razor-like view engine**: `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
+- **C-View Markup**: declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
+- **Partial views**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time
+- **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
+- **Declarative input and navigation**: `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
+- **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
+- **Validation**: posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
+- **Dependency injection**: register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
+- **Async actions and middleware**: actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
+- **Live reload**: run `dotnet watch` and edits to views and controllers appear from the next screen, without restarting
 
 ## Getting Started
 
@@ -125,7 +127,7 @@ public class HomeController : Controller
 }
 ```
 
-Any public method that returns `ActionResult` is an action. Mark helper methods with `[NonAction]` to keep them out of navigation. Action names are matched case-insensitively and must be unique (overloads are not supported).
+Any public method that returns `ActionResult` (or `Task<ActionResult>` / `ValueTask<ActionResult>`) is an action, and constructor parameters are supplied from `builder.Services`. Mark helper methods with `[NonAction]` to keep them out of navigation. Action names are matched case-insensitively and must be unique (overloads are not supported).
 
 **Available methods:**
 
@@ -133,12 +135,14 @@ Any public method that returns `ActionResult` is an action. Mark helper methods 
 |--------|-------------|
 | `View(model)` | Renders the view matching the current action, passing the model |
 | `View()` | Renders the view without a model |
+| `View("Action")` / `View("Action", model)` | Renders another action's view, e.g. a form again after validation fails |
+| `TryValidateModel(model)` | Validates an object built in code |
 | `RedirectToAction("action")` | Navigates to a different action on the same controller |
 | `RedirectToAction("action", "controller")` | Navigates to an action on a different controller |
 
 ### Views (`.cvw` files)
 
-Views use the `.cvw` (Console View) file format — plain C# code with an `@model` directive at the top. No class boilerplate, no inheritance, no interface implementation. The source generator compiles them into proper `ConsoleView<TModel>` classes at build time.
+Views use the `.cvw` (Console View) file format, plain C# code with an `@model` directive at the top. No class boilerplate, no inheritance, no interface implementation. The source generator compiles them into proper `ConsoleView<TModel>` classes at build time.
 
 ```
 @model MyApp.Models.HomeViewModel
@@ -161,13 +165,30 @@ return input switch
 
 | Directive | Purpose |
 |-----------|---------|
-| `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional — defaults to `object`. |
+| `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional; defaults to `object`. |
 | `@using Namespace` | Adds a `using` statement to the generated class. |
 | `@inject Type Name` | Declares a property filled from the application's services (see [Dependency Injection](#dependency-injection)). |
 
+#### Layout and Themes
+
+`<columns>` places content side by side and stacks it on narrow terminals; `class` applies named styles from the application's theme:
+
+```
+<columns gap="2" stack-below="60">
+    <column width="30%"><box class="panel" title="Menu"><text>[1] Orders</text></box></column>
+    <column><text class="title">Orders</text><text class="muted">@Model.Summary</text></column>
+</columns>
+```
+
+```csharp
+builder.Theme.Set("brand", new ThemeStyle { Foreground = Colour.Magenta, Bold = true });
+```
+
+The default theme defines `title`, `muted`, `success`, `warning`, `danger`, `info` and `panel`. Boxes and tables also accept `min-width` and `max-width`. See [Themes](docs/guides/docs/c-view-markup.md#themes-and-class) and [columns](docs/guides/docs/c-view-markup.md#columns-and-column).
+
 #### Partial Views
 
-Markup used by several views — a header, a footer, a group of form fields — goes in a partial view, `Views/Shared/{Name}.cvw`, and is rendered with `<partial>`:
+Markup used by several views (a header, a footer, a group of form fields) goes in a partial view, `Views/Shared/{Name}.cvw`, and is rendered with `<partial>`:
 
 ```
 @* Views/Shared/PageHeader.cvw *@
@@ -188,7 +209,7 @@ Markup used by several views — a header, a footer, a group of form fields — 
 
 **C-View Markup:**
 
-Instead of formatting output and reading input by hand, views can describe the screen with markup. Markup and C# mix freely — top-level elements run in source order, and `@` switches back to C# inside an element:
+Instead of formatting output and reading input by hand, views can describe the screen with markup. Markup and C# mix freely: top-level elements run in source order, and `@` switches back to C# inside an element:
 
 ```
 @model MyApp.Models.HomeViewModel
@@ -230,7 +251,7 @@ Mistakes such as an unknown attribute or a missing closing tag are build errors 
 
 **Navigation from views:**
 
-Every view must return a `NavigationResult` to tell the framework what to do next — either from C#, or by ending with a `<menu>`:
+Every view must return a `NavigationResult` to tell the framework what to do next, either from C#, or by ending with a `<menu>`:
 
 | Method | Description |
 |--------|-------------|
@@ -242,9 +263,9 @@ Every view must return a `NavigationResult` to tell the framework what to do nex
 
 ### Form Data Posting
 
-Views can collect user input and post it to a controller action — just like HTML forms in web MVC. The framework binds the posted values to the target action's method parameters automatically.
+Views can collect user input and post it to a controller action, just like HTML forms in web MVC. The framework binds the posted values to the target action's method parameters automatically.
 
-**Collecting input with `<input>`** — `Views/Greet/IndexView.cvw`:
+**Collecting input with `<input>`**: `Views/Greet/IndexView.cvw`:
 ```
 @model object
 
@@ -256,7 +277,7 @@ return NavigationResult.ToAction("Result", Form);
 
 Each `<input>` stores its value in the view's `Form` dictionary under its `name`. Use `required` to re-prompt until a value is entered, `default` for a fallback value and `masked` for passwords. A menu option marked `post` sends the `Form` too: `<option key="s" nav="Result" post>Submit</option>`.
 
-**Collecting input in C#** — any `Dictionary<string, string>` can be posted, so plain C# views keep working:
+**Collecting input in C#**: any `Dictionary<string, string>` can be posted, so plain C# views keep working:
 ```
 @model object
 
@@ -310,7 +331,7 @@ public class GreetController : Controller
 
 #### Simple Parameter Binding
 
-Bind form data directly to individual method parameters by name — useful when you don't need a model class:
+Bind form data directly to individual method parameters by name, which is useful when you don't need a model class:
 
 ```
 @model object
@@ -376,7 +397,7 @@ The model binder converts string values from the form data dictionary to the fol
 | Nullable variants (`int?`, `bool?`, etc.) | Empty string → `null` |
 | Complex types (classes with properties) | Properties populated by name |
 
-Key matching is **case-insensitive** — a form data key `"name"` binds to a parameter `Name` or a property `Name`.
+Key matching is **case-insensitive**: a form data key `"name"` binds to a parameter `Name` or a property `Name`.
 
 When a key is missing or the value can't be converted, the parameter receives its default value (`null` for reference types, `0` for numeric types, `false` for `bool`, etc.). A value that can't be converted is also reported in `ModelState` (see below).
 
@@ -384,7 +405,7 @@ Numbers and dates are parsed with the invariant culture (`1.5`, `2026-10-27`), s
 
 ### Validation
 
-Posted form data is validated **before the action runs**, using the standard `System.ComponentModel.DataAnnotations` attributes — on model properties or directly on action parameters. Check `ModelState.IsValid` and show the form again when it is not, exactly as in ASP.NET Core MVC:
+Posted form data is validated **before the action runs**, using the standard `System.ComponentModel.DataAnnotations` attributes, on model properties or directly on action parameters. Check `ModelState.IsValid` and show the form again when it is not, exactly as in ASP.NET Core MVC:
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
@@ -533,9 +554,13 @@ await app.RunAsync();
 
 Views render after the pipeline. See the [guide](docs/guides/docs/async-and-middleware.md) and the [design](docs/design/async-and-middleware.md).
 
+### Live Reload
+
+Run `dotnet watch` in the project folder. Edits to `.cvw` views, controllers and models are applied to the running application and show from the next screen; newly added controllers and views are discovered after each update, so they are routable without a restart. See [Live reload](docs/guides/docs/getting-started.md#live-reload).
+
 ### Conventions
 
-ConsoleMVC uses naming conventions to wire everything together — no manual registration required:
+ConsoleMVC uses naming conventions to wire everything together, with no manual registration required:
 
 | Convention | Example |
 |------------|---------|
@@ -549,7 +574,7 @@ ConsoleMVC uses naming conventions to wire everything together — no manual reg
 
 ### Models
 
-Models are simple DTOs (Data Transfer Objects) — plain C# classes with properties:
+Models are simple DTOs (Data Transfer Objects), plain C# classes with properties:
 
 ```csharp
 namespace MyApp.Models;
@@ -617,7 +642,7 @@ Add to `settings.json`:
 
 To add a new page, follow these three steps:
 
-**1. Create the Model** — `Models/ContactViewModel.cs`
+**1. Create the Model**: `Models/ContactViewModel.cs`
 ```csharp
 namespace MyApp.Models;
 
@@ -627,7 +652,7 @@ public class ContactViewModel
 }
 ```
 
-**2. Add the Controller Action** — in an existing or new controller
+**2. Add the Controller Action**: in an existing or new controller
 ```csharp
 public ActionResult Contact()
 {
@@ -636,7 +661,7 @@ public ActionResult Contact()
 }
 ```
 
-**3. Create the View** — `Views/Home/ContactView.cvw`
+**3. Create the View**: `Views/Home/ContactView.cvw`
 ```
 @model MyApp.Models.ContactViewModel
 
@@ -647,7 +672,7 @@ Console.ReadKey();
 return NavigationResult.To("Home", "Index");
 ```
 
-Build and run — the new page is automatically discovered and routable.
+Build and run: the new page is automatically discovered and routable.
 
 ## Configuration
 
@@ -661,6 +686,7 @@ builder.ClearScreenBetweenViews = false;        // Default: true
 builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
 builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
 builder.Input = ConsoleTextInput.Instance;              // Default: the console
+builder.Theme.Set("brand", new ThemeStyle { Bold = true }); // Default: Theme.CreateDefault()
 builder.Services.AddSingleton<IClock, SystemClock>();   // Your services
 using var app = builder.Build();
 app.Run();
@@ -670,10 +696,24 @@ app.Run();
 |--------|---------|
 | `DefaultController` / `DefaultAction` | The first route to run |
 | `Services` | Services for controller constructors and `@inject` (see [Dependency Injection](#dependency-injection)) |
+| `Theme` | Named styles used by `class="…"` in markup (see [Layout and Themes](#layout-and-themes)) |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests |
 | `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output. Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
+
+## Roadmap
+
+The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
+
+- **Layout views** that frame every screen, and **navigation history** with a "back" key and breadcrumbs
+- **Route values** in navigation (`nav="Orders/Details?id=@order.Id"`) and **compile-time route checks**
+- **More inputs** (`<select>`, `<checkbox>`, `<radio>`) with arrow-key selection
+- **Hosting integration** (configuration and logging) and a **`ConsoleMVC.Testing`** package for snapshot tests
+- **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
+- **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
+
+Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszwa/ConsoleMVC/issues).
 
 ## Package Information
 
@@ -744,34 +784,58 @@ dotnet test ConsoleMVC.sln
 
 **1. Bump version numbers** in both `.csproj` files:
 
-- `src/ConsoleMVC/ConsoleMVC.csproj` — update `<Version>`
-- `ConsoleMVC.Template.csproj` — update `<Version>`
+- `src/ConsoleMVC/ConsoleMVC.csproj`: update `<Version>`
+- `ConsoleMVC.Template.csproj`: update `<Version>`
 
 If the template references a new framework version, also update the `<PackageReference>` version in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj`.
 
-**2. Pack both packages:**
+**2. Merge to `main`.** The [Publish packages](.github/workflows/publish.yml) workflow notices that the version has no `vX.Y.Z` tag yet and:
+
+- checks that both `<Version>` values and the template's framework reference agree;
+- builds with `-warnaserror` and runs every test;
+- packs `ConsoleMVC.Framework` and `ConsoleMVC.Template`;
+- pushes them to **NuGet.org** with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key: GitHub issues a short-lived token that nuget.org exchanges for a one-hour key) and to **GitHub Packages** with the built-in `GITHUB_TOKEN`;
+- creates the GitHub release `vX.Y.Z` with this version's section of `CHANGELOG.md` and the `.nupkg` files attached.
+
+Publishing a release by hand, or **Actions → Publish packages → Run workflow**, publishes the declared version too; versions already on NuGet.org are skipped.
+
+**One-time setup on nuget.org:** open your profile → **Trusted Publishing** → add a policy for the packages' owner with:
+
+| Field | Value |
+|---|---|
+| Repository Owner | `MateuszPodeszwa` |
+| Repository | `ConsoleMVC` |
+| Workflow File | `publish.yml` |
+| Environment | `release` |
+| Glob patterns and packages | `ConsoleMVC.Framework` and `ConsoleMVC.Template` (one per line), or `ConsoleMVC.*` to cover future packages |
+| Scope | Push new versions of existing packages (with `ConsoleMVC.*`, also push new packages) |
+
+The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repository variable `NUGET_USER` to use another account. GitHub creates the `release` environment on the first run; add required reviewers to it under **Settings → Environments** if you want to approve each release.
+
+**To publish manually** instead:
 
 ```bash
 dotnet pack src/ConsoleMVC/ConsoleMVC.csproj -c Release -o nupkg
 dotnet pack ConsoleMVC.Template.csproj -c Release -o nupkg
+dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org   # a key from nuget.org/account/apikeys
+dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_GITHUB_TOKEN --source https://nuget.pkg.github.com/MateuszPodeszwa/index.json
 ```
 
-**3. Publish to NuGet.org:**
+**3. Verify** the packages appear on your [NuGet.org profile](https://www.nuget.org/profiles/MateuszPodeszwa) and under the repository's **Packages**.
+
+**Installing from GitHub Packages** needs a personal access token with `read:packages`:
 
 ```bash
-dotnet nuget push "nupkg/ConsoleMVC.Framework.X.Y.Z.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org
-dotnet nuget push "nupkg/ConsoleMVC.Template.X.Y.Z.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org
+dotnet nuget add source https://nuget.pkg.github.com/MateuszPodeszwa/index.json \
+    --name github --username YOUR_GITHUB_USERNAME --password YOUR_TOKEN
+dotnet add package ConsoleMVC.Framework --source github
 ```
-
-Replace `X.Y.Z` with the new version number and `YOUR_NUGET_API_KEY` with an API key from your [nuget.org account](https://www.nuget.org/account/apikeys).
-
-**4. Verify** the packages appear on your [NuGet.org profile](https://www.nuget.org/profiles/MateuszPodeszwa).
 
 ### Updating the Template
 
 When modifying the template content (files in `templates/ConsoleMVC.App/`):
 
-- All namespaces in template files must use `ConsoleMVC.App` — this is the `sourceName` in `template.json` and gets replaced with the user's project name at scaffolding time
+- All namespaces in template files must use `ConsoleMVC.App`: this is the `sourceName` in `template.json` and gets replaced with the user's project name at scaffolding time
 - The `@model` directives in `.cvw` files must also use `ConsoleMVC.App.Models.ClassName`
 - After changes, repack and republish the `ConsoleMVC.Template` package
 
@@ -779,7 +843,7 @@ When modifying the template content (files in `templates/ConsoleMVC.App/`):
 
 When modifying the source generator (`src/ConsoleMVC.Generators`):
 
-- The generator targets `netstandard2.0` — avoid APIs not available in that target
+- The generator targets `netstandard2.0`: avoid APIs not available in that target
 - To add a markup element, add its runtime class under `src/ConsoleMVC/Rendering/Elements` and register it in `Schema/MarkupSchema.cs`; add a rendering test in `ConsoleMVC.Generators.Tests`
 - New diagnostics need an entry in `AnalyzerReleases.Unshipped.md`
 - `Environment.NewLine` and similar banned symbols cannot be used (Roslyn analyzer restriction)
@@ -793,4 +857,4 @@ Follow [SemVer](https://semver.org/):
 - **Minor** (1.x.0): New features, new base class methods, backward-compatible additions
 - **Major** (x.0.0): Breaking changes to the public API (Controller, ConsoleView, NavigationResult, etc.)
 
-Keep both packages' versions in sync — when the framework version bumps, update the template's `PackageReference` and bump the template version too.
+Keep both packages' versions in sync: when the framework version bumps, update the template's `PackageReference` and bump the template version too.

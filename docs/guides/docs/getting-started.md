@@ -37,7 +37,7 @@ MyApp/
 └── Program.cs
 ```
 
-Controllers inherit from `Controller` and expose public methods that return `ActionResult`; parameters are bound from form data posted by views. Views are `.cvw` files that declare their model type with an `@model` directive and contain C# code, optionally mixed with [C-View Markup](c-view-markup.md) elements such as `<box>` and `<text>`, that renders output to the console. Services registered in `Program.cs` reach controllers through their constructors and views through `@inject` — see [Dependency Injection](dependency-injection.md).
+Controllers inherit from `Controller` and expose public methods that return `ActionResult`; parameters are bound from form data posted by views. Views are `.cvw` files that declare their model type with an `@model` directive and contain C# code, optionally mixed with [C-View Markup](c-view-markup.md) elements such as `<box>` and `<text>`, that renders output to the console. Services registered in `Program.cs` reach controllers through their constructors and views through `@inject`: see [Dependency Injection](dependency-injection.md).
 
 ## Running Your Application
 
@@ -48,3 +48,16 @@ dotnet run
 ```
 
 The framework boots, resolves the default route (`Home/Index` unless you configure otherwise via `MvcApplicationBuilder`), and enters the MVC event loop. From there, views can return navigation results that direct the framework to other controller actions or signal that the application should exit.
+
+## Live reload
+
+Run the application with `dotnet watch` while you work:
+
+```bash
+dotnet watch
+```
+
+Saving a `.cvw` view, a controller or a model applies the change to the running application (.NET hot reload). The change shows from the next screen: navigate away and back, or answer the current prompt. After each update the framework rediscovers controllers and views, so a page you have just added is routable without restarting. Edits that hot reload cannot apply (for example changing a view's `@model` type) make `dotnet watch` offer a restart; press Ctrl+R to restart at any time.
+
+!!! note
+    A view that is waiting for input keeps its old version until the user answers, because the console cannot be redrawn in the middle of a prompt.

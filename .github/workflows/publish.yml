@@ -1,0 +1,151 @@
+name: Publish packages
+
+# Publishes ConsoleMVC.Framework and ConsoleMVC.Template to NuGet.org and GitHub Packages.
+#
+# Runs automatically when a version bump reaches main: if the <Version> in the .csproj files has no vX.Y.Z tag yet, the
+# packages are built, tested, published, and a GitHub release vX.Y.Z is created with the notes from CHANGELOG.md.
+# Publishing a release by hand, or running the workflow from the Actions tab, publishes that version too.
+#
+# NuGet.org uses Trusted Publishing (https://learn.microsoft.com/nuget/nuget-org/trusted-publishing): GitHub issues a
+# short-lived OIDC token, which NuGet/login exchanges for an API key valid for one hour. No API key is stored.
+# One-time setup on nuget.org: your profile → Trusted Publishing → add a policy with
+#   Repository Owner: MateuszPodeszwa   Repository: ConsoleMVC   Workflow File: publish.yml   Environment: release
+#   Packages: ConsoleMVC.Framework and ConsoleMVC.Template (or the glob ConsoleMVC.*)
+# GitHub Packages uses the built-in GITHUB_TOKEN.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/ConsoleMVC/ConsoleMVC.csproj
+      - ConsoleMVC.Template.csproj
+      - .github/workflows/publish.yml   # so the first merge of this workflow publishes the current version
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Decide what to publish
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags, to tell whether this version was already released
+
+      - name: Read and check the version
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          declared() { sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$1" | head -n 1; }
+          version=$(declared src/ConsoleMVC/ConsoleMVC.csproj)
+
+          if [ "$(declared ConsoleMVC.Template.csproj)" != "$version" ]; then
+            echo "::error::ConsoleMVC.Template.csproj and ConsoleMVC.csproj declare different versions"
+            exit 1
+          fi
+          if ! grep -q "Include=\"ConsoleMVC.Framework\" Version=\"$version\"" templates/ConsoleMVC.App/ConsoleMVC.App.csproj; then
+            echo "::error::The template does not reference ConsoleMVC.Framework $version"
+            exit 1
+          fi
+          if [ -n "$RELEASE_TAG" ] && [ "${RELEASE_TAG#v}" != "$version" ]; then
+            echo "::error::The release is $RELEASE_TAG, but the projects declare version $version"
+            exit 1
+          fi
+
+          publish=true
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "v$version is already released; nothing to publish"
+            publish=false
+          fi
+
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish ${{ needs.check.outputs.version }}
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment: release   # matches the nuget.org Trusted Publishing policy; add protection rules here if wanted
+    permissions:
+      contents: write      # create the release and attach the packages
+      packages: write      # push to GitHub Packages
+      id-token: write      # request the OIDC token for NuGet Trusted Publishing
+    env:
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore ConsoleMVC.sln
+
+      - name: Build
+        run: dotnet build ConsoleMVC.sln --configuration Release --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test ConsoleMVC.sln --configuration Release --no-build
+
+      - name: Pack
+        run: |
+          dotnet pack src/ConsoleMVC/ConsoleMVC.csproj --configuration Release --no-build --output nupkg
+          dotnet pack ConsoleMVC.Template.csproj --configuration Release --output nupkg
+
+      # Requested just before the push: the temporary key is valid for one hour and each token gives one key
+      - name: NuGet login (Trusted Publishing)
+        id: nuget
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER || 'MateuszPodeszwa' }}   # nuget.org profile name, not an e-mail address
+
+      - name: Push to NuGet.org
+        run: >
+          dotnet nuget push "nupkg/*.nupkg"
+          --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: Push to GitHub Packages
+        run: >
+          dotnet nuget push "nupkg/*.nupkg"
+          --api-key "${{ secrets.GITHUB_TOKEN }}"
+          --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          --skip-duplicate
+
+      - name: Create or update the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          tag="v$VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" nupkg/*.nupkg --clobber
+          else
+            # The release notes are this version's section of CHANGELOG.md
+            awk -v version="$VERSION" '
+              $0 ~ "^## \\[" version "\\]" { found = 1; next }
+              /^## \[/ { if (found) exit }
+              found' CHANGELOG.md > release-notes.md
+            gh release create "$tag" nupkg/*.nupkg --target "$GITHUB_SHA" --title "ConsoleMVC $VERSION" --notes-file release-notes.md
+          fi

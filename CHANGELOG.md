@@ -2,6 +2,56 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.9.0]
+
+### Added
+
+- **C-View Markup 1.0** ([design](docs/design/c-view-markup-1.0.md), [guide](docs/guides/docs/c-view-markup.md)):
+  - `<columns>` / `<column>`: side-by-side layout with fixed, percentage and auto widths, `gap`, and `stack-below`
+    to stack the columns on narrow terminals (`ColumnsElement`, `ColumnElement`).
+  - Themes: `class="…"` on `<text>`, `<cell>`, `<option>`, `<box>`, `<table>`, `<separator>` and `<errors>` applies
+    named styles from `MvcApplicationBuilder.Theme` (`Theme`, `ThemeStyle`; `Theme.CreateDefault()` defines `title`,
+    `muted`, `success`, `warning`, `danger`, `info` and `panel`). `ConsoleViewBase.Theme` is shared with partials.
+  - `min-width` and `max-width` on `<box>` and `<table>` (`MinWidth` / `MaxWidth`).
+- The template's feature tour uses columns and theme classes.
+- `MvcApplication` implements `IAsyncDisposable` (`await using var app = builder.Build();`).
+- A release workflow publishes both packages to NuGet.org (with Trusted Publishing, so no API key is stored) and
+  GitHub Packages whenever a new version reaches `main`, and creates the GitHub release with its changelog section.
+- Guides for controllers and forms, validation, and configuration and testing.
+
+### Changed
+
+- Controllers or views with the same name in different namespaces now fail with a message naming both, instead of
+  one silently replacing the other.
+- `Theme.Empty` returns a new theme on each access.
+- Text widths are measured per user-perceived character: emoji with `U+FE0F`, skin tones, flags and ZWJ sequences
+  (👨‍👩‍👧) occupy two columns and are never split when wrapping or truncating.
+
+### Fixed
+
+- `<!-- comments -->` at the top level of a view are ignored instead of being compiled as C#.
+- `<separator>text</separator>` and other void elements with content report CVW103 instead of C# errors.
+- `@inject` rejects names that hide view members (`Theme`, `PreparePartial`, …), allows trailing comments, and maps
+  the property name to its column.
+- A literal `model` or `class` of the wrong type is reported at the attribute.
+- `Views/shared` (any case) holds partials; clashing, misnamed or broken partials no longer cause compiler errors
+  in the views that use them; a partial named `Render` reports CVW009.
+- Columns inside an auto-width box no longer stack on a wide terminal.
+- `Dispose` no longer throws for services that implement only `IAsyncDisposable`; controllers and views that implement
+  only `IAsyncDisposable`, class middleware created per cycle, and every controller created by a retrying middleware
+  are disposed.
+- `RunAsync` can run again after finishing or being cancelled before it started.
+- Array action parameters bind `null` again instead of throwing.
+- Hot reload refreshes the cached `@inject` properties of edited views.
+
+## [1.8.0]
+
+### Added
+
+- **Live reload** ([guide](docs/guides/docs/getting-started.md#live-reload)): `.cvw` files are watched by
+  `dotnet watch`, and after each hot reload update the application rediscovers controllers and views before the next
+  screen, so new pages are routable without a restart.
+
 ## [1.7.0]
 
 ### Added
@@ -30,7 +80,7 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   `ActionResult` type; `CancellationToken` parameters receive the run's token.
 - `MvcApplication.RunAsync(CancellationToken)`; `Run()` waits for it.
 - **Middleware**: `MvcApplication.Use(...)` and `UseMiddleware<T>()` with `ActionContext`, `ActionDelegate` and
-  `IActionMiddleware` — wrap, replace or short-circuit actions and handle their exceptions.
+  `IActionMiddleware`: wrap, replace or short-circuit actions and handle their exceptions.
 - `RouteContext.ToString()` returns `Controller/Action`.
 - The template's `Program.cs` uses `RunAsync` and a middleware that shows the current page in the terminal title.
 
@@ -60,7 +110,7 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 ### Added
 
 - **Form validation** ([design](docs/design/form-validation.md)): posted form data is validated with the standard
-  DataAnnotations attributes before the action runs — on model properties (including `IValidatableObject`) and on
+  DataAnnotations attributes before the action runs, on model properties (including `IValidatableObject`) and on
   simple action parameters.
 - `ModelStateDictionary` (`Controller.ModelState`, `ConsoleView.ModelState`) with `IsValid`, `AddModelError`,
   `ErrorsFor` and `Clear`.
@@ -93,11 +143,11 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 ### Added
 
 - **C-View Markup v0.2** ([design](docs/design/c-view-markup-0.2.md), [guide](docs/guides/docs/c-view-markup.md)):
-  - `<table>`, `<row>` and `<cell>` — columns sized to the content; the widest columns shrink and wrap when the
+  - `<table>`, `<row>` and `<cell>`: columns sized to the content; the widest columns shrink and wrap when the
     terminal is narrow; header rows in bold with a separator.
-  - `<input>` — reads a value into the view's new `Form` dictionary, with `label`, `default`, `required` and
+  - `<input>`: reads a value into the view's new `Form` dictionary, with `label`, `default`, `required` and
     `masked` (password) options.
-  - `<menu>` and `<option>` — shows keyed choices, re-prompts on invalid input and navigates (`nav`, `quit`, `post`).
+  - `<menu>` and `<option>`: shows keyed choices, re-prompts on invalid input and navigates (`nav`, `quit`, `post`).
     A menu ends the view, so no `return` is needed; at end of input it quits instead of waiting forever.
 - `ConsoleView.Form`, `ConsoleView.Input`, `ReadInput()` and `RunMenu()`.
 - `ITextInput` and `ConsoleTextInput` (masked reading never echoes input); `MvcApplicationBuilder.Input` for
@@ -118,13 +168,13 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 
 ### Added
 
-- **C-View Markup v0.1** — `<text>`, `<box>`, `<separator>` and `<br>` elements in `.cvw` views, with `@expressions`,
+- **C-View Markup v0.1**: `<text>`, `<box>`, `<separator>` and `<br>` elements in `.cvw` views, with `@expressions`,
   `@(explicit expressions)`, `@{ code blocks }`, `@if`/`@foreach`/`@for`/`@while`/`@switch`/`@do`/`@try`, comments and
   character entities. Plain-C# views are unaffected. See [the guide](docs/guides/docs/c-view-markup.md).
-- **Rendering engine** (`ConsoleMVC.Rendering`) — independent of the MVC layer: colours (16 console colours, hex true
+- **Rendering engine** (`ConsoleMVC.Rendering`), independent of the MVC layer: colours (16 console colours, hex true
   colour), borders, alignment, word wrapping, Unicode-aware widths, ANSI / plain-text / legacy Windows console targets,
   and automatic detection of `NO_COLOR`, `COLORTERM`, redirected output and terminal width.
-- **Output sanitisation** — values written through markup cannot inject escape sequences or bidirectional overrides.
+- **Output sanitisation**: values written through markup cannot inject escape sequences or bidirectional overrides.
 - **Compile-time diagnostics** CVW001–CVW108 for markup and view placement mistakes, reported in the `.cvw` file.
 - `#line` mapping: C# errors inside views point at the `.cvw` line and column.
 - `MvcApplicationBuilder.ApplicationAssembly`, `Renderer` and `ClearScreenBetweenViews`.

@@ -1,11 +1,12 @@
 @model ConsoleMVC.App.Models.FeaturesViewModel
 
-<box title="C-View Markup elements" border="rounded" color="cyan">
+@* class="…" applies a named style from the theme (builder.Theme); "panel" is a rounded cyan box *@
+<box title="C-View Markup elements" class="panel" padding="1">
     <text>Tables size their columns to the content and wrap when the terminal is narrow.</text>
 </box>
 <br />
 
-<table border="rounded" color="darkgrey">
+<table border="rounded" color="darkgrey" max-width="100">
     <row header>
         <cell>Element</cell>
         <cell>Purpose</cell>
@@ -13,11 +14,24 @@
     @foreach (var feature in Model.Features)
     {
         <row>
-            <cell color="cyan">@feature.Element</cell>
+            <cell class="title">@feature.Element</cell>
             <cell>@feature.Purpose</cell>
         </row>
     }
 </table>
+<br />
+
+@* <columns> places content side by side, and stacks it when the terminal is narrower than stack-below *@
+<columns gap="4" stack-below="60">
+    <column width="50%">
+        <text class="success">Side by side</text>
+        <text class="muted">Columns share the width; auto columns use what their content needs.</text>
+    </column>
+    <column>
+        <text class="warning">Responsive</text>
+        <text class="muted">Make the terminal narrower than 60 columns and they stack.</text>
+    </column>
+</columns>
 <br />
 
 <menu key-color="cyan">

@@ -93,6 +93,20 @@ public class MvcApplicationBuilder
     public IServiceCollection Services { get; } = new ServiceCollection();
 
     /// <summary>
+    /// Gets or sets the theme: named styles that markup elements use through their <c>class</c> attribute
+    /// (<c>&lt;text class="title"&gt;</c>).
+    /// </summary>
+    /// <value>Defaults to <see cref="Theme.CreateDefault"/>, which defines <c>title</c>, <c>muted</c>, <c>success</c>,
+    /// <c>warning</c>, <c>danger</c>, <c>info</c> and <c>panel</c>.</value>
+    /// <example>
+    /// <code>
+    /// builder.Theme.Set("brand", new ThemeStyle { Foreground = Colour.Magenta, Bold = true });
+    /// builder.Theme = Theme.Empty; // or start from nothing
+    /// </code>
+    /// </example>
+    public Theme Theme { get; set; } = Theme.CreateDefault();
+
+    /// <summary>
     /// Gets or sets whether the screen is cleared before each view renders.
     /// </summary>
     /// <value>Defaults to <see langword="true"/>.</value>
@@ -127,6 +141,8 @@ public class MvcApplicationBuilder
             services.AddSingleton(Renderer); // the last registration wins
         else
             services.TryAddSingleton<IMarkupRenderer>(_ => MarkupRenderer.CreateForConsole());
+
+        services.AddSingleton(Theme ?? Theme.Empty);
 
         if (Input is not null)
             services.AddSingleton(Input);

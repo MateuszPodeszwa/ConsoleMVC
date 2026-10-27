@@ -10,6 +10,11 @@
         <CompilerVisibleProperty Include="RootNamespace" />
     </ItemGroup>
 
+    <!-- dotnet watch: rebuild or hot reload when a .cvw view changes (views are AdditionalFiles, which it does not watch) -->
+    <ItemGroup>
+        <Watch Include="Views/**/*.cvw" />
+    </ItemGroup>
+
     <!-- IDE (Visual Studio / Rider) fast up-to-date check: treat .cvw edits as build inputs -->
     <ItemGroup>
         <UpToDateCheckInput Include="Views/**/*.cvw" />

@@ -36,7 +36,8 @@ internal static class CvwDocumentParser
     /// </summary>
     private static readonly string[] ReservedInjectNames =
     [
-        "Model", "ViewData", "ModelState", "Renderer", "Input", "Form", "Render", "RenderInternal", "ReadInput", "RunMenu"
+        "Model", "ViewData", "ModelState", "Renderer", "Input", "Form", "Theme", "Services", "Render", "RenderInternal",
+        "ReadInput", "RunMenu", "PreparePartial", "Equals", "GetHashCode", "GetType", "ToString", "MemberwiseClone"
     ];
 
     /// <summary>Identifiers starting with this prefix are reserved for generated code.</summary>
@@ -167,7 +168,12 @@ internal static class CvwDocumentParser
                 lineStart + line.IndexOf(InjectDirectiveName, StringComparison.Ordinal) + InjectDirectiveName.Length))
             : ReadArgument(text, lineStart, line, InjectDirectiveName);
 
+        // A trailing // or @* *@ comment is not part of the declaration (types never contain either)
         var value = argument.Value;
+        var comment = IndexOfComment(value);
+        if (comment >= 0)
+            value = value.Substring(0, comment).TrimEnd().TrimEnd(';').TrimEnd();
+
         var split = value.Length - 1;
         while (split >= 0 && !char.IsWhiteSpace(value[split]))
             split--;
@@ -201,6 +207,14 @@ internal static class CvwDocumentParser
         }
 
         injects.Add(new InjectDirective(type, name));
+    }
+
+    /// <summary>Returns where a <c>//</c> or <c>@*</c> comment starts in a directive argument, or -1.</summary>
+    private static int IndexOfComment(string value)
+    {
+        var line = value.IndexOf("//", StringComparison.Ordinal);
+        var razor = value.IndexOf(CommentStart, StringComparison.Ordinal);
+        return line < 0 ? razor : razor < 0 ? line : Math.Min(line, razor);
     }
 
     /// <summary>

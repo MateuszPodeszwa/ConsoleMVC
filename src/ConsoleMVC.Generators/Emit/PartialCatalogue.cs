@@ -17,12 +17,22 @@ internal sealed class PartialEntry : IEquatable<PartialEntry>
     /// <param name="name">The partial's name (its file name), used in <c>&lt;partial name="…"&gt;</c>.</param>
     /// <param name="fullClassName">The generated class, e.g. <c>MyApp.Views.Shared.Header</c>.</param>
     /// <param name="modelType">The type in its <c>@model</c> directive, or <see langword="null"/> when it has none.</param>
-    public PartialEntry(string name, string fullClassName, string? modelType)
+    /// <param name="path">The file path, which decides which of two clashing partials is kept (as for CVW004).</param>
+    /// <param name="hasErrors">Whether the partial itself has errors, so no class is generated for it.</param>
+    public PartialEntry(string name, string fullClassName, string? modelType, string path = "", bool hasErrors = false)
     {
         Name = name;
         FullClassName = fullClassName;
         ModelType = modelType;
+        Path = path;
+        HasErrors = hasErrors;
     }
+
+    /// <summary>Gets the file path.</summary>
+    public string Path { get; }
+
+    /// <summary>Gets a value indicating whether the partial has errors and is therefore not generated.</summary>
+    public bool HasErrors { get; }
 
     /// <summary>Gets the partial's name.</summary>
     public string Name { get; }
@@ -35,7 +45,8 @@ internal sealed class PartialEntry : IEquatable<PartialEntry>
 
     /// <inheritdoc />
     public bool Equals(PartialEntry? other) =>
-        other is not null && Name == other.Name && FullClassName == other.FullClassName && ModelType == other.ModelType;
+        other is not null && Name == other.Name && FullClassName == other.FullClassName && ModelType == other.ModelType
+        && Path == other.Path && HasErrors == other.HasErrors;
 
     /// <inheritdoc />
     public override bool Equals(object? obj) => Equals(obj as PartialEntry);
@@ -66,7 +77,8 @@ internal sealed class PartialCatalogue : IEquatable<PartialCatalogue>
     public PartialCatalogue(IEnumerable<PartialEntry> entries)
     {
         _entries = new Dictionary<string, PartialEntry>(StringComparer.OrdinalIgnoreCase);
-        foreach (var entry in entries.OrderBy(e => e.FullClassName, StringComparer.Ordinal))
+        // The same order as the duplicate check (CVW004), so the partial kept here is the one that is generated
+        foreach (var entry in entries.OrderBy(e => e.Path, StringComparer.Ordinal))
         {
             if (!_entries.ContainsKey(entry.Name))
                 _entries[entry.Name] = entry;

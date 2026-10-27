@@ -1,6 +1,6 @@
 # C-View Markup
 
-C-View Markup is a small markup language for describing console screens inside `.cvw` views — text, boxes, tables, form inputs and menus. It compiles to plain C# at build time — there is no runtime template parsing — and it mixes freely with ordinary C# code.
+C-View Markup is a small markup language for describing console screens inside `.cvw` views: text, boxes, tables, form inputs and menus. It compiles to plain C# at build time, so there is no runtime template parsing, and it mixes freely with ordinary C# code.
 
 ```
 @model MyApp.Models.DashboardViewModel
@@ -32,7 +32,7 @@ Press Enter to continue...
 ```
 
 !!! note "Backwards compatible"
-    Views written in plain C# keep working unchanged. Markup is only recognised where a C# statement could begin — at the start of the body or after `;`, `{`, `}` or `:` — when `<` is directly followed by a known tag name. C# can never start a statement with `<`, so comparisons and generics such as `a < b` or `List<string>` are never mistaken for markup.
+    Views written in plain C# keep working unchanged. Markup is only recognised where a C# statement could begin, at the start of the body or after `;`, `{`, `}` or `:`, when `<` is directly followed by a known tag name. C# can never start a statement with `<`, so comparisons and generics such as `a < b` or `List<string>` are never mistaken for markup.
 
 ## How markup and code interact
 
@@ -82,6 +82,7 @@ A block of text that wraps to the available width.
 | `align` | `left`, `centre` (or `center`), `right` | `left` |
 | `bold`, `dim`, `italic`, `underline` | flag, or `true`/`false` | off |
 | `wrap` | `true` to word-wrap, `false` to truncate with `…` | `true` |
+| `class` | [theme](#themes-and-class) classes, separated by spaces | none |
 
 ```
 <text color="yellow" bold>Warning:</text>
@@ -100,8 +101,10 @@ A bordered panel. Its children are stacked vertically; text written directly ins
 | `padding` | columns between border and content (0–20) | `1` |
 | `color` / `colour` | border colour | terminal default |
 | `title-color` / `title-colour` | title colour | border colour |
+| `min-width` / `max-width` | column counts (0–1000) limiting the width | none |
+| `class` | [theme](#themes-and-class) classes | none |
 
-Boxes never grow wider than the terminal; content wraps to fit.
+Boxes never grow wider than the terminal; content wraps to fit. `min-width` widens a small box and `max-width` stops a `width="100%"` box growing on a wide terminal; the terminal width always wins.
 
 ### `<separator />`
 
@@ -112,6 +115,7 @@ A horizontal rule that fills its container (or the terminal at top level).
 | `style` | `single`, `double`, `heavy`, `dashed`, `ascii` | `single` |
 | `color` / `colour` | a [colour](#colours) | terminal default |
 | `width` | `auto` (fill), a column count, or a percentage | `auto` |
+| `class` | [theme](#themes-and-class) classes (the text colour is used) | none |
 
 ### `<br />`
 
@@ -156,10 +160,38 @@ A grid whose columns size themselves to the content. When the table is wider tha
 | | `padding` | blank columns on each side of every cell (0–20) | `1` |
 | | `width` | `auto`, a column count, or a percentage; a larger width widens the last column | `auto` |
 | | `color` / `colour` | grid colour | terminal default |
+| | `min-width` / `max-width` | column counts limiting the width | none |
+| | `class` | [theme](#themes-and-class) classes | none |
 | `<row>` | `header` | flag: bold cells (unless a cell sets its own decoration) followed by a separator line | off |
-| `<cell>` | same as `<text>` | `align`, `color`, `background`, `bold`, `dim`, `italic`, `underline`, `wrap` | |
+| `<cell>` | same as `<text>` | `align`, `color`, `background`, `bold`, `dim`, `italic`, `underline`, `wrap`, `class` | |
 
 A `<table>` may only contain `<row>` elements, and a `<row>` only `<cell>` elements; loops and conditions around them are fine. Rows with fewer cells are padded with empty cells.
+
+### `<columns>` and `<column>`
+
+Places content side by side. Each `<column>` holds block content, like a box without a border.
+
+```
+<columns gap="2" stack-below="60">
+    <column width="30%">
+        <box class="panel" title="Menu"><text>[1] Orders</text></box>
+    </column>
+    <column>
+        <text class="title">Orders</text>
+        <text>@Model.Summary</text>
+    </column>
+</columns>
+```
+
+| Element | Attribute | Values | Default |
+|---|---|---|---|
+| `<columns>` | `gap` | spaces between columns (0–20) | `2` |
+| | `stack-below` | a width in columns: narrower terminals stack the columns vertically | never stack |
+| `<column>` | `width` | `auto`, a column count, or a percentage of the width after the gaps | `auto` |
+
+* Fixed and percentage columns take their width first; `auto` columns use their content's natural width when it fits. Otherwise narrow columns keep their width and wide ones share the rest equally, wrapping their text.
+* Columns can be generated with `@foreach`, nested in a `<box>`, and contain any block elements, including other columns.
+* `<columns>` may only contain `<column>` elements, and `<column>` only appears inside `<columns>`.
 
 ### `<input>`
 
@@ -175,7 +207,7 @@ return NavigationResult.ToAction("Result", Form);
 
 | Attribute | Values | Default |
 |---|---|---|
-| `name` | **required** — the key in `Form` (matched case-insensitively when binding) | |
+| `name` | **required**: the key in `Form` (matched case-insensitively when binding) | |
 | `label` | the prompt written before reading | none |
 | `default` | used when the user enters nothing | empty |
 | `required` | flag: ask again until a value is entered | off |
@@ -186,7 +218,7 @@ Values are trimmed. `Form` is also available to ordinary C# in the view, for exa
 
 ### `<menu>` and `<option>`
 
-Shows keyed choices, reads the user's choice, repeats until it is valid, and navigates. A menu replaces the usual "write the options, `Console.ReadLine()`, `switch`" code, so it **ends the view** — no `return` is needed.
+Shows keyed choices, reads the user's choice, repeats until it is valid, and navigates. A menu replaces the usual "write the options, `Console.ReadLine()`, `switch`" code, so it **ends the view**: no `return` is needed.
 
 ```
 <menu key-color="cyan">
@@ -208,7 +240,7 @@ Select an option: _
 | `<menu>` | `prompt` | the prompt text | `Select an option: ` |
 | | `error` | message after an invalid choice | `Invalid choice, please try again.` |
 | | `key-color` / `key-colour` | colour of the `[key]` labels | terminal default |
-| `<option>` | `key` | **required** — what the user types (case-insensitive) | |
+| `<option>` | `key` | **required**: what the user types (case-insensitive) | |
 | | `nav` | `Controller/Action`, or `Action` on the current controller | |
 | | `quit` | flag: quit the application | |
 | | `post` | flag: post the view's `Form` with the navigation | off |
@@ -217,7 +249,7 @@ Select an option: _
 Each option needs exactly one of `nav` or `quit`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
 
 !!! note "Top level only"
-    `<input>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view — they may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
+    `<input>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
 
 ### `<errors />`
 
@@ -265,6 +297,38 @@ Renders a **partial view**: a reusable piece of markup in `Views/Shared/{Name}.c
 * Partials may use `@inject`, C# code and other partials (a partial cannot render itself: CVW116).
 * Like `<input>`, `<partial>` is written at the top level of the view (it may be inside a C# `if` or loop), not inside another element.
 
+## Themes and `class`
+
+A theme defines named styles once for the whole application; elements use them with `class`, like CSS classes:
+
+```
+<text class="title">Orders</text>
+<box class="panel" title="Summary">…</box>
+<text class="muted danger">Payment overdue</text>
+```
+
+| Built-in class | Style |
+|---|---|
+| `title` | bold cyan text |
+| `muted` | dim text |
+| `success` / `warning` / `info` | green / yellow / blue text |
+| `danger` | bold red text |
+| `panel` | rounded cyan border, padding 2 |
+
+Classes are applied in order, then the element's own attributes, so `<box class="panel" padding="0">` keeps the panel's border with no padding. Unknown class names are ignored. Text properties apply to `<text>`, `<cell>` and `<option>`; the text colour also colours `<separator>` and `<errors>`; border, padding and width properties apply to `<box>` and `<table>`.
+
+Define your own classes, or replace the built-in ones, in `Program.cs`:
+
+```csharp
+builder.Theme
+    .Set("brand", new ThemeStyle { Foreground = Colour.Magenta, Bold = true })
+    .Set("panel", new ThemeStyle { Border = BorderStyle.Double, BorderColour = Colour.Magenta, Padding = 1 });
+
+builder.Theme = Theme.Empty; // or start with no classes at all
+```
+
+`class` accepts expressions: `<text class="@(order.Late ? "danger" : "success")">`. Partials use the same theme as the view that renders them.
+
 ## Attribute values
 
 * **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute.
@@ -290,6 +354,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW006 | `@model` is declared more than once; the last one is used (warning) |
 | CVW007 | `@inject` without a type and a property name, or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
 | CVW008 | Two `@inject` directives declare the same property name |
+| CVW009 | A partial view file is named `Render`, the name of its own method |
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |
@@ -323,7 +388,7 @@ box.Add(text);
 MarkupRenderer.CreateForConsole().Render(box);
 ```
 
-To change how an application renders — for example to write plain text at a fixed width in tests — set `MvcApplicationBuilder.Renderer`. To drive it with scripted input, set `MvcApplicationBuilder.Input` to your own `ITextInput`:
+To change how an application renders (for example to write plain text at a fixed width in tests) set `MvcApplicationBuilder.Renderer`. To drive it with scripted input, set `MvcApplicationBuilder.Input` to your own `ITextInput`:
 
 ```csharp
 builder.Renderer = new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60);

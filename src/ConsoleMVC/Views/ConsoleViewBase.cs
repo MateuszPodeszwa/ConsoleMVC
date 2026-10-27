@@ -101,6 +101,27 @@ public abstract class ConsoleViewBase
         return value;
     }
 
+    /// <summary>Theme used by views created outside the application (for example in unit tests).</summary>
+    private static readonly Lazy<Theme> DefaultTheme = new(Theme.CreateDefault);
+
+    private Theme? _theme;
+
+    /// <summary>
+    /// Gets the theme whose named styles elements use through their <c>class</c> attribute. The framework assigns
+    /// <see cref="MvcApplicationBuilder.Theme"/>; views created manually use <see cref="Rendering.Theme.CreateDefault"/>.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// // Generated code for &lt;text class="title"&gt; calls:
+    /// Theme.Apply(textElement, "title");
+    /// </code>
+    /// </example>
+    public Theme Theme
+    {
+        get => _theme ??= DefaultTheme.Value;
+        internal set => _theme = value;
+    }
+
     /// <summary>
     /// Gets or sets the services of the current navigation cycle, used to fill <c>@inject</c> properties of partials.
     /// Assigned by <see cref="Router.ResolveView(string, string, IServiceProvider)"/>.
@@ -132,6 +153,7 @@ public abstract class ConsoleViewBase
         partial.Renderer = Renderer;
         partial.Input = Input;
         partial.Form = Form;
+        partial.Theme = Theme;
         partial.Services = Services;
 
         ServiceInjector.InjectProperties(partial, Services ?? NoServices.Value);

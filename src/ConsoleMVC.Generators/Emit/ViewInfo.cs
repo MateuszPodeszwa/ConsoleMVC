@@ -91,7 +91,12 @@ internal sealed class ViewInfo
         var dot = fileName.LastIndexOf('.');
         var className = dot > 0 ? fileName.Substring(0, dot) : fileName;
 
-        info = new ViewInfo(filePath, rootNamespace, parts[parts.Length - 2], className);
+        // Views/shared and Views/Shared are both the partial view folder; its namespace is always *.Views.Shared
+        var folder = parts[parts.Length - 2];
+        if (string.Equals(folder, SharedFolder, StringComparison.OrdinalIgnoreCase))
+            folder = SharedFolder;
+
+        info = new ViewInfo(filePath, rootNamespace, folder, className);
         return true;
     }
 }

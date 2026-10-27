@@ -69,6 +69,16 @@ public sealed class TableElement : Element
 {
     private readonly List<TableRowElement> _rows = [];
 
+    /// <summary>
+    /// Gets or sets the smallest width in columns, or <see langword="null"/> for none. Never exceeds the available width.
+    /// </summary>
+    /// <example><code>element.MinWidth = 30; // at least 30 columns when the terminal allows</code></example>
+    public int? MinWidth { get; set; }
+
+    /// <summary>Gets or sets the largest width in columns, or <see langword="null"/> for none.</summary>
+    /// <example><code>element.MaxWidth = 80; // a full-width element stops growing at 80 columns</code></example>
+    public int? MaxWidth { get; set; }
+
     /// <summary>Gets or sets the grid characters. Defaults to <see cref="BorderStyle.Single"/>.</summary>
     public BorderStyle Border { get; set; } = BorderStyle.Single;
 
@@ -109,7 +119,7 @@ public sealed class TableElement : Element
         if (columns == 0)
             return 0;
 
-        return Width.Resolve(maxWidth, NaturalWidths(columns).Sum() + Chrome(columns));
+        return WidthLimits.Apply(Width.Resolve(maxWidth, NaturalWidths(columns).Sum() + Chrome(columns)), MinWidth, MaxWidth, maxWidth);
     }
 
     /// <inheritdoc />

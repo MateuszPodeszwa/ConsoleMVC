@@ -40,6 +40,9 @@ public class ViewSourceGenerator : IIncrementalGenerator
     /// <summary>The namespace used when the consuming project does not define <c>RootNamespace</c>.</summary>
     private const string FallbackRootNamespace = "ConsoleMVC";
 
+    /// <summary>A partial's class cannot be named after its own <c>Render</c> method (CVW009).</summary>
+    private const string ReservedPartialName = "Render";
+
     /// <summary>
     /// Registers the source generation pipeline. Collects <c>.cvw</c> additional files
     /// and the consuming project's <c>RootNamespace</c>, then generates a
@@ -98,12 +101,14 @@ public class ViewSourceGenerator : IIncrementalGenerator
     /// </summary>
     private static PartialEntry? PartialEntryFor(AdditionalText file, string rootNamespace, System.Threading.CancellationToken cancellationToken)
     {
-        if (!ViewInfo.TryCreate(file.Path, rootNamespace, out var info) || !info.IsPartial)
+        // Only partials that GenerateView will emit, so <partial> never refers to a class that does not exist
+        if (!ViewInfo.TryCreate(file.Path, rootNamespace, out var info) || !info.IsPartial
+            || !IsValidNamespace(rootNamespace) || !IsValidName(info.ClassName) || info.ClassName == ReservedPartialName)
             return null;
 
         var text = file.GetText(cancellationToken)?.ToString() ?? "";
-        var model = CvwDocumentParser.Parse(text, MarkupSchema.Default).Model?.Value;
-        return new PartialEntry(info.ClassName, info.FullClassName, model);
+        var document = CvwDocumentParser.Parse(text, MarkupSchema.Default);
+        return new PartialEntry(info.ClassName, info.FullClassName, document.Model?.Value, file.Path, document.HasErrors);
     }
 
     /// <summary>
@@ -176,6 +181,12 @@ public class ViewSourceGenerator : IIncrementalGenerator
         if (!IsValidName(info.ClassName))
         {
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ClassName, "view"));
+            return;
+        }
+
+        if (info.IsPartial && info.ClassName == ReservedPartialName)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.ReservedPartialName, Location.Create(path, default, default), info.ClassName));
             return;
         }
 

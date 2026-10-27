@@ -41,6 +41,9 @@ public class Router
     private readonly Dictionary<string, Type> _views = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<(Type Controller, string Action), MethodInfo> _actionCache = new();
 
+    /// <summary>Names registered by more than one type, mapped to every such type, so lookups can report them.</summary>
+    private readonly Dictionary<string, List<Type>> _ambiguous = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Scans the specified assembly for all controllers and views, registering them
     /// for subsequent resolution.
@@ -175,6 +178,8 @@ public class Router
     /// <exception cref="InvalidOperationException">Thrown when no controller has that name.</exception>
     private Type ControllerType(string controllerName)
     {
+        ThrowIfAmbiguous("Controller", controllerName);
+
         if (!_controllers.TryGetValue(controllerName, out var type))
         {
             throw new InvalidOperationException(
@@ -191,6 +196,8 @@ public class Router
     /// <exception cref="InvalidOperationException">Thrown when no such view exists.</exception>
     private Type ViewType(string controllerName, string actionName)
     {
+        ThrowIfAmbiguous("View", ViewKey(controllerName, actionName));
+
         if (!_views.TryGetValue(ViewKey(controllerName, actionName), out var type))
         {
             throw new InvalidOperationException(
@@ -226,7 +233,7 @@ public class Router
                                               && t.Name.EndsWith("Controller", StringComparison.Ordinal)))
         {
             var name = type.Name[..^"Controller".Length];
-            _controllers[name] = type;
+            Register(_controllers, "Controller", name, type);
         }
     }
 
@@ -256,7 +263,7 @@ public class Router
             var controllerName = segments[^1];
             var actionName = type.Name[..^"View".Length];
 
-            _views[ViewKey(controllerName, actionName)] = type;
+            Register(_views, "View", ViewKey(controllerName, actionName), type);
         }
     }
 
@@ -277,4 +284,35 @@ public class Router
     }
 
     private static string ViewKey(string controllerName, string actionName) => $"{controllerName}/{actionName}";
+
+    /// <summary>
+    /// Registers <paramref name="type"/> under <paramref name="name"/>. When another type already has the name (for
+    /// example <c>HomeController</c> in two namespaces), both are remembered and resolving the name fails with a
+    /// message naming them, instead of one silently replacing the other.
+    /// </summary>
+    private void Register(Dictionary<string, Type> registry, string kind, string name, Type type)
+    {
+        if (registry.TryGetValue(name, out var existing) && existing != type)
+        {
+            var key = kind + ":" + name;
+            if (!_ambiguous.TryGetValue(key, out var types))
+                _ambiguous[key] = types = [existing];
+
+            if (!types.Contains(type))
+                types.Add(type);
+        }
+
+        registry[name] = type;
+    }
+
+    /// <exception cref="InvalidOperationException">Thrown when several types share <paramref name="name"/>.</exception>
+    private void ThrowIfAmbiguous(string kind, string name)
+    {
+        if (!_ambiguous.TryGetValue(kind + ":" + name, out var types))
+            return;
+
+        throw new InvalidOperationException(
+            $"{kind} '{name}' is ambiguous: it matches {string.Join(", ", types.Select(t => $"'{t.FullName}'"))}. " +
+            "Names are matched without their namespace (and case-insensitively), so rename all but one.");
+    }
 }

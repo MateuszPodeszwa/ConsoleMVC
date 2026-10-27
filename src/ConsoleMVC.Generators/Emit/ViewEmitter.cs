@@ -142,7 +142,7 @@ internal sealed class ViewEmitter
         EnsureNewLine();
         _output.Append("#line ").Append((line + 1).ToString(CultureInfo.InvariantCulture)).Append(' ').Append(_quotedPath).Append('\n');
         _output.Append(' ', Math.Max(column - PublicKeyword.Length, 0)).Append(PublicKeyword)
-            .Append(inject.Type.Value).Append(' ').Append(inject.Name.Value)
+            .Append(inject.Type.Value).Append(' ', Math.Max(inject.Name.Span.Start - inject.Type.Span.End, 1)).Append(inject.Name.Value)
             .Append(" { get; private set; } = default!;\n");
         Hidden();
     }
@@ -210,7 +210,11 @@ internal sealed class ViewEmitter
         foreach (var initialiser in element.Schema.Initialisers)
             Line($"{variable}.{initialiser};");
 
-        foreach (var attribute in element.Attributes)
+        // Theme classes first, so attributes written on the element override them
+        foreach (var attribute in element.Attributes.Where(a => a.Schema.Property == ElementSchema.ThemeClassProperty))
+            _output.Append("this.Theme.Apply(").Append(variable).Append(", ").Append(MappedAttributeValue(attribute)).Append(");\n");
+
+        foreach (var attribute in element.Attributes.Where(a => a.Schema.Property != ElementSchema.ThemeClassProperty))
             _output.Append(variable).Append('.').Append(attribute.Schema.Property).Append(" = ").Append(AttributeValue(attribute)).Append(";\n");
 
         switch (element.Schema.Content)
@@ -243,7 +247,7 @@ internal sealed class ViewEmitter
         Line("{");
         Line($"var {variable} = new global::{partial.FullClassName}();");
         Line($"this.PreparePartial({variable});");
-        _output.Append(variable).Append(".Render(").Append(model is null ? "default!" : AttributeValue(model)).Append(");\n");
+        _output.Append(variable).Append(".Render(").Append(model is null ? "default!" : MappedAttributeValue(model)).Append(");\n");
         Line("}");
     }
 
@@ -383,6 +387,19 @@ internal sealed class ViewEmitter
             : CSharpLiteral.String(part.Text));
 
         return "string.Concat(new string[] { " + string.Join(", ", pieces) + " })";
+    }
+
+    /// <summary>
+    /// Like <see cref="AttributeValue"/>, but a literal value is also <c>#line</c>-mapped to the attribute, for values whose
+    /// type the compiler checks (a partial's model, a theme class), so an error points at the attribute.
+    /// </summary>
+    private string MappedAttributeValue(AttributeNode attribute)
+    {
+        if (attribute.LiteralCode is null)
+            return AttributeValue(attribute);
+
+        var offset = attribute.Parts.Count > 0 ? attribute.Parts[0].Span.Start : attribute.Span.Start;
+        return MapExpression(attribute.LiteralCode, offset);
     }
 
     /// <summary>Wraps an expression in <c>#line</c> directives so errors point at its position in the <c>.cvw</c> file.</summary>

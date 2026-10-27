@@ -1,4 +1,4 @@
-# Design: ConsoleMVC 1.2 — C-View Markup v0.1 and Rendering Engine
+# Design: ConsoleMVC 1.2: C-View Markup v0.1 and Rendering Engine
 
 | | |
 |---|---|
@@ -11,7 +11,7 @@
 ## 1. Goals
 
 1. Let `.cvw` views describe console output declaratively instead of through dozens of `Console.WriteLine()` calls.
-2. Stay **100 % backwards compatible** — every existing plain-C# `.cvw` file must compile and behave exactly as before.
+2. Stay **100 % backwards compatible**: every existing plain-C# `.cvw` file must compile and behave exactly as before.
 3. Compile markup to plain C# at build time (no runtime template parsing).
 4. Keep the rendering engine an independent API (`ConsoleMVC.Rendering`) with no dependency on the MVC layer, so it can be reused or split into its own package.
 5. Report markup mistakes as **compiler diagnostics that point at the `.cvw` file**, and map C# errors in views back to the `.cvw` line via `#line` directives.
@@ -25,7 +25,7 @@
 
 ## 2. How markup mixes with C#
 
-A `.cvw` body is still C#. Markup is recognised **only where a C# statement may begin** — after `;`, `{`, `}`, `:` or at the very start of the body — when `<` is immediately followed by a *known* tag name. C# can never begin a statement with `<`, so this is unambiguous and plain-C# views are unaffected.
+A `.cvw` body is still C#. Markup is recognised **only where a C# statement may begin** (after `;`, `{`, `}`, `:` or at the very start of the body) when `<` is immediately followed by a *known* tag name. C# can never begin a statement with `<`, so this is unambiguous and plain-C# views are unaffected.
 
 ```
 @model MyApp.Models.DashboardViewModel
@@ -108,7 +108,7 @@ src/ConsoleMVC.Generators/            (Roslyn incremental generator, netstandard
   Diagnostics/  CvwDiagnostics (descriptors), ParseDiagnostic
 ```
 
-### 4.2 Class diagram — rendering engine
+### 4.2 Class diagram: rendering engine
 
 ```mermaid
 classDiagram
@@ -180,7 +180,7 @@ classDiagram
     RenderedLine o-- Span
 ```
 
-### 4.3 Class diagram — generator
+### 4.3 Class diagram: generator
 
 ```mermaid
 classDiagram
@@ -223,7 +223,7 @@ classDiagram
     CvwDocumentParser ..> CvwDocument
 ```
 
-### 4.4 Sequence — build time and run time
+### 4.4 Sequence: build time and run time
 
 ```mermaid
 sequenceDiagram
@@ -363,7 +363,7 @@ EmitElement(el, parent):
 | # | Area | Problem | Fix |
 |---|---|---|---|
 | 1 | Routing | View lookup was case-sensitive while controller lookup was not: `NavigationResult.To("home", "index")` found the controller and action but then failed with *View not found*. | Views use a case-insensitive key; `View()` uses the resolved method name. |
-| 2 | Routing | Any public method was routable — `get_ViewData`, `ToString`, `GetType` — causing `InvalidCastException`. Overloaded actions threw `AmbiguousMatchException`. | Only public instance methods returning `ActionResult` declared on a controller are actions; overloads report a clear error. |
+| 2 | Routing | Any public method was routable (`get_ViewData`, `ToString`, `GetType`), causing `InvalidCastException`. Overloaded actions threw `AmbiguousMatchException`. | Only public instance methods returning `ActionResult` declared on a controller are actions; overloads report a clear error. |
 | 3 | Application | A custom `ActionResult` subclass (or `null`) re-invoked the same action forever. | Unsupported results throw a descriptive `InvalidOperationException`. |
 | 4 | Application | Exceptions thrown inside actions surfaced as `TargetInvocationException`. | The original exception is rethrown with its stack trace preserved. |
 | 5 | Application | `Console.Clear()` throws `IOException` when output is redirected (Windows, CI, piping). | Clearing goes through the renderer, which skips clearing for redirected output. |

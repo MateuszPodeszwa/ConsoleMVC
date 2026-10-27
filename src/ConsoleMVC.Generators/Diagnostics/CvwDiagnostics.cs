@@ -61,6 +61,12 @@ internal static class CvwDiagnostics
         "The view already injects a property named '{0}'",
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
+    /// <summary>CVW009: a partial view file is named after its own <c>Render</c> method.</summary>
+    public static readonly DiagnosticDescriptor ReservedPartialName = new(
+        "CVW009", "Reserved partial view name",
+        "'{0}' cannot be used as a partial view name because it is the name of the partial's Render method; rename the file",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
     /// <summary>CVW100: unknown attribute on an element.</summary>
     public static readonly DiagnosticDescriptor UnknownAttribute = new(
         "CVW100", "Unknown attribute",

@@ -1,4 +1,4 @@
-# Design: ConsoleMVC 1.3 — C-View Markup v0.2 (tables, menus, inputs)
+# Design: ConsoleMVC 1.3: C-View Markup v0.2 (tables, menus, inputs)
 
 | | |
 |---|---|
@@ -14,7 +14,7 @@
 1. Data-driven tables that size their columns to the content and the terminal.
 2. Declarative navigation: a `<menu>` replaces the usual "print options, read a line, `switch`" boilerplate.
 3. Declarative form input: `<input>` collects values into the view's `Form`, ready to post to a controller.
-4. Keep the rendering engine independent of MVC — interactive elements return plain data; the MVC layer turns
+4. Keep the rendering engine independent of MVC: interactive elements return plain data; the MVC layer turns
    the chosen option into a `NavigationResult`.
 5. Keep everything testable without a real console (input is abstracted behind `ITextInput`).
 
@@ -62,7 +62,7 @@ Exactly one of `nav` or `quit` is required on an `<option>` (CVW109).
 ### Why top level only?
 
 A box is laid out after all its children are known, so it cannot stop half-way to read a line of input.
-Interactive elements therefore run at the point they appear in the view's code — which may still be inside a C#
+Interactive elements therefore run at the point they appear in the view's code, which may still be inside a C#
 `if` or loop at the top level.
 
 ---
@@ -132,7 +132,7 @@ classDiagram
     ConsoleView --> ITextInput
 ```
 
-### 3.2 Sequence — a menu at run time
+### 3.2 Sequence: a menu at run time
 
 ```mermaid
 sequenceDiagram

@@ -31,14 +31,15 @@ public class HomeController : Controller
         {
             Title = "About ConsoleMVC",
             Message = "ConsoleMVC brings ASP.NET Core MVC patterns to console applications.\n"
-                    + "Each page has its own Controller, View, and Model — just like web MVC.\n"
+                    + "Each page has its own Controller, View, and Model, just like web MVC.\n"
                     + "\n"
-                    + "This template demonstrates two key features:\n"
-                    + "  - Navigation between controllers and actions\n"
-                    + "  - Form data posting from views to controller actions\n"
+                    + "This template demonstrates:\n"
+                    + "  - Navigation with <menu>, and a shared header rendered with <partial>\n"
+                    + "  - Forms with <input>, validated with DataAnnotations and shown with <errors>\n"
+                    + "  - Dependency injection: GreetController receives IGreetingService\n"
+                    + "  - Middleware in Program.cs, and tables, columns and themes in the feature tour\n"
                     + "\n"
-                    + "The Greeting example shows complex model binding (GreetFormModel),\n"
-                    + "while the Calculator shows simple parameter binding (int a, int b, string op)."
+                    + "Run it with 'dotnet watch' and edit a .cvw file to see live reload."
         };
 
         return View(model);
@@ -60,7 +61,9 @@ public class HomeController : Controller
                 new("<input>", "Reads a value into the view's Form"),
                 new("<menu>", "Shows options, reads the choice and navigates"),
                 new("<errors>", "Shows validation messages for the form"),
-                new("<partial>", "Renders a reusable view from Views/Shared")
+                new("<partial>", "Renders a reusable view from Views/Shared"),
+                new("<columns>", "Places columns side by side, stacking them on narrow terminals"),
+                new("class=\"…\"", "Applies a named style from the theme")
             ]
         };
 
