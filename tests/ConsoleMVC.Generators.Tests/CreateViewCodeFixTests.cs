@@ -66,7 +66,9 @@ public class CreateViewCodeFixTests
 
         var operation = Assert.Single(await action.GetOperationsAsync(CancellationToken.None)).Should<ApplyChangesOperation>();
         var view = Assert.Single(operation.ChangedSolution.GetProject(document.Project.Id)!.AdditionalDocuments);
-        Assert.Equal(Path.Combine("/src/Shop", "Views", "Orders", "DetailsView.cvw"), view.FilePath);
+        // The project folder as the fix sees it: on Windows "/src/Shop" becomes "\src\Shop"
+        var projectFolder = Path.GetDirectoryName("/src/Shop/Shop.csproj")!;
+        Assert.Equal(Path.Combine(projectFolder, "Views", "Orders", "DetailsView.cvw"), view.FilePath);
         Assert.Equal(["Views", "Orders"], view.Folders);
         Assert.StartsWith("@model int\n", (await view.GetTextAsync()).ToString());
     }
