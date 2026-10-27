@@ -34,6 +34,17 @@ public abstract class ConsoleView
     public ViewDataDictionary ViewData { get; internal set; } = new();
 
     /// <summary>
+    /// Gets the validation errors from the action that rendered this view (see <see cref="Controller.ModelState"/>).
+    /// Show them with <c>&lt;errors /&gt;</c> or <c>&lt;errors for="Name" /&gt;</c>.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// @if (!ModelState.IsValid) { &lt;text color="red"&gt;Please correct the errors below.&lt;/text&gt; }
+    /// </code>
+    /// </example>
+    public ModelStateDictionary ModelState { get; internal set; } = new();
+
+    /// <summary>
     /// Gets the renderer that draws C-View Markup elements written in this view. The framework
     /// assigns the renderer configured on <see cref="MvcApplicationBuilder.Renderer"/>; views
     /// created manually fall back to a shared console renderer.

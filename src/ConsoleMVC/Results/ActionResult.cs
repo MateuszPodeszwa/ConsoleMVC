@@ -8,7 +8,7 @@ namespace ConsoleMVC.Mvc;
 /// <remarks>
 /// This mirrors the <c>IActionResult</c> pattern found in ASP.NET Core MVC.
 /// Framework consumers should not inherit from this class directly; instead, use the
-/// helper methods on <see cref="Controller"/> such as <see cref="Controller.View"/> and
+/// helper methods on <see cref="Controller"/> such as <see cref="Controller.View(object?)"/> and
 /// <see cref="Controller.RedirectToAction"/>.
 /// </remarks>
 public abstract class ActionResult

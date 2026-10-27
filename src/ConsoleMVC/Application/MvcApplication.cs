@@ -171,7 +171,13 @@ public class MvcApplication
             FormData = _currentRoute.FormData
         };
 
-        var args = ModelBinder.BindParameters(actionMethod, _currentRoute.FormData);
+        // Bind posted values, then validate them before the action runs
+        var modelState = new ModelStateDictionary();
+        var args = ModelBinder.BindParameters(actionMethod, _currentRoute.FormData, modelState);
+        if (_currentRoute.FormData is not null)
+            ModelValidator.Validate(actionMethod, args, modelState);
+
+        controller.ModelState = modelState;
 
         try
         {
@@ -192,6 +198,7 @@ public class MvcApplication
     {
         var view = _router.ResolveView(viewResult.ControllerName, viewResult.ViewName);
         view.ViewData = viewResult.ViewData;
+        view.ModelState = viewResult.ModelState;
         view.Renderer = renderer;
         view.Input = _input;
 

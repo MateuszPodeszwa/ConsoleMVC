@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace ConsoleMVC.Mvc;
@@ -11,7 +12,8 @@ namespace ConsoleMVC.Mvc;
 /// <remarks>
 /// Key matching is case-insensitive; when two keys differ only by case, the first one wins.
 /// Properties of complex models are only assigned when their key is present and the value
-/// converts successfully, so property initialisers act as defaults.
+/// converts successfully, so property initialisers act as defaults. Models without a parameterless constructor,
+/// such as positional records, are created through their public constructor, binding its parameters by name.
 /// </remarks>
 /// <example>
 /// <code>
@@ -33,7 +35,27 @@ internal static class ModelBinder
     /// An array of bound argument values matching the method's parameter list,
     /// or <see langword="null"/> if the method has no parameters.
     /// </returns>
-    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData)
+    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData) =>
+        BindParameters(method, formData, modelState: null);
+
+    /// <summary>
+    /// Binds the action's parameters from form data, recording values that cannot be converted in
+    /// <paramref name="modelState"/>.
+    /// </summary>
+    /// <param name="method">The action method whose parameters should be bound.</param>
+    /// <param name="formData">The posted form data, or <see langword="null"/>.</param>
+    /// <param name="modelState">Receives conversion errors, or <see langword="null"/> to ignore them.</param>
+    /// <returns>The bound arguments, or <see langword="null"/> when the method has no parameters.</returns>
+    /// <remarks>
+    /// An empty value is not a conversion error: the field simply keeps its default. Use <c>[Required]</c> on a
+    /// reference or nullable type (<c>string</c>, <c>int?</c>) to demand a value; a non-nullable value type such as
+    /// <c>int</c> always has one (its default), so <c>[Required]</c> cannot fail on it.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a complex parameter has neither a public parameterless constructor nor a public constructor
+    /// whose parameters are all simple types.
+    /// </exception>
+    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData, ModelStateDictionary? modelState)
     {
         var parameters = method.GetParameters();
 
@@ -44,7 +66,7 @@ internal static class ModelBinder
         var args = new object?[parameters.Length];
 
         for (var i = 0; i < parameters.Length; i++)
-            args[i] = BindParameter(parameters[i], values);
+            args[i] = BindParameter(parameters[i], values, modelState);
 
         return args;
     }
@@ -156,44 +178,96 @@ internal static class ModelBinder
                || t == typeof(Version);
     }
 
-    private static object? BindParameter(ParameterInfo parameter, IReadOnlyDictionary<string, string> values)
+    private static object? BindParameter(ParameterInfo parameter, IReadOnlyDictionary<string, string> values,
+        ModelStateDictionary? modelState, string? displayName = null)
     {
         var parameterType = parameter.ParameterType;
 
         if (!IsSimpleType(parameterType))
-            return BindComplexType(parameterType, values);
+            return BindComplexType(parameterType, values, modelState);
 
-        if (values.TryGetValue(parameter.Name!, out var raw) && TryConvert(raw, parameterType, out var converted))
-            return converted;
+        if (values.TryGetValue(parameter.Name!, out var raw))
+        {
+            if (TryConvert(raw, parameterType, out var converted))
+                return converted;
+
+            ReportConversionError(modelState, parameter.Name!, displayName ?? DisplayNameOf(parameter), raw);
+        }
 
         // Missing or unconvertible: use the declared default (e.g. int page = 1), else the type default
         return parameter.HasDefaultValue ? parameter.DefaultValue : DefaultOf(parameterType);
     }
 
-    private static object? BindComplexType(Type type, IReadOnlyDictionary<string, string> values)
+    private static object? BindComplexType(Type type, IReadOnlyDictionary<string, string> values, ModelStateDictionary? modelState)
     {
-        object instance;
-        try
-        {
-            instance = Activator.CreateInstance(type)!;
-        }
-        catch (Exception e) when (e is MissingMethodException or MemberAccessException or ArgumentException or NotSupportedException)
-        {
-            // No accessible parameterless constructor
-            return null;
-        }
-
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanWrite && p.GetIndexParameters().Length == 0 && IsSimpleType(p.PropertyType));
+            .Where(p => p.CanWrite && p.GetIndexParameters().Length == 0 && IsSimpleType(p.PropertyType))
+            .ToArray();
 
-        foreach (var property in properties)
+        var (instance, boundByConstructor) = CreateModel(type, properties, values, modelState);
+
+        foreach (var property in properties.Where(p => !boundByConstructor.Contains(p.Name)))
         {
-            if (values.TryGetValue(property.Name, out var raw) && TryConvert(raw, property.PropertyType, out var converted))
+            if (!values.TryGetValue(property.Name, out var raw))
+                continue;
+
+            if (TryConvert(raw, property.PropertyType, out var converted))
                 property.SetValue(instance, converted);
+            else
+                ReportConversionError(modelState, property.Name, DisplayNameOf(property), raw);
         }
 
         return instance;
     }
+
+    /// <summary>
+    /// Creates a model with its public parameterless constructor or, failing that (positional records), with the
+    /// public constructor that has the most parameters, all of simple types, bound from <paramref name="values"/>.
+    /// </summary>
+    /// <returns>The model and the names of the properties its constructor already received.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no suitable constructor exists.</exception>
+    private static (object Instance, HashSet<string> BoundByConstructor) CreateModel(Type type, PropertyInfo[] properties,
+        IReadOnlyDictionary<string, string> values, ModelStateDictionary? modelState)
+    {
+        var bound = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (type.IsValueType || type.GetConstructor(Type.EmptyTypes) is not null)
+            return (Activator.CreateInstance(type)!, bound);
+
+        var constructor = type.IsAbstract
+            ? null
+            : type.GetConstructors()
+                .Where(c => c.GetParameters().All(p => IsSimpleType(p.ParameterType)))
+                .OrderByDescending(c => c.GetParameters().Length)
+                .FirstOrDefault();
+
+        if (constructor is null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot bind form data to '{type.FullName}': it needs a public parameterless constructor, or a public " +
+                "constructor whose parameters are all simple types (such as a positional record with simple properties).");
+        }
+
+        var parameters = constructor.GetParameters();
+        var args = new object?[parameters.Length];
+        for (var i = 0; i < parameters.Length; i++)
+        {
+            // A record's [property: Display(Name = ...)] sits on the property, not the parameter
+            var property = properties.FirstOrDefault(p => string.Equals(p.Name, parameters[i].Name, StringComparison.OrdinalIgnoreCase));
+            args[i] = BindParameter(parameters[i], values, modelState, property is null ? null : DisplayNameOf(property));
+            bound.Add(parameters[i].Name!);
+        }
+
+        return (constructor.Invoke(args), bound);
+    }
+
+    /// <summary>Returns the <c>[Display(Name = ...)]</c> of a parameter, or its name.</summary>
+    private static string DisplayNameOf(ParameterInfo parameter) =>
+        parameter.GetCustomAttribute<DisplayAttribute>()?.GetName() ?? parameter.Name!;
+
+    /// <summary>Returns the <c>[Display(Name = ...)]</c> of a property, or its name.</summary>
+    private static string DisplayNameOf(PropertyInfo property) =>
+        property.GetCustomAttribute<DisplayAttribute>()?.GetName() ?? property.Name;
 
     /// <summary>
     /// Copies form data into a case-insensitive dictionary. When keys differ only by case, the first is kept.
@@ -208,6 +282,18 @@ internal static class ModelBinder
             values.TryAdd(key, value);
 
         return values;
+    }
+
+    /// <summary>
+    /// Records that <paramref name="raw"/> could not be converted, unless it is empty. The error is keyed by the field
+    /// name and worded with its display name.
+    /// </summary>
+    private static void ReportConversionError(ModelStateDictionary? modelState, string key, string displayName, string raw)
+    {
+        if (modelState is null || string.IsNullOrWhiteSpace(raw))
+            return;
+
+        modelState.AddBindingError(key, $"The value '{raw}' is not valid for {displayName}.");
     }
 
     private static object? DefaultOf(Type type) => type.IsValueType ? Activator.CreateInstance(type) : null;

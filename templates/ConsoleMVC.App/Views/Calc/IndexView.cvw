@@ -5,6 +5,8 @@
 </box>
 <br />
 
+<errors />
+
 @* The values are posted individually and bound by name to the parameters of
    CalcController.Result(int a, int b, string op). *@
 <input name="a" label="  First number:  " default="0" />

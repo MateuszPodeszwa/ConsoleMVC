@@ -36,6 +36,15 @@ namespace ConsoleMVC.Tests.Mvc.TestApp
 
     public sealed record OrderModel(int Quantity);
 
+    public sealed class CheckoutForm
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Email { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Range(1, 10)]
+        public int Quantity { get; set; } = 1;
+    }
+
     /// <summary>
     /// Test classes that share <see cref="Script"/> join this collection so xUnit runs them sequentially.
     /// </summary>
@@ -76,11 +85,29 @@ namespace ConsoleMVC.Tests.Mvc.TestApp.Controllers
 
         public ActionResult Broken() => throw new ApplicationException("boom");
 
-        public ActionResult WrongModel() => View("not an OrderModel");
+        public ActionResult WrongModel() => View((object)"not an OrderModel");
 
         public ActionResult Rendering() => View();
 
         public ActionResult Ask() => View();
+
+        public ActionResult Start()
+        {
+            Script.Log.Add("action:Start");
+            return View();
+        }
+
+        public ActionResult Checkout(CheckoutForm form)
+        {
+            if (!ModelState.IsValid)
+            {
+                Script.Log.Add($"action:Checkout(invalid:{ModelState.ErrorCount})");
+                return View("Basket", new OrderModel(0));
+            }
+
+            Script.Log.Add("action:Checkout(valid)");
+            return RedirectToAction("Start");
+        }
     }
 }
 
@@ -97,11 +124,23 @@ namespace ConsoleMVC.Tests.Mvc.TestApp.Views.Shop
         }
     }
 
+    public class StartView : ConsoleView<object>
+    {
+        public override NavigationResult Render(object Model)
+        {
+            var next = Script.NavigationFor("Start");
+            Script.Next["Start"] = NavigationResult.Quit; // only post once
+            return next;
+        }
+    }
+
     public class BasketView : ConsoleView<OrderModel>
     {
         public override NavigationResult Render(OrderModel Model)
         {
             Script.Log.Add($"view:Basket({Model.Quantity})");
+            if (!ModelState.IsValid)
+                Script.Log.Add($"view:Basket errors:{ModelState.ErrorCount}");
             return Script.NavigationFor("Basket");
         }
     }

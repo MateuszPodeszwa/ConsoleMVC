@@ -172,6 +172,9 @@ internal sealed class ViewEmitter
         Line("{");
         Line($"var {variable} = new {element.Schema.RuntimeType}();");
 
+        foreach (var initialiser in element.Schema.Initialisers)
+            Line($"{variable}.{initialiser};");
+
         foreach (var attribute in element.Attributes)
             _output.Append(variable).Append('.').Append(attribute.Schema.Property).Append(" = ").Append(AttributeValue(attribute)).Append(";\n");
 

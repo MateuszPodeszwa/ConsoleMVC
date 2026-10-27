@@ -6,7 +6,7 @@ namespace ConsoleMVC.Mvc;
 /// </summary>
 /// <remarks>
 /// This is analogous to <c>ViewResult</c> in ASP.NET Core MVC.
-/// Instances are created by calling <see cref="Controller.View"/> from within
+/// Instances are created by calling <see cref="Controller.View(object?)"/> from within
 /// a controller action method.
 /// </remarks>
 public class ViewResult : ActionResult
@@ -34,4 +34,9 @@ public class ViewResult : ActionResult
     /// to make available to the view.
     /// </summary>
     public ViewDataDictionary ViewData { get; init; } = new();
+
+    /// <summary>
+    /// Gets the validation errors of the request that produced this result, passed on to the view.
+    /// </summary>
+    public ModelStateDictionary ModelState { get; init; } = new();
 }

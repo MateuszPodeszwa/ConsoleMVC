@@ -2,6 +2,39 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.4.0]
+
+### Added
+
+- **Form validation** ([design](docs/design/form-validation.md)): posted form data is validated with the standard
+  DataAnnotations attributes before the action runs — on model properties (including `IValidatableObject`) and on
+  simple action parameters.
+- `ModelStateDictionary` (`Controller.ModelState`, `ConsoleView.ModelState`) with `IsValid`, `AddModelError`,
+  `ErrorsFor` and `Clear`.
+- Values that cannot be converted (e.g. `"abc"` for an `int`) are reported in `ModelState` instead of being ignored.
+- `Controller.View(viewName, model)` renders another action's view (e.g. the form again) and
+  `Controller.TryValidateModel(model)` validates objects built in code.
+- `<errors />` / `<errors for="Field" />` markup element and the `ValidationErrorsElement` runtime class.
+
+- `Controller.View(viewName)` renders another action's view without a model, as in ASP.NET Core MVC.
+- Positional records (and other models without a parameterless constructor) are bound through their public
+  constructor.
+
+### Changed
+
+- The template's greeting and calculator forms are validated and show their errors.
+- `View("text")` now selects the view named `text`; pass a string model with `View((object)text)`.
+- Binding a model that cannot be created (no usable constructor) throws a descriptive `InvalidOperationException`
+  instead of silently passing `null`.
+
+### Fixed
+
+- `IValidatableObject` no longer runs after a conversion error, so cross-field rules do not report errors about
+  fallback values.
+- `TryValidateModel` no longer adds the same message twice, and returns whether that model is valid.
+- Conversion errors use the field's `[Display(Name = "…")]`.
+- `<errors>` measured multi-line messages and trailing spaces too wide inside a box sized to its content.
+
 ## [1.3.0]
 
 ### Added

@@ -70,6 +70,7 @@ internal sealed class ElementSchema
     private readonly Dictionary<string, AttributeSchema> _attributes;
     private readonly HashSet<string>? _allowedChildren;
     private readonly Func<IReadOnlyList<AttributeNode>, string?>? _validator;
+    private readonly string[] _initialisers;
 
     /// <summary>
     /// Creates an element schema.
@@ -86,9 +87,14 @@ internal sealed class ElementSchema
     /// Defaults to <see cref="RenderStatement"/>.
     /// </param>
     /// <param name="validator">An optional rule over the element's attributes, returning an error message or <see langword="null"/> (CVW109).</param>
+    /// <param name="initialisers">
+    /// Property assignments emitted right after the element is created, before its attributes, e.g.
+    /// <c>"Source = this.ModelState"</c> to connect <c>&lt;errors&gt;</c> to the view's model state.
+    /// </param>
     public ElementSchema(string tag, string runtimeType, ContentModel content, IEnumerable<AttributeSchema> attributes,
         IEnumerable<string>? allowedChildren = null, string? requiredParent = null, bool topLevelOnly = false,
-        string topLevelStatement = RenderStatement, Func<IReadOnlyList<AttributeNode>, string?>? validator = null)
+        string topLevelStatement = RenderStatement, Func<IReadOnlyList<AttributeNode>, string?>? validator = null,
+        IEnumerable<string>? initialisers = null)
     {
         Tag = tag;
         RuntimeType = runtimeType;
@@ -99,6 +105,7 @@ internal sealed class ElementSchema
         TopLevelOnly = topLevelOnly;
         TopLevelStatement = topLevelStatement;
         _validator = validator;
+        _initialisers = initialisers?.ToArray() ?? [];
 
         AttributeList = string.Join(", ", _attributes.Keys);
         ChildList = _allowedChildren is null ? "" : string.Join(", ", _allowedChildren.Select(t => "<" + t + ">"));
@@ -128,6 +135,9 @@ internal sealed class ElementSchema
 
     /// <summary>Gets a comma-separated list of allowed child tags, for error messages.</summary>
     public string ChildList { get; }
+
+    /// <summary>Gets the property assignments emitted when the element is created (see the constructor).</summary>
+    public IReadOnlyList<string> Initialisers => _initialisers;
 
     /// <summary>Gets the attributes that must be present (one per property).</summary>
     public IReadOnlyList<AttributeSchema> RequiredAttributes { get; }
