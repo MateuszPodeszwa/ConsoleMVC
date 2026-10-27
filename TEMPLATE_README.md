@@ -32,7 +32,7 @@ A ready-to-run console application structured with the MVC pattern:
 The template includes working examples of:
 
 - **Navigation** — `<menu>` elements moving between controllers and actions (`Home`, `About`)
-- **Tables** — a feature tour page with a `<table>` generated from the model
+- **Tables, columns and themes** — a feature tour page with a `<table>` generated from the model, `<columns>` that stack on narrow terminals, and theme classes (`class="panel"`)
 - **Partial views** — the home and about pages share `Views/Shared/PageHeader.cvw` through `<partial>`
 - **Form data posting with model binding** — a greeting form that collects input and posts it to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
 - **Dependency injection** — `GreetController` receives `IGreetingService` through its constructor and the result view reads it with `@inject`

@@ -31,6 +31,16 @@ public sealed class BoxElement : ContainerElement
     /// <summary>Gets or sets the width of the whole box, including its border. Defaults to <see cref="Length.Auto"/>.</summary>
     public Length Width { get; set; } = Length.Auto;
 
+    /// <summary>
+    /// Gets or sets the smallest width in columns, or <see langword="null"/> for none. Never exceeds the available width.
+    /// </summary>
+    /// <example><code>element.MinWidth = 30; // at least 30 columns when the terminal allows</code></example>
+    public int? MinWidth { get; set; }
+
+    /// <summary>Gets or sets the largest width in columns, or <see langword="null"/> for none.</summary>
+    /// <example><code>element.MaxWidth = 80; // a full-width element stops growing at 80 columns</code></example>
+    public int? MaxWidth { get; set; }
+
     /// <summary>Gets or sets the border characters. Defaults to <see cref="BorderStyle.Single"/>.</summary>
     public BorderStyle Border { get; set; } = BorderStyle.Single;
 
@@ -62,7 +72,7 @@ public sealed class BoxElement : ContainerElement
             natural = Math.Max(natural, titleNeed);
         }
 
-        return Width.Resolve(maxWidth, natural);
+        return WidthLimits.Apply(Width.Resolve(maxWidth, natural), MinWidth, MaxWidth, maxWidth);
     }
 
     /// <inheritdoc />

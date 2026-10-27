@@ -21,6 +21,9 @@ internal sealed class MarkupSchema
     /// <summary>The tag name of the line break element, which is also allowed inside text.</summary>
     public const string LineBreakTag = "br";
 
+    /// <summary>The attribute that applies named styles from the view's theme.</summary>
+    public const string ClassAttribute = "class";
+
     /// <summary>The tag name of the partial view element, which the emitter handles itself.</summary>
     public const string PartialTag = "partial";
 
@@ -97,9 +100,14 @@ internal sealed class MarkupSchema
             ["ascii"] = Rendering + "LineStyle.Ascii"
         });
 
+        // Named styles from the view's Theme; applied before the element's other attributes (see ViewEmitter)
+        AttributeSchema ThemeClass() => new(ClassAttribute, ElementSchema.ThemeClassProperty, text);
+        var widthLimit = new IntegerAttributeType(0, 1000);
+
         // Shared by every element with styled inline content: <text>, <cell>, <option>
         AttributeSchema[] InlineStyle() =>
         [
+            ThemeClass(),
             new AttributeSchema("color", "Foreground", colour),
             new AttributeSchema("colour", "Foreground", colour),
             new AttributeSchema("background", "Background", colour),
@@ -116,8 +124,11 @@ internal sealed class MarkupSchema
             new ElementSchema(TextTag, Rendering + "TextElement", ContentModel.Inline, InlineStyle()),
             new ElementSchema("box", Rendering + "BoxElement", ContentModel.Block,
             [
+                ThemeClass(),
                 new AttributeSchema("title", "Title", text),
                 new AttributeSchema("width", "Width", length),
+                new AttributeSchema("min-width", "MinWidth", widthLimit),
+                new AttributeSchema("max-width", "MaxWidth", widthLimit),
                 new AttributeSchema("border", "Border", border),
                 new AttributeSchema("padding", "Padding", padding),
                 new AttributeSchema("color", "BorderColour", colour),
@@ -127,6 +138,7 @@ internal sealed class MarkupSchema
             ]),
             new ElementSchema("separator", Rendering + "SeparatorElement", ContentModel.Void,
             [
+                ThemeClass(),
                 new AttributeSchema("style", "Style", lineStyle),
                 new AttributeSchema("color", "Colour", colour),
                 new AttributeSchema("colour", "Colour", colour),
@@ -140,9 +152,12 @@ internal sealed class MarkupSchema
             // ---- v0.2: tables
             new ElementSchema("table", Rendering + "TableElement", ContentModel.Elements,
             [
+                ThemeClass(),
                 new AttributeSchema("border", "Border", border),
                 new AttributeSchema("padding", "Padding", padding),
                 new AttributeSchema("width", "Width", length),
+                new AttributeSchema("min-width", "MinWidth", widthLimit),
+                new AttributeSchema("max-width", "MaxWidth", widthLimit),
                 new AttributeSchema("color", "BorderColour", colour),
                 new AttributeSchema("colour", "BorderColour", colour)
             ], allowedChildren: ["row"]),
@@ -183,10 +198,22 @@ internal sealed class MarkupSchema
             // ---- validation
             new ElementSchema("errors", Rendering + "ValidationErrorsElement", ContentModel.Void,
             [
+                ThemeClass(),
                 new AttributeSchema("for", "For", text),
                 new AttributeSchema("color", "Colour", colour),
                 new AttributeSchema("colour", "Colour", colour)
             ], initialisers: ["Source = this.ModelState"]),
+
+            // ---- 1.0: layout
+            new ElementSchema("columns", Rendering + "ColumnsElement", ContentModel.Elements,
+            [
+                new AttributeSchema("gap", "Gap", new IntegerAttributeType(0, 20)),
+                new AttributeSchema("stack-below", "StackBelow", widthLimit)
+            ], allowedChildren: ["column"]),
+            new ElementSchema("column", Rendering + "ColumnElement", ContentModel.Block,
+            [
+                new AttributeSchema("width", "Width", length)
+            ], requiredParent: "columns"),
 
             // ---- composition: rendered by the emitter as a call to the partial's Render(model)
             new ElementSchema(PartialTag, "", ContentModel.Void,

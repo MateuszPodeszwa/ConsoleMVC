@@ -64,6 +64,12 @@ internal sealed class AttributeSchema
 /// </summary>
 internal sealed class ElementSchema
 {
+    /// <summary>
+    /// The pseudo-property of the <c>class</c> attribute. The emitter turns it into <c>this.Theme.Apply(element, …)</c>
+    /// instead of an assignment.
+    /// </summary>
+    public const string ThemeClassProperty = "@Theme";
+
     /// <summary>The default top-level statement: render the element immediately.</summary>
     public const string RenderStatement = "this.Renderer.Render({0});";
 

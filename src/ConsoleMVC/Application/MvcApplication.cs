@@ -193,11 +193,12 @@ public class MvcApplication : IDisposable
         Discover(assembly);
         var renderer = _services.GetRequiredService<IMarkupRenderer>();
         var input = _services.GetRequiredService<ITextInput>();
+        var theme = _services.GetRequiredService<Theme>();
 
         HotReloadHandler.Updated += OnHotReload;
         try
         {
-            await RunLoopAsync(pipeline, assembly, renderer, input, cancellationToken).ConfigureAwait(false);
+            await RunLoopAsync(pipeline, assembly, renderer, input, theme, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -221,7 +222,7 @@ public class MvcApplication : IDisposable
     /// Runs navigation cycles until a view quits: the pipeline, then rendering the view or following the redirect.
     /// </summary>
     private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, IMarkupRenderer renderer, ITextInput input,
-        CancellationToken cancellationToken)
+        Theme theme, CancellationToken cancellationToken)
     {
         var consecutiveRedirects = 0;
 
@@ -253,7 +254,7 @@ public class MvcApplication : IDisposable
                 case ViewResult viewResult:
                     consecutiveRedirects = 0;
 
-                    var navigation = RenderView(viewResult, renderer, input, scope.ServiceProvider, cycle);
+                    var navigation = RenderView(viewResult, renderer, input, theme, scope.ServiceProvider, cycle);
                     if (navigation.Exit)
                         return;
 
@@ -355,7 +356,7 @@ public class MvcApplication : IDisposable
     /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.
     /// </summary>
-    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input,
+    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input, Theme theme,
         IServiceProvider services, CycleInstances cycle)
     {
         var view = cycle.Track(_router.ResolveView(viewResult.ControllerName, viewResult.ViewName, services));
@@ -363,6 +364,7 @@ public class MvcApplication : IDisposable
         view.ModelState = viewResult.ModelState;
         view.Renderer = renderer;
         view.Input = input;
+        view.Theme = theme;
 
         if (_clearScreenBetweenViews)
             renderer.Clear();

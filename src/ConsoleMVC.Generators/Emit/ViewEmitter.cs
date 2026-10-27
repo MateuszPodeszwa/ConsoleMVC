@@ -210,7 +210,11 @@ internal sealed class ViewEmitter
         foreach (var initialiser in element.Schema.Initialisers)
             Line($"{variable}.{initialiser};");
 
-        foreach (var attribute in element.Attributes)
+        // Theme classes first, so attributes written on the element override them
+        foreach (var attribute in element.Attributes.Where(a => a.Schema.Property == ElementSchema.ThemeClassProperty))
+            _output.Append("this.Theme.Apply(").Append(variable).Append(", ").Append(AttributeValue(attribute)).Append(");\n");
+
+        foreach (var attribute in element.Attributes.Where(a => a.Schema.Property != ElementSchema.ThemeClassProperty))
             _output.Append(variable).Append('.').Append(attribute.Schema.Property).Append(" = ").Append(AttributeValue(attribute)).Append(";\n");
 
         switch (element.Schema.Content)

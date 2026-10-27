@@ -60,7 +60,9 @@ public class HomeController : Controller
                 new("<input>", "Reads a value into the view's Form"),
                 new("<menu>", "Shows options, reads the choice and navigates"),
                 new("<errors>", "Shows validation messages for the form"),
-                new("<partial>", "Renders a reusable view from Views/Shared")
+                new("<partial>", "Renders a reusable view from Views/Shared"),
+                new("<columns>", "Places columns side by side, stacking them on narrow terminals"),
+                new("class=\"…\"", "Applies a named style from the theme")
             ]
         };
 

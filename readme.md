@@ -16,6 +16,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Razor-like view engine** — `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
 - **C-View Markup** — declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
 - **Partial views** — reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time
+- **Layout and themes** — `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Declarative input and navigation** — `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default** — model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
@@ -165,6 +166,23 @@ return input switch
 | `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional — defaults to `object`. |
 | `@using Namespace` | Adds a `using` statement to the generated class. |
 | `@inject Type Name` | Declares a property filled from the application's services (see [Dependency Injection](#dependency-injection)). |
+
+#### Layout and Themes
+
+`<columns>` places content side by side and stacks it on narrow terminals; `class` applies named styles from the application's theme:
+
+```
+<columns gap="2" stack-below="60">
+    <column width="30%"><box class="panel" title="Menu"><text>[1] Orders</text></box></column>
+    <column><text class="title">Orders</text><text class="muted">@Model.Summary</text></column>
+</columns>
+```
+
+```csharp
+builder.Theme.Set("brand", new ThemeStyle { Foreground = Colour.Magenta, Bold = true });
+```
+
+The default theme defines `title`, `muted`, `success`, `warning`, `danger`, `info` and `panel`. Boxes and tables also accept `min-width` and `max-width`. See [Themes](docs/guides/docs/c-view-markup.md#themes-and-class) and [columns](docs/guides/docs/c-view-markup.md#columns-and-column).
 
 #### Partial Views
 
@@ -666,6 +684,7 @@ builder.ClearScreenBetweenViews = false;        // Default: true
 builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
 builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
 builder.Input = ConsoleTextInput.Instance;              // Default: the console
+builder.Theme.Set("brand", new ThemeStyle { Bold = true }); // Default: Theme.CreateDefault()
 builder.Services.AddSingleton<IClock, SystemClock>();   // Your services
 using var app = builder.Build();
 app.Run();
@@ -675,6 +694,7 @@ app.Run();
 |--------|---------|
 | `DefaultController` / `DefaultAction` | The first route to run |
 | `Services` | Services for controller constructors and `@inject` (see [Dependency Injection](#dependency-injection)) |
+| `Theme` | Named styles used by `class="…"` in markup (see [Layout and Themes](#layout-and-themes)) |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests |

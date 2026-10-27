@@ -82,6 +82,7 @@ A block of text that wraps to the available width.
 | `align` | `left`, `centre` (or `center`), `right` | `left` |
 | `bold`, `dim`, `italic`, `underline` | flag, or `true`/`false` | off |
 | `wrap` | `true` to word-wrap, `false` to truncate with `…` | `true` |
+| `class` | [theme](#themes-and-class) classes, separated by spaces | none |
 
 ```
 <text color="yellow" bold>Warning:</text>
@@ -100,8 +101,10 @@ A bordered panel. Its children are stacked vertically; text written directly ins
 | `padding` | columns between border and content (0–20) | `1` |
 | `color` / `colour` | border colour | terminal default |
 | `title-color` / `title-colour` | title colour | border colour |
+| `min-width` / `max-width` | column counts (0–1000) limiting the width | none |
+| `class` | [theme](#themes-and-class) classes | none |
 
-Boxes never grow wider than the terminal; content wraps to fit.
+Boxes never grow wider than the terminal; content wraps to fit. `min-width` widens a small box and `max-width` stops a `width="100%"` box growing on a wide terminal; the terminal width always wins.
 
 ### `<separator />`
 
@@ -112,6 +115,7 @@ A horizontal rule that fills its container (or the terminal at top level).
 | `style` | `single`, `double`, `heavy`, `dashed`, `ascii` | `single` |
 | `color` / `colour` | a [colour](#colours) | terminal default |
 | `width` | `auto` (fill), a column count, or a percentage | `auto` |
+| `class` | [theme](#themes-and-class) classes (the text colour is used) | none |
 
 ### `<br />`
 
@@ -156,10 +160,38 @@ A grid whose columns size themselves to the content. When the table is wider tha
 | | `padding` | blank columns on each side of every cell (0–20) | `1` |
 | | `width` | `auto`, a column count, or a percentage; a larger width widens the last column | `auto` |
 | | `color` / `colour` | grid colour | terminal default |
+| | `min-width` / `max-width` | column counts limiting the width | none |
+| | `class` | [theme](#themes-and-class) classes | none |
 | `<row>` | `header` | flag: bold cells (unless a cell sets its own decoration) followed by a separator line | off |
-| `<cell>` | same as `<text>` | `align`, `color`, `background`, `bold`, `dim`, `italic`, `underline`, `wrap` | |
+| `<cell>` | same as `<text>` | `align`, `color`, `background`, `bold`, `dim`, `italic`, `underline`, `wrap`, `class` | |
 
 A `<table>` may only contain `<row>` elements, and a `<row>` only `<cell>` elements; loops and conditions around them are fine. Rows with fewer cells are padded with empty cells.
+
+### `<columns>` and `<column>`
+
+Places content side by side. Each `<column>` holds block content, like a box without a border.
+
+```
+<columns gap="2" stack-below="60">
+    <column width="30%">
+        <box class="panel" title="Menu"><text>[1] Orders</text></box>
+    </column>
+    <column>
+        <text class="title">Orders</text>
+        <text>@Model.Summary</text>
+    </column>
+</columns>
+```
+
+| Element | Attribute | Values | Default |
+|---|---|---|---|
+| `<columns>` | `gap` | spaces between columns (0–20) | `2` |
+| | `stack-below` | a width in columns: narrower terminals stack the columns vertically | never stack |
+| `<column>` | `width` | `auto`, a column count, or a percentage of the width after the gaps | `auto` |
+
+* Fixed and percentage columns take their width first; `auto` columns use their content's natural width when it fits. Otherwise narrow columns keep their width and wide ones share the rest equally, wrapping their text.
+* Columns can be generated with `@foreach`, nested in a `<box>`, and contain any block elements, including other columns.
+* `<columns>` may only contain `<column>` elements, and `<column>` only appears inside `<columns>`.
 
 ### `<input>`
 
@@ -264,6 +296,38 @@ Renders a **partial view**: a reusable piece of markup in `Views/Shared/{Name}.c
 * A partial shares the view's `Form`, `ModelState`, `ViewData`, renderer and input: an `<input>` in a partial fills the view's form, and `<errors />` shows the view's errors.
 * Partials may use `@inject`, C# code and other partials (a partial cannot render itself: CVW116).
 * Like `<input>`, `<partial>` is written at the top level of the view (it may be inside a C# `if` or loop), not inside another element.
+
+## Themes and `class`
+
+A theme defines named styles once for the whole application; elements use them with `class`, like CSS classes:
+
+```
+<text class="title">Orders</text>
+<box class="panel" title="Summary">…</box>
+<text class="muted danger">Payment overdue</text>
+```
+
+| Built-in class | Style |
+|---|---|
+| `title` | bold cyan text |
+| `muted` | dim text |
+| `success` / `warning` / `info` | green / yellow / blue text |
+| `danger` | bold red text |
+| `panel` | rounded cyan border, padding 2 |
+
+Classes are applied in order, then the element's own attributes, so `<box class="panel" padding="0">` keeps the panel's border with no padding. Unknown class names are ignored. Text properties apply to `<text>`, `<cell>` and `<option>`; the text colour also colours `<separator>` and `<errors>`; border, padding and width properties apply to `<box>` and `<table>`.
+
+Define your own classes, or replace the built-in ones, in `Program.cs`:
+
+```csharp
+builder.Theme
+    .Set("brand", new ThemeStyle { Foreground = Colour.Magenta, Bold = true })
+    .Set("panel", new ThemeStyle { Border = BorderStyle.Double, BorderColour = Colour.Magenta, Padding = 1 });
+
+builder.Theme = Theme.Empty; // or start with no classes at all
+```
+
+`class` accepts expressions: `<text class="@(order.Late ? "danger" : "success")">`. Partials use the same theme as the view that renders them.
 
 ## Attribute values
 

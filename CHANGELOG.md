@@ -2,6 +2,19 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.9.0]
+
+### Added
+
+- **C-View Markup 1.0** ([design](docs/design/c-view-markup-1.0.md), [guide](docs/guides/docs/c-view-markup.md)):
+  - `<columns>` / `<column>`: side-by-side layout with fixed, percentage and auto widths, `gap`, and `stack-below`
+    to stack the columns on narrow terminals (`ColumnsElement`, `ColumnElement`).
+  - Themes: `class="…"` on `<text>`, `<cell>`, `<option>`, `<box>`, `<table>`, `<separator>` and `<errors>` applies
+    named styles from `MvcApplicationBuilder.Theme` (`Theme`, `ThemeStyle`; `Theme.CreateDefault()` defines `title`,
+    `muted`, `success`, `warning`, `danger`, `info` and `panel`). `ConsoleViewBase.Theme` is shared with partials.
+  - `min-width` and `max-width` on `<box>` and `<table>` (`MinWidth` / `MaxWidth`).
+- The template's feature tour uses columns and theme classes.
+
 ## [1.8.0]
 
 ### Added
