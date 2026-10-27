@@ -16,6 +16,10 @@ builder.Logging.AddFile("logs/app.log");
 
 using var app = builder.Build();
 
+// Keyboard shortcuts that work on every screen; the layout lists them with <shortcuts />
+app.MapKey(new KeyGesture(ConsoleKey.Escape), NavigationResult.Back(), "Back");
+app.MapKey(KeyGesture.Parse("Ctrl+X"), NavigationResult.Quit(), "Quit");
+
 // Middleware runs around every action: here it shows the current page in the terminal's title bar
 app.Use(async (context, next) =>
 {

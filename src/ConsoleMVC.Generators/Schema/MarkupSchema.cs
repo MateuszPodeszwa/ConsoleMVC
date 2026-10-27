@@ -286,6 +286,15 @@ internal sealed class MarkupSchema
                 new AttributeSchema("color", "Colour", colour),
                 new AttributeSchema("colour", "Colour", colour)
             ], initialisers: ["Items = this.Breadcrumbs"]),
+            new ElementSchema("shortcuts", Rendering + "ShortcutsElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("separator", "Separator", text),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("key-color", "KeyColour", colour),
+                new AttributeSchema("key-colour", "KeyColour", colour)
+            ], initialisers: ["Items = this.ShortcutHints"]),
 
             // ---- 1.0: layout
             new ElementSchema("columns", Rendering + "ColumnsElement", ContentModel.Elements,

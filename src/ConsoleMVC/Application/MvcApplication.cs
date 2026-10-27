@@ -62,6 +62,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
     private readonly List<RouteContext> _history = [];
 
+    /// <summary>The keyboard shortcuts mapped with <see cref="MapKey(KeyGesture, NavigationResult, string?)"/>.</summary>
+    private readonly List<KeyShortcut> _shortcuts = [];
+
     /// <summary>
     /// Initialises a new instance of the <see cref="MvcApplication"/> class using
     /// the configuration specified in the given builder.
@@ -140,6 +143,91 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// </summary>
     /// <example><code>if (app.Environment.IsDevelopment()) { /* seed test data */ }</code></example>
     public IHostEnvironment Environment => _services.GetRequiredService<IHostEnvironment>();
+
+    /// <summary>Gets the keyboard shortcuts mapped so far.</summary>
+    /// <example><code>foreach (var shortcut in app.Shortcuts) Console.WriteLine(shortcut.Gesture);</code></example>
+    public IReadOnlyList<KeyShortcut> Shortcuts => _shortcuts;
+
+    /// <summary>
+    /// Maps an application-wide keyboard shortcut: pressing <paramref name="key"/> while any screen waits for input (a
+    /// menu, a text field or an arrow-key field) leaves the screen and navigates to <paramref name="target"/>.
+    /// </summary>
+    /// <param name="key">A key that typing does not need: F1 to F24, Esc or Insert.</param>
+    /// <param name="target"><c>Controller/Action</c> or <c>Action</c>, optionally with <c>?key=value</c> route values.</param>
+    /// <param name="description">What it does, shown by <c>&lt;shortcuts /&gt;</c>; leave it out to keep the shortcut unlisted.</param>
+    /// <returns>The application, for chaining.</returns>
+    /// <exception cref="ArgumentException">Thrown when the key is needed for typing, is already mapped, or the target is invalid.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the application has already run.</exception>
+    /// <example><code>app.MapKey(ConsoleKey.F1, "Help/Index", "Help");</code></example>
+    public MvcApplication MapKey(ConsoleKey key, string target, string? description = null)
+    {
+        RouteValues.ParseTarget(target); // throws ArgumentException for an invalid target
+        return MapKey(new KeyGesture(key), () => NavigationResult.To(target), description);
+    }
+
+    /// <summary>
+    /// Maps an application-wide keyboard shortcut to a navigation, such as <see cref="NavigationResult.Back"/> or
+    /// <see cref="NavigationResult.Quit"/>.
+    /// </summary>
+    /// <param name="gesture">The key, e.g. <c>new KeyGesture(ConsoleKey.Escape)</c> or <c>KeyGesture.Parse("Ctrl+X")</c>.</param>
+    /// <param name="navigation">Where to go.</param>
+    /// <param name="description">What it does, shown by <c>&lt;shortcuts /&gt;</c>.</param>
+    /// <returns>The application, for chaining.</returns>
+    /// <exception cref="ArgumentException">Thrown when the key is needed for typing or is already mapped.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the application has already run.</exception>
+    /// <example>
+    /// <code>
+    /// app.MapKey(new KeyGesture(ConsoleKey.Escape), NavigationResult.Back(), "Back");
+    /// app.MapKey(KeyGesture.Parse("Ctrl+X"), NavigationResult.Quit(), "Quit");
+    /// </code>
+    /// </example>
+    public MvcApplication MapKey(KeyGesture gesture, NavigationResult navigation, string? description = null)
+    {
+        ArgumentNullException.ThrowIfNull(navigation);
+        return MapKey(gesture, () => navigation, description);
+    }
+
+    /// <summary>
+    /// Maps an application-wide keyboard shortcut whose navigation is decided when the key is pressed.
+    /// </summary>
+    /// <param name="gesture">The key.</param>
+    /// <param name="navigate">Returns where to go.</param>
+    /// <param name="description">What it does, shown by <c>&lt;shortcuts /&gt;</c>.</param>
+    /// <returns>The application, for chaining.</returns>
+    /// <exception cref="ArgumentException">Thrown when the key is needed for typing or is already mapped.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the application has already run.</exception>
+    /// <example><code>app.MapKey(new KeyGesture(ConsoleKey.F5), () => NavigationResult.ToAction("Index"), "Refresh");</code></example>
+    public MvcApplication MapKey(KeyGesture gesture, Func<NavigationResult> navigate, string? description = null)
+    {
+        ArgumentNullException.ThrowIfNull(navigate);
+        if (_pipeline is not null)
+            throw new InvalidOperationException("Shortcuts must be mapped before the application first runs.");
+
+        if (!IsShortcutKey(gesture))
+        {
+            throw new ArgumentException(
+                $"{gesture} is needed for typing or for the input itself. Use F1 to F24, Esc, Insert, or a key with Ctrl or Alt " +
+                "(except Ctrl+C, Ctrl+D, Ctrl+Z, and Ctrl+Q and Ctrl+S, which terminals use for flow control).", nameof(gesture));
+        }
+
+        if (_shortcuts.Any(s => s.Gesture == gesture))
+            throw new ArgumentException($"{gesture} is already mapped.", nameof(gesture));
+
+        _shortcuts.Add(new KeyShortcut(gesture, navigate, description));
+        return this;
+    }
+
+    /// <summary>Keys a shortcut may use: ones that typing, editing and the arrow-key fields do not need.</summary>
+    private static bool IsShortcutKey(KeyGesture gesture)
+    {
+        var withModifier = (gesture.Modifiers & (ConsoleModifiers.Control | ConsoleModifiers.Alt)) != 0;
+        if (withModifier)
+            // Ctrl+C interrupts, Ctrl+D and Ctrl+Z end the input, and terminals keep Ctrl+Q and Ctrl+S for flow control
+            return !(gesture.Modifiers == ConsoleModifiers.Control
+                     && gesture.Key is ConsoleKey.C or ConsoleKey.D or ConsoleKey.Z or ConsoleKey.Q or ConsoleKey.S);
+
+        return gesture.Key is >= ConsoleKey.F1 and <= ConsoleKey.F24 or ConsoleKey.Escape or ConsoleKey.Insert;
+    }
 
     /// <summary>
     /// Adds a middleware that runs around every action, in registration order (the first one added is the outermost).
@@ -251,6 +339,12 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         Discover(assembly);
         var renderer = _services.GetRequiredService<IMarkupRenderer>();
         var input = _services.GetRequiredService<ITextInput>();
+        if (_shortcuts.Count > 0)
+        {
+            // Lines are then read key by key so shortcuts work in menus and text fields; the keys are echoed to the console
+            var echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
+            input = new ShortcutInput(input, _shortcuts.ToArray(), echo);
+        }
         var theme = _services.GetRequiredService<Theme>();
         var logger = _services.GetRequiredService<ILogger<MvcApplication>>();
         MvcApplicationLog.Starting(logger, _currentRoute, Environment.EnvironmentName);
@@ -318,7 +412,16 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                         consecutiveRedirects = 0;
                         RecordScreen(context);
 
-                        var navigation = RenderView(viewResult, renderer, input, theme, context);
+                        NavigationResult navigation;
+                        try
+                        {
+                            navigation = RenderView(viewResult, renderer, input, theme, context);
+                        }
+                        catch (ShortcutPressedException shortcut)
+                        {
+                            navigation = shortcut.Navigation;
+                        }
+
                         if (navigation.Exit)
                             return;
 
@@ -477,6 +580,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         view.Input = input;
         view.Theme = theme;
         view.NavigationHistory = _history.ToArray();
+        view.ShortcutHints = _shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Description))
+            .Select(s => new ShortcutHint(s.Gesture.ToString(), s.Description!)).ToArray();
 
         if (_clearScreenBetweenViews)
             renderer.Clear();

@@ -42,6 +42,7 @@ namespace ConsoleMVC.Tests.Mvc.KioskApp.Views.Kiosk
             var text = new TextElement();
             text.AppendText("Welcome");
             Renderer.Render(text);
+            Renderer.Render(new ShortcutsElement { Items = ShortcutHints }); // nothing when there are none
 
             var menu = new MenuElement();
             foreach (var (key, target, label) in new[] { ("1", "Form", "Form"), ("l", "Loop", "Loop") })

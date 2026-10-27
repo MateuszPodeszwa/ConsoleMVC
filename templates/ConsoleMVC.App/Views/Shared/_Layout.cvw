@@ -10,3 +10,5 @@
 </columns>
 <body />
 <separator class="muted" />
+@* The shortcuts mapped with app.MapKey in Program.cs that have a description *@
+<shortcuts class="muted" />

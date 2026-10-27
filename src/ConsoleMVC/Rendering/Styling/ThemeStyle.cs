@@ -112,6 +112,10 @@ public sealed record ThemeStyle
             case BreadcrumbsElement breadcrumbs:
                 if (Foreground is { } breadcrumbsColour) breadcrumbs.Colour = breadcrumbsColour;
                 break;
+
+            case ShortcutsElement shortcuts:
+                if (Foreground is { } shortcutsColour) shortcuts.Colour = shortcutsColour;
+                break;
         }
     }
 }

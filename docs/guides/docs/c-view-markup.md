@@ -402,6 +402,19 @@ Shows where the user is, from the navigation history: `Home › Orders › Detai
 
 Views can also read the history in C#: `NavigationHistory` (the routes, oldest first) and `Breadcrumbs` (the labels).
 
+### `<shortcuts />`
+
+Lists the application's keyboard shortcuts that have a description, on one line: `F1 Help  Esc Back  Ctrl+X Quit`.
+Shortcuts that do not fit are left out from the end, and nothing is drawn when there are none. A layout is a good
+place for it. See [Keyboard shortcuts](controllers-and-forms.md#keyboard-shortcuts).
+
+| Attribute | Values | Default |
+|---|---|---|
+| `separator` | text between shortcuts | two spaces |
+| `color` / `colour` | description colour | terminal default |
+| `key-color` / `key-colour` | key colour (keys are bold) | terminal default |
+| `class` | theme style | none |
+
 ### `<errors />`
 
 Shows validation messages from the view's `ModelState` (see [Validation](https://github.com/MateuszPodeszwa/ConsoleMVC#validation)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.

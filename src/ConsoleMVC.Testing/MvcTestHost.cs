@@ -54,6 +54,13 @@ public sealed class MvcTestHost
     /// <example><code>host.MaxScreens = 500;</code></example>
     public int MaxScreens { get; set; } = DefaultMaxScreens;
 
+    /// <summary>
+    /// Gets or sets a callback that configures the built application before it runs, as <c>Program.cs</c> does after
+    /// <c>Build()</c>: middleware with <c>app.Use</c>, keyboard shortcuts with <c>app.MapKey</c>.
+    /// </summary>
+    /// <example><code>host.ConfigureApplication = app => app.MapKey(ConsoleKey.F1, "Help/Index", "Help");</code></example>
+    public Action<MvcApplication>? ConfigureApplication { get; set; }
+
     /// <summary>Gets or sets the environment name the application runs in.</summary>
     /// <example><code>host.EnvironmentName = "Development";</code></example>
     public string EnvironmentName { get; set; } = DefaultEnvironmentName;
@@ -129,6 +136,7 @@ public sealed class MvcTestHost
         var limit = MaxScreens;
 
         await using var app = builder.Build();
+        ConfigureApplication?.Invoke(app);
         app.Use(async (context, next) =>
         {
             routes.Add(context.Route.ToString());

@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.22: `builder.Logging.AddFile("logs/app.log")`, a built-in rolling file logger. 1.21 made `RedirectToAction("Detials")` and `View("Nme")` build warnings with a fix that creates a missing view, 1.20 added `<number>`, `<date>` and `<select filter>`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.23: keyboard shortcuts on every screen (`app.MapKey(ConsoleKey.F1, "Help/Index", "Help")`) and `<shortcuts />`. 1.22 added a rolling file logger (`builder.Logging.AddFile`), 1.21 build warnings for `RedirectToAction` and `View` typos. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -18,6 +18,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Partial views and layouts**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time, and a `_Layout.cvw` that frames every screen
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
+- **Keyboard shortcuts**: `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` works on every screen, in menus and fields alike, and `<shortcuts />` lists them
 - **Declarative input and navigation**: `<input>`, `<number>` and `<date>` collect form values, `<select>` (with type-to-filter), `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
