@@ -94,10 +94,11 @@ public static class ViewHarness
     /// <param name="modelExpression">A C# expression creating the model (compiled with <paramref name="extraSource"/>).</param>
     /// <param name="extraSource">Additional C#, such as model classes in namespace <c>TestApp</c>.</param>
     /// <param name="width">The renderer width.</param>
+    /// <param name="input">Lines of user input for <c>&lt;input&gt;</c> and <c>&lt;menu&gt;</c>.</param>
     /// <returns>The plain-text output and the navigation result returned by the view.</returns>
     /// <exception cref="Xunit.Sdk.XunitException">Thrown when generation or compilation fails.</exception>
     public static (string Output, NavigationResult Navigation) RenderWithNavigation(
-        string cvw, string modelExpression = "null", string extraSource = "", int width = 40)
+        string cvw, string modelExpression = "null", string extraSource = "", int width = 40, params string[] input)
     {
         var factory = "namespace TestApp { public static class ModelFactory { public static object? Create() => " + modelExpression + "; } }";
         var result = Generate(cvw, extraSource: extraSource + "\n" + factory);
@@ -108,6 +109,7 @@ public static class ViewHarness
         var view = (ConsoleView)Activator.CreateInstance(result.Assembly!.GetType("TestApp.Views.Home.IndexView", throwOnError: true)!)!;
         var writer = new StringWriter { NewLine = "\n" };
         view.Renderer = new MarkupRenderer(new PlainTextRenderTarget(writer), () => width);
+        view.Input = new ScriptedInput(input);
 
         var model = result.Assembly.GetType("TestApp.ModelFactory")!.GetMethod("Create")!.Invoke(null, null);
         var navigation = view.RenderInternal(model);
@@ -119,8 +121,9 @@ public static class ViewHarness
     /// Generates, compiles and renders a view, returning only its plain-text output.
     /// </summary>
     /// <inheritdoc cref="RenderWithNavigation"/>
-    public static string Render(string cvw, string modelExpression = "null", string extraSource = "", int width = 40) =>
-        RenderWithNavigation(cvw, modelExpression, extraSource, width).Output;
+    public static string Render(string cvw, string modelExpression = "null", string extraSource = "", int width = 40,
+        params string[] input) =>
+        RenderWithNavigation(cvw, modelExpression, extraSource, width, input).Output;
 
     private static ImmutableArray<MetadataReference> LoadReferences()
     {
@@ -133,6 +136,16 @@ public static class ViewHarness
                 .GroupBy(Path.GetFileName)
                 .Select(g => MetadataReference.CreateFromFile(g.First()))
         ];
+    }
+
+    /// <summary>Scripted user input: returns the given lines, then end of input.</summary>
+    private sealed class ScriptedInput(string[] lines) : ITextInput
+    {
+        private readonly Queue<string> _lines = new(lines);
+
+        public string? ReadLine() => _lines.Count > 0 ? _lines.Dequeue() : null;
+
+        public string? ReadMasked(char mask) => ReadLine();
     }
 
     /// <summary>An additional file held in memory.</summary>

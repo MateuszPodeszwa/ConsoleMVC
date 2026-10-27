@@ -61,7 +61,7 @@ internal sealed class MarkupParser
     /// Parses from the start offset to the end of the text in code mode.
     /// </summary>
     /// <returns>The body nodes.</returns>
-    public List<Node> ParseBody() => ParseCode(stopAtUnmatchedBrace: false, out _);
+    public List<Node> ParseBody() => ParseCode(container: null, stopAtUnmatchedBrace: false, out _);
 
     // ------------------------------------------------------------------ code mode
 
@@ -70,7 +70,13 @@ internal sealed class MarkupParser
     /// <paramref name="stopAtUnmatchedBrace"/> is set, until a <c>}</c> that closes the enclosing block.
     /// The closing brace is not consumed.
     /// </summary>
-    private List<Node> ParseCode(bool stopAtUnmatchedBrace, out bool foundClosingBrace)
+    /// <param name="container">
+    /// The element whose content this code belongs to (e.g. the <c>&lt;table&gt;</c> around an <c>@foreach</c>),
+    /// or <see langword="null"/> at the top level of the view. Used to validate where elements appear.
+    /// </param>
+    /// <param name="stopAtUnmatchedBrace">Whether to stop at the brace closing the enclosing block.</param>
+    /// <param name="foundClosingBrace">Whether that closing brace was found.</param>
+    private List<Node> ParseCode(ElementSchema? container, bool stopAtUnmatchedBrace, out bool foundClosingBrace)
     {
         var nodes = new List<Node>();
         var codeStart = _position;
@@ -116,7 +122,12 @@ internal sealed class MarkupParser
             if (c == '<' && IsStatementStart(lastSignificant) && TryPeekTag(_position, out _, out var known) && known)
             {
                 AddCode(nodes, codeStart, _position);
-                nodes.Add(ParseElement());
+
+                var elementStart = _position;
+                var element = ParseElement();
+                if (CheckPlacement(container, element.Schema, elementStart))
+                    nodes.Add(element);
+
                 codeStart = _position;
                 lastSignificant = ';';
                 continue;
@@ -168,6 +179,8 @@ internal sealed class MarkupParser
         _schema.TryGetElement(tag, out var schema);
 
         var attributes = ParseAttributes(schema, out var selfClosing, out var tagClosed);
+        ValidateElement(schema, attributes, new SourceSpan(start, tag.Length + 1));
+
         if (!tagClosed || selfClosing || schema.Content == ContentModel.Void)
         {
             SkipVoidClosingTag(tag);
@@ -419,8 +432,17 @@ internal sealed class MarkupParser
 
         void FlushText()
         {
-            if (text.Length > 0)
+            if (element.Content == ContentModel.Elements)
+            {
+                // Only child elements may appear here; whitespace between them is ignored
+                if (text.ToString().Trim().Length > 0)
+                    Report(CvwDiagnostics.TextNotAllowed, SourceSpan.FromBounds(textStart, _position), element.Tag, element.ChildList);
+            }
+            else if (text.Length > 0)
+            {
                 nodes.Add(new TextNode(text.ToString(), SourceSpan.FromBounds(textStart, _position)));
+            }
+
             text.Clear();
         }
 
@@ -492,10 +514,8 @@ internal sealed class MarkupParser
         }
 
         var child = ParseElement();
-        if (parent.Allows(child.Schema))
+        if (CheckPlacement(parent, child.Schema, start))
             nodes.Add(child);
-        else
-            Report(CvwDiagnostics.ElementNotAllowed, new SourceSpan(start, tag.Length + 1), tag, parent.Tag);
     }
 
     /// <summary>
@@ -538,7 +558,7 @@ internal sealed class MarkupParser
 
             var start = _position;
             _position += 2;
-            var code = ParseCode(stopAtUnmatchedBrace: true, out var closed);
+            var code = ParseCode(element, stopAtUnmatchedBrace: true, out var closed);
 
             if (!closed)
                 Report(CvwDiagnostics.Unterminated, new SourceSpan(start, 2), "@{ code block (missing '}')");
@@ -559,19 +579,23 @@ internal sealed class MarkupParser
                 if (element.Content == ContentModel.Inline)
                 {
                     Report(CvwDiagnostics.CodeInText, new SourceSpan(_position, keyword.Length + 1), keyword, element.Tag);
-                    ParseControlFlow(keyword, new List<Node>());
+                    ParseControlFlow(keyword, new List<Node>(), element);
                 }
                 else
                 {
-                    ParseControlFlow(keyword, nodes);
+                    ParseControlFlow(keyword, nodes, element);
                 }
 
                 return true;
             }
         }
 
+        var expressionStart = _position;
         var expression = ParseExpressionAfterAt();
-        if (expression is not null)
+
+        if (element.Content == ContentModel.Elements)
+            Report(CvwDiagnostics.TextNotAllowed, SourceSpan.FromBounds(expressionStart, _position), element.Tag, element.ChildList);
+        else if (expression is not null)
             nodes.Add(expression);
 
         return true;
@@ -581,7 +605,7 @@ internal sealed class MarkupParser
     /// Parses <c>@if (…) { … } else { … }</c> and similar statements. The header and closing braces become
     /// <see cref="CodeNode"/>s; block bodies are parsed in code mode so they may contain markup.
     /// </summary>
-    private void ParseControlFlow(string keyword, List<Node> nodes)
+    private void ParseControlFlow(string keyword, List<Node> nodes, ElementSchema container)
     {
         _position++; // '@'
         var segmentStart = _position;
@@ -599,7 +623,7 @@ internal sealed class MarkupParser
             AddCode(nodes, segmentStart, openBrace + 1);
             _position = openBrace + 1;
 
-            nodes.AddRange(ParseCode(stopAtUnmatchedBrace: true, out var closed));
+            nodes.AddRange(ParseCode(container, stopAtUnmatchedBrace: true, out var closed));
             if (!closed)
             {
                 Report(CvwDiagnostics.Unterminated, new SourceSpan(openBrace, 1), $"@{keyword} block (missing '}}')");
@@ -713,6 +737,37 @@ internal sealed class MarkupParser
                 return;
             }
         }
+    }
+
+    // ------------------------------------------------------------------ validation
+
+    /// <summary>
+    /// Reports CVW103 when <paramref name="child"/> may not appear in <paramref name="container"/>
+    /// (<see langword="null"/> meaning the top level of the view).
+    /// </summary>
+    /// <returns><see langword="true"/> when the placement is valid.</returns>
+    private bool CheckPlacement(ElementSchema? container, ElementSchema child, int tagStart)
+    {
+        var error = container is null ? child.TopLevelPlacementError() : container.ChildPlacementError(child);
+        if (error is null)
+            return true;
+
+        Report(CvwDiagnostics.ElementNotAllowed, new SourceSpan(tagStart, child.Tag.Length + 1), error);
+        return false;
+    }
+
+    /// <summary>Reports missing required attributes (CVW111) and element-specific rules (CVW109).</summary>
+    private void ValidateElement(ElementSchema schema, IReadOnlyList<AttributeNode> attributes, SourceSpan tagSpan)
+    {
+        foreach (var required in schema.RequiredAttributes)
+        {
+            if (!attributes.Any(a => a.Schema.Property == required.Property))
+                Report(CvwDiagnostics.MissingAttribute, tagSpan, schema.Tag, required.Name);
+        }
+
+        var error = schema.Validate(attributes);
+        if (error is not null)
+            Report(CvwDiagnostics.InvalidElement, tagSpan, error);
     }
 
     // ------------------------------------------------------------------ helpers

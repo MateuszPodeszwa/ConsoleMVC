@@ -263,3 +263,34 @@ internal sealed class ChoiceAttributeType : AttributeType
         return false;
     }
 }
+
+/// <summary>
+/// A navigation target: <c>Controller/Action</c>, or <c>Action</c> on the current controller. Literals are
+/// validated at compile time; expressions are formatted as text.
+/// </summary>
+internal sealed class RouteAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "a route such as 'Home/Index' or 'Index'";
+
+    /// <inheritdoc />
+    public override bool AllowsInterpolation => true;
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        code = "";
+        error = "expected " + Description;
+        var parts = (literal ?? "").Trim().Split('/');
+
+        if (parts.Length > 2 || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
+            return false;
+
+        code = CSharpLiteral.String(string.Join("/", parts));
+        return true;
+    }
+
+    /// <inheritdoc />
+    public override string WrapExpression(string expressionCode) =>
+        "global::ConsoleMVC.Rendering.MarkupValue.Format(" + expressionCode + ")";
+}

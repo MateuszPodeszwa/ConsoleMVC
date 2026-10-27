@@ -52,7 +52,7 @@ internal static class CvwDiagnostics
     /// <summary>CVW103: element not allowed in its parent.</summary>
     public static readonly DiagnosticDescriptor ElementNotAllowed = new(
         "CVW103", "Element not allowed here",
-        "<{0}> is not allowed inside <{1}>",
+        "{0}",
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
     /// <summary>CVW104: unterminated expression, code block, string, comment or tag.</summary>
@@ -77,6 +77,24 @@ internal static class CvwDiagnostics
     public static readonly DiagnosticDescriptor DuplicateAttribute = new(
         "CVW107", "Duplicate attribute",
         "Attribute '{0}' is specified more than once on <{1}>",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>CVW109: an element-specific rule is broken (e.g. an option needs nav or quit).</summary>
+    public static readonly DiagnosticDescriptor InvalidElement = new(
+        "CVW109", "Invalid element",
+        "{0}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>CVW110: text or an expression inside an element that only accepts child elements.</summary>
+    public static readonly DiagnosticDescriptor TextNotAllowed = new(
+        "CVW110", "Text not allowed here",
+        "Text and expressions are not allowed directly inside <{0}>; it may only contain {1}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>CVW111: a required attribute is missing.</summary>
+    public static readonly DiagnosticDescriptor MissingAttribute = new(
+        "CVW111", "Required attribute missing",
+        "<{0}> requires the '{1}' attribute",
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
     /// <summary>CVW108: malformed tag syntax.</summary>

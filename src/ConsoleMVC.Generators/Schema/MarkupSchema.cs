@@ -7,8 +7,8 @@ using System.Linq;
 namespace ConsoleMVC.Generators.Schema;
 
 /// <summary>
-/// The set of C-View Markup elements known to the generator (v0.1: <c>text</c>, <c>box</c>,
-/// <c>separator</c>, <c>br</c>).
+/// The set of C-View Markup elements known to the generator: v0.1 <c>text</c>, <c>box</c>, <c>separator</c>,
+/// <c>br</c>; v0.2 <c>table</c>/<c>row</c>/<c>cell</c>, <c>menu</c>/<c>option</c> and <c>input</c>.
 /// </summary>
 /// <remarks>
 /// To add an element: create its runtime class in <c>ConsoleMVC.Rendering</c> and register an
@@ -37,7 +37,7 @@ internal sealed class MarkupSchema
         ElementList = string.Join(", ", _elements.Keys.Select(k => "<" + k + ">"));
     }
 
-    /// <summary>Gets the default v0.1 schema.</summary>
+    /// <summary>Gets the default schema.</summary>
     public static MarkupSchema Default { get; } = CreateDefault();
 
     /// <summary>Gets a comma-separated list of known elements, for error messages.</summary>
@@ -60,6 +60,8 @@ internal sealed class MarkupSchema
         var colour = new ColourAttributeType();
         var boolean = new BooleanAttributeType();
         var length = new LengthAttributeType();
+        var text = new StringAttributeType();
+        var padding = new IntegerAttributeType(0, 20);
 
         var alignment = new ChoiceAttributeType(new Dictionary<string, string>
         {
@@ -88,26 +90,29 @@ internal sealed class MarkupSchema
             ["ascii"] = Rendering + "LineStyle.Ascii"
         });
 
+        // Shared by every element with styled inline content: <text>, <cell>, <option>
+        AttributeSchema[] InlineStyle() =>
+        [
+            new AttributeSchema("color", "Foreground", colour),
+            new AttributeSchema("colour", "Foreground", colour),
+            new AttributeSchema("background", "Background", colour),
+            new AttributeSchema("bold", "Bold", boolean),
+            new AttributeSchema("dim", "Dim", boolean),
+            new AttributeSchema("italic", "Italic", boolean),
+            new AttributeSchema("underline", "Underline", boolean),
+            new AttributeSchema("align", "Align", alignment),
+            new AttributeSchema("wrap", "Wrap", boolean)
+        ];
+
         return new MarkupSchema(
         [
-            new ElementSchema(TextTag, Rendering + "TextElement", ContentModel.Inline,
-            [
-                new AttributeSchema("color", "Foreground", colour),
-                new AttributeSchema("colour", "Foreground", colour),
-                new AttributeSchema("background", "Background", colour),
-                new AttributeSchema("bold", "Bold", boolean),
-                new AttributeSchema("dim", "Dim", boolean),
-                new AttributeSchema("italic", "Italic", boolean),
-                new AttributeSchema("underline", "Underline", boolean),
-                new AttributeSchema("align", "Align", alignment),
-                new AttributeSchema("wrap", "Wrap", boolean)
-            ]),
+            new ElementSchema(TextTag, Rendering + "TextElement", ContentModel.Inline, InlineStyle()),
             new ElementSchema("box", Rendering + "BoxElement", ContentModel.Block,
             [
-                new AttributeSchema("title", "Title", new StringAttributeType()),
+                new AttributeSchema("title", "Title", text),
                 new AttributeSchema("width", "Width", length),
                 new AttributeSchema("border", "Border", border),
-                new AttributeSchema("padding", "Padding", new IntegerAttributeType(0, 20)),
+                new AttributeSchema("padding", "Padding", padding),
                 new AttributeSchema("color", "BorderColour", colour),
                 new AttributeSchema("colour", "BorderColour", colour),
                 new AttributeSchema("title-color", "TitleColour", colour),
@@ -123,7 +128,62 @@ internal sealed class MarkupSchema
             new ElementSchema(LineBreakTag, Rendering + "LineBreakElement", ContentModel.Void,
             [
                 new AttributeSchema("count", "Count", new IntegerAttributeType(0, 100))
-            ])
+            ]),
+
+            // ---- v0.2: tables
+            new ElementSchema("table", Rendering + "TableElement", ContentModel.Elements,
+            [
+                new AttributeSchema("border", "Border", border),
+                new AttributeSchema("padding", "Padding", padding),
+                new AttributeSchema("width", "Width", length),
+                new AttributeSchema("color", "BorderColour", colour),
+                new AttributeSchema("colour", "BorderColour", colour)
+            ], allowedChildren: ["row"]),
+            new ElementSchema("row", Rendering + "TableRowElement", ContentModel.Elements,
+            [
+                new AttributeSchema("header", "IsHeader", boolean)
+            ], allowedChildren: ["cell"], requiredParent: "table"),
+            new ElementSchema("cell", Rendering + "TableCellElement", ContentModel.Inline, InlineStyle(),
+                requiredParent: "row"),
+
+            // ---- v0.2: interaction
+            new ElementSchema("menu", Rendering + "MenuElement", ContentModel.Elements,
+            [
+                new AttributeSchema("prompt", "Prompt", text),
+                new AttributeSchema("error", "ErrorMessage", text),
+                new AttributeSchema("key-color", "KeyColour", colour),
+                new AttributeSchema("key-colour", "KeyColour", colour)
+            ], allowedChildren: ["option"], topLevelOnly: true, topLevelStatement: "return this.RunMenu({0});"),
+            new ElementSchema("option", Rendering + "MenuOptionElement", ContentModel.Inline,
+            [
+                ..InlineStyle(),
+                new AttributeSchema("key", "Key", text, required: true),
+                new AttributeSchema("nav", "Target", new RouteAttributeType()),
+                new AttributeSchema("quit", "Quit", boolean),
+                new AttributeSchema("post", "PostForm", boolean)
+            ], requiredParent: "menu", validator: ValidateOption),
+            new ElementSchema("input", Rendering + "InputElement", ContentModel.Void,
+            [
+                new AttributeSchema("name", "Name", text, required: true),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("default", "Default", text),
+                new AttributeSchema("required", "Required", boolean),
+                new AttributeSchema("masked", "Masked", boolean),
+                new AttributeSchema("color", "LabelColour", colour),
+                new AttributeSchema("colour", "LabelColour", colour)
+            ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});")
         ]);
+    }
+
+    /// <summary>An option must either navigate (<c>nav</c>) or quit (<c>quit</c>), not both and not neither.</summary>
+    private static string? ValidateOption(IReadOnlyList<Syntax.AttributeNode> attributes)
+    {
+        var navigates = attributes.Any(a => a.Schema.Property == "Target");
+        var quits = attributes.Any(a => a.Schema.Property == "Quit");
+
+        if (navigates == quits)
+            return "<option> needs exactly one of 'nav' (e.g. nav=\"Home/Index\") or 'quit'";
+
+        return null;
     }
 }

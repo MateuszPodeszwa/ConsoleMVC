@@ -77,7 +77,7 @@ public class DiagnosticTests
     [Fact]
     public void UnknownElementInsideBox_CVW105()
     {
-        var diagnostic = Single("<box><table></table></box>" + Quit, "CVW105");
+        var diagnostic = Single("<box><grid></grid></box>" + Quit, "CVW105");
 
         Assert.Contains("&lt;", diagnostic.GetMessage());
     }
@@ -157,5 +157,56 @@ public class DiagnosticTests
         var error = result.CompilationDiagnostics.First(d => d.Id == "CS0246");
         Assert.Equal(0, error.Location.GetMappedLineSpan().StartLinePosition.Line);
         Assert.Equal(ViewHarness.DefaultPath, error.Location.GetMappedLineSpan().Path);
+    }
+
+    // --- v0.2 placement and element rules ---
+
+    [Theory]
+    [InlineData("<row><cell>x</cell></row>", "only allowed inside <table>")]
+    [InlineData("<table><row><text>x</text></row></table>", "may only contain <cell>")]
+    [InlineData("<box><menu><option key=\"1\" quit>x</option></menu></box>", "top level")]
+    [InlineData("<box><input name=\"x\" /></box>", "top level")]
+    [InlineData("<table>@foreach (var i in new[] { 1 }) { <cell>x</cell> }</table>", "only allowed inside <row>")]
+    [InlineData("<text><option key=\"1\" quit>x</option></text>", "only allowed inside <menu>")]
+    public void Placement_CVW103(string markup, string expectedMessage)
+    {
+        var diagnostic = Single(markup + Quit, "CVW103");
+
+        Assert.Contains(expectedMessage, diagnostic.GetMessage());
+    }
+
+    [Theory]
+    [InlineData("<table>loose text<row><cell>x</cell></row></table>")]
+    [InlineData("<menu>@Model<option key=\"q\" quit>Quit</option></menu>")]
+    public void TextInElementsOnlyContent_CVW110(string markup)
+    {
+        Single(markup + Quit, "CVW110");
+    }
+
+    [Theory]
+    [InlineData("<menu><option nav=\"Home/Index\">x</option></menu>", "key")]
+    [InlineData("<input label=\"Name: \" />", "name")]
+    public void MissingRequiredAttribute_CVW111(string markup, string attribute)
+    {
+        var diagnostic = Single(markup + Quit, "CVW111");
+
+        Assert.Contains($"'{attribute}'", diagnostic.GetMessage());
+    }
+
+    [Theory]
+    [InlineData("<menu><option key=\"1\">x</option></menu>")]
+    [InlineData("<menu><option key=\"1\" nav=\"A\" quit>x</option></menu>")]
+    public void OptionNeedsExactlyOneOfNavOrQuit_CVW109(string markup)
+    {
+        Single(markup + Quit, "CVW109");
+    }
+
+    [Theory]
+    [InlineData("Home/Index/Extra")]
+    [InlineData("Home Index")]
+    [InlineData("/Index")]
+    public void InvalidRoute_CVW101(string route)
+    {
+        Single($"<menu><option key=\"1\" nav=\"{route}\">x</option></menu>" + Quit, "CVW101");
     }
 }

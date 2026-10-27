@@ -169,11 +169,14 @@ internal sealed class ViewEmitter
                 EmitInlineContent(element.Children, variable);
                 break;
             case ContentModel.Block:
+            case ContentModel.Elements:
                 EmitNodes(element.Children, variable);
                 break;
         }
 
-        Line(parentVariable is null ? $"this.Renderer.Render({variable});" : $"{parentVariable}.Add({variable});");
+        Line(parentVariable is null
+            ? string.Format(CultureInfo.InvariantCulture, element.Schema.TopLevelStatement, variable)
+            : $"{parentVariable}.Add({variable});");
         Line("}");
     }
 
