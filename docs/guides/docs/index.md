@@ -9,4 +9,5 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 ## Quick Links
 
 - [Getting Started](getting-started.md) — install the framework and create your first console MVC application.
+- [C-View Markup](c-view-markup.md) — describe screens with `<box>`, `<text>` and friends.
 - [API Reference](../api/) — auto-generated reference documentation for all public types.

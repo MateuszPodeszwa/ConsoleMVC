@@ -88,6 +88,15 @@ internal sealed class MarkupParser
                 continue;
             }
 
+            // Razor-style comment @* … *@ — removed from the generated code
+            if (c == '@' && Peek(1) == '*')
+            {
+                AddCode(nodes, codeStart, _position);
+                SkipComment("@*", "*@", "@* comment *@");
+                codeStart = _position;
+                continue;
+            }
+
             if (c is '/' or '\'' or '"' or '@' or '$')
             {
                 var skip = CSharpLexer.Skip(_text, _position);

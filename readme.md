@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **Where this project is headed:** A console-native markup language called **C-View Markup** — think HTML-like syntax purpose-built for terminal UIs, with `@` expressions from Razor, layout primitives like `<box>`, `<table>`, and `<menu>`, and a rendering engine that compiles it all at build time. Read the full vision, roadmap, and how to get involved in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **New in 1.2 — C-View Markup v0.1:** describe console screens with `<box>`, `<text>`, `<separator>` and `<br>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**. Tables, menus and inputs are next — read the vision and roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -14,6 +14,8 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Convention over configuration** — Controllers and Views are auto-discovered at startup via reflection
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — the same patterns from ASP.NET Core MVC
 - **Razor-like view engine** — `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
+- **C-View Markup** — declarative `<box>`, `<text>` and `<separator>` elements with colours, borders, alignment and word wrapping, checked at compile time
+- **Safe by default** — model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 
 ## Getting Started
@@ -114,6 +116,8 @@ public class HomeController : Controller
 }
 ```
 
+Any public method that returns `ActionResult` is an action. Mark helper methods with `[NonAction]` to keep them out of navigation. Action names are matched case-insensitively and must be unique (overloads are not supported).
+
 **Available methods:**
 
 | Method | Description |
@@ -148,8 +152,41 @@ return input switch
 
 | Directive | Purpose |
 |-----------|---------|
-| `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. |
+| `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional — defaults to `object`. |
 | `@using Namespace` | Adds a `using` statement to the generated class. |
+
+**C-View Markup:**
+
+Instead of formatting output by hand, views can describe it with markup. Markup and C# mix freely — top-level elements render in source order, and `@` switches back to C# inside an element:
+
+```
+@model MyApp.Models.HomeViewModel
+
+<box title="@Model.Title" border="rounded" color="cyan" padding="2">
+    <text>@Model.Message</text>
+    <br />
+    @for (var i = 0; i < Model.MenuOptions.Count; i++)
+    {
+        <text>[@(i + 1)] @Model.MenuOptions[i]</text>
+    }
+</box>
+
+Console.Write("Select an option: ");
+var input = Console.ReadLine()?.Trim();
+return input == "1" ? NavigationResult.To("Home", "About") : NavigationResult.Quit();
+```
+
+```
+╭─ Welcome to ConsoleMVC ────────────────────────────────╮
+│  A structured MVC framework for console applications.  │
+│                                                        │
+│  [1] About                                             │
+│  [2] Exit                                              │
+╰────────────────────────────────────────────────────────╯
+Select an option:
+```
+
+Mistakes such as an unknown attribute or a missing closing tag are build errors pointing at the `.cvw` line, and C# errors inside views are mapped back to the `.cvw` file too. The full element and attribute reference is in the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**.
 
 **Navigation from views:**
 
@@ -353,7 +390,9 @@ Start → Home/Index (default route)
 
 ### <a id="IDESupport"></a> IDE Support for `.cvw` Files
 
-To get C# syntax highlighting in `.cvw` files:
+The [ConsoleMVC CVWSupport](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport) plugin for JetBrains Rider understands directives and the C# code in views. Highlighting and completion for C-View Markup elements are planned for the plugin; until then markup is shown as plain text and errors are reported by the build.
+
+To get basic C# syntax highlighting in `.cvw` files in other editors:
 
 **JetBrains Rider / IntelliJ:**
 Settings → Editor → File Types → find C# → add `*.cvw` pattern
@@ -406,15 +445,25 @@ Build and run — the new page is automatically discovered and routable.
 
 ## Configuration
 
-The builder allows configuring the default route:
+The builder configures the application before it starts:
 
 ```csharp
 var builder = MvcApplication.CreateBuilder(args);
-builder.DefaultController = "Dashboard";  // Default: "Home"
-builder.DefaultAction = "Overview";       // Default: "Index"
+builder.DefaultController = "Dashboard";        // Default: "Home"
+builder.DefaultAction = "Overview";             // Default: "Index"
+builder.ClearScreenBetweenViews = false;        // Default: true
+builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
+builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
 var app = builder.Build();
 app.Run();
 ```
+
+| Option | Purpose |
+|--------|---------|
+| `DefaultController` / `DefaultAction` | The first route to run |
+| `ClearScreenBetweenViews` | Clear the console before each view renders |
+| `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
+| `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output. Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
 
 ## Package Information
 
@@ -448,13 +497,19 @@ ConsoleMVC/
       ConsoleMVC.csproj                   #   Packs lib + generator + build props
       build/ConsoleMVC.Framework.props    #   Auto-imported by consuming projects
       PACKAGE_README.md                   #   README shown on NuGet gallery
-      *.cs                                #   Framework source (Controller, Router, ModelBinder, etc.)
+      Application/ Controllers/ Results/  #   MVC framework (namespace ConsoleMVC.Mvc)
+      Routing/ Binding/ Views/
+      Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
       ConsoleMVC.Generators.csproj
-      ViewSourceGenerator.cs              #   Transforms .cvw → ConsoleView<T> at compile time
+      ViewSourceGenerator.cs              #   Pipeline: .cvw → parse → diagnostics → emit ConsoleView<T>
+      Parsing/ Syntax/ Schema/            #   Directive, C# and markup parsing; element/attribute schema
+      Emit/ Diagnostics/                  #   C# generation with #line mapping; CVWxxx diagnostics
   tests/
-    ConsoleMVC.Tests/                     # Unit and integration tests
-      ConsoleMVC.Tests.csproj
+    ConsoleMVC.Tests/                     # Framework and rendering unit/integration tests
+    ConsoleMVC.Generators.Tests/          # Runs the generator, compiles and executes views
+  docs/
+    design/c-view-markup.md               # Design: UML, grammar, pseudocode
   templates/
     ConsoleMVC.App/                       # Template content (what users get from dotnet new)
       .template.config/template.json      #   Template engine configuration
@@ -465,10 +520,11 @@ ConsoleMVC/
       Views/
 ```
 
-### Building
+### Building and Testing
 
 ```bash
 dotnet build ConsoleMVC.sln
+dotnet test ConsoleMVC.sln
 ```
 
 ### Releasing a New Version
@@ -508,9 +564,11 @@ When modifying the template content (files in `templates/ConsoleMVC.App/`):
 
 ### Updating the Source Generator
 
-When modifying `ViewSourceGenerator.cs`:
+When modifying the source generator (`src/ConsoleMVC.Generators`):
 
 - The generator targets `netstandard2.0` — avoid APIs not available in that target
+- To add a markup element, add its runtime class under `src/ConsoleMVC/Rendering/Elements` and register it in `Schema/MarkupSchema.cs`; add a rendering test in `ConsoleMVC.Generators.Tests`
+- New diagnostics need an entry in `AnalyzerReleases.Unshipped.md`
 - `Environment.NewLine` and similar banned symbols cannot be used (Roslyn analyzer restriction)
 - After changes, you must repack the `ConsoleMVC` package since the generator DLL is bundled inside it
 - Clear the local NuGet cache (`rm -rf ~/.nuget/packages/consolemvc.framework`) when testing locally to avoid stale generator DLLs

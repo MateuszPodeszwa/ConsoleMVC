@@ -1,9 +1,9 @@
 @model object
 
-Console.WriteLine("=== Greeting Form ===");
-Console.WriteLine();
-Console.WriteLine("Fill in the form below and press Enter after each field.");
-Console.WriteLine();
+<box title="Greeting Form" border="rounded" color="green">
+    <text>Fill in the form below and press Enter after each field.</text>
+</box>
+<br />
 
 Console.Write("  Name: ");
 var name = Console.ReadLine()?.Trim() ?? "";

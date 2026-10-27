@@ -152,6 +152,18 @@ public class MarkupRenderingTests
     }
 
     [Fact]
+    public void RazorComments_AreRemovedFromCode()
+    {
+        const string view = """
+            @* A comment mentioning <box> and "quotes" *@
+            var shown = "yes"; @* trailing comment *@
+            <text>@shown</text>
+            """;
+
+        Assert.Equal("yes\n", ViewHarness.Render(view + Quit));
+    }
+
+    [Fact]
     public void ModelData_IsSanitised()
     {
         Assert.Equal("Bob[2J\n", ViewHarness.Render("@model string\n<text>@Model</text>" + Quit, "\"Bob\\u001b[2J\""));

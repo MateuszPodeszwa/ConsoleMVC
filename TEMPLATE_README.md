@@ -25,7 +25,7 @@ A ready-to-run console application structured with the MVC pattern:
 
 - **Program.cs** — entry point using the familiar `CreateBuilder().Build().Run()` pattern
 - **Controllers/** — controller classes that handle actions and return results
-- **Views/** — `.cvw` view templates with `@model` directive (compiled at build time)
+- **Views/** — `.cvw` views using C-View Markup (`<box>`, `<text>`, `<separator>`) and C#, compiled at build time
 - **Models/** — ViewModel DTOs passed from controllers to views
 
 The template includes working examples of:

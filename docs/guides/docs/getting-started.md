@@ -35,7 +35,7 @@ MyApp/
 └── Program.cs
 ```
 
-Controllers inherit from `Controller` and expose public parameterless methods that return `ActionResult`. Views are `.cvw` files that declare their model type with an `@model` directive and contain C# code that renders output to the console.
+Controllers inherit from `Controller` and expose public methods that return `ActionResult`; parameters are bound from form data posted by views. Views are `.cvw` files that declare their model type with an `@model` directive and contain C# code, optionally mixed with [C-View Markup](c-view-markup.md) elements such as `<box>` and `<text>`, that renders output to the console.
 
 ## Running Your Application
 
