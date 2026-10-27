@@ -10,6 +10,7 @@ name: Publish packages
 # short-lived OIDC token, which NuGet/login exchanges for an API key valid for one hour. No API key is stored.
 # One-time setup on nuget.org: your profile → Trusted Publishing → add a policy with
 #   Repository Owner: MateuszPodeszwa   Repository: ConsoleMVC   Workflow File: publish.yml   Environment: release
+#   Packages: ConsoleMVC.Framework and ConsoleMVC.Template (or the glob ConsoleMVC.*)
 # GitHub Packages uses the built-in GITHUB_TOKEN.
 
 on:

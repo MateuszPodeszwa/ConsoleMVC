@@ -807,6 +807,8 @@ Publishing a release by hand, or **Actions → Publish packages → Run workflow
 | Repository | `ConsoleMVC` |
 | Workflow File | `publish.yml` |
 | Environment | `release` |
+| Glob patterns and packages | `ConsoleMVC.Framework` and `ConsoleMVC.Template` (one per line), or `ConsoleMVC.*` to cover future packages |
+| Scope | Push new versions of existing packages (with `ConsoleMVC.*`, also push new packages) |
 
 The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repository variable `NUGET_USER` to use another account. GitHub creates the `release` environment on the first run; add required reviewers to it under **Settings → Environments** if you want to approve each release.
 
