@@ -33,7 +33,22 @@ internal static class ModelBinder
     /// An array of bound argument values matching the method's parameter list,
     /// or <see langword="null"/> if the method has no parameters.
     /// </returns>
-    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData)
+    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData) =>
+        BindParameters(method, formData, modelState: null);
+
+    /// <summary>
+    /// Binds the action's parameters from form data, recording values that cannot be converted in
+    /// <paramref name="modelState"/>.
+    /// </summary>
+    /// <param name="method">The action method whose parameters should be bound.</param>
+    /// <param name="formData">The posted form data, or <see langword="null"/>.</param>
+    /// <param name="modelState">Receives conversion errors, or <see langword="null"/> to ignore them.</param>
+    /// <returns>The bound arguments, or <see langword="null"/> when the method has no parameters.</returns>
+    /// <remarks>
+    /// An empty value is not a conversion error: the field simply keeps its default. Use <c>[Required]</c> to
+    /// demand a value.
+    /// </remarks>
+    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData, ModelStateDictionary? modelState)
     {
         var parameters = method.GetParameters();
 
@@ -44,7 +59,7 @@ internal static class ModelBinder
         var args = new object?[parameters.Length];
 
         for (var i = 0; i < parameters.Length; i++)
-            args[i] = BindParameter(parameters[i], values);
+            args[i] = BindParameter(parameters[i], values, modelState);
 
         return args;
     }
@@ -156,21 +171,27 @@ internal static class ModelBinder
                || t == typeof(Version);
     }
 
-    private static object? BindParameter(ParameterInfo parameter, IReadOnlyDictionary<string, string> values)
+    private static object? BindParameter(ParameterInfo parameter, IReadOnlyDictionary<string, string> values,
+        ModelStateDictionary? modelState)
     {
         var parameterType = parameter.ParameterType;
 
         if (!IsSimpleType(parameterType))
-            return BindComplexType(parameterType, values);
+            return BindComplexType(parameterType, values, modelState);
 
-        if (values.TryGetValue(parameter.Name!, out var raw) && TryConvert(raw, parameterType, out var converted))
-            return converted;
+        if (values.TryGetValue(parameter.Name!, out var raw))
+        {
+            if (TryConvert(raw, parameterType, out var converted))
+                return converted;
+
+            ReportConversionError(modelState, parameter.Name!, raw);
+        }
 
         // Missing or unconvertible: use the declared default (e.g. int page = 1), else the type default
         return parameter.HasDefaultValue ? parameter.DefaultValue : DefaultOf(parameterType);
     }
 
-    private static object? BindComplexType(Type type, IReadOnlyDictionary<string, string> values)
+    private static object? BindComplexType(Type type, IReadOnlyDictionary<string, string> values, ModelStateDictionary? modelState)
     {
         object instance;
         try
@@ -188,8 +209,13 @@ internal static class ModelBinder
 
         foreach (var property in properties)
         {
-            if (values.TryGetValue(property.Name, out var raw) && TryConvert(raw, property.PropertyType, out var converted))
+            if (!values.TryGetValue(property.Name, out var raw))
+                continue;
+
+            if (TryConvert(raw, property.PropertyType, out var converted))
                 property.SetValue(instance, converted);
+            else
+                ReportConversionError(modelState, property.Name, raw);
         }
 
         return instance;
@@ -208,6 +234,15 @@ internal static class ModelBinder
             values.TryAdd(key, value);
 
         return values;
+    }
+
+    /// <summary>Records that <paramref name="raw"/> could not be converted, unless it is empty.</summary>
+    private static void ReportConversionError(ModelStateDictionary? modelState, string key, string raw)
+    {
+        if (modelState is null || string.IsNullOrWhiteSpace(raw))
+            return;
+
+        modelState.AddBindingError(key, $"The value '{raw}' is not valid for {key}.");
     }
 
     private static object? DefaultOf(Type type) => type.IsValueType ? Activator.CreateInstance(type) : null;

@@ -14,7 +14,7 @@ namespace ConsoleMVC.Mvc;
 /// </para>
 /// <para>
 /// Action methods must be public, parameterless, and return <see cref="ActionResult"/>.
-/// Use <see cref="View"/> to render a view or <see cref="RedirectToAction"/> to navigate
+/// Use <see cref="View(object?)"/> to render a view or <see cref="RedirectToAction"/> to navigate
 /// to a different action without rendering.
 /// </para>
 /// </remarks>
@@ -36,6 +36,14 @@ public abstract class Controller
     public ViewDataDictionary ViewData { get; } = new();
 
     /// <summary>
+    /// Gets the validation errors for the current request. When a view posts form data, the framework binds it
+    /// and validates it with DataAnnotations attributes (<c>[Required]</c>, <c>[Range]</c>, …) before the action
+    /// runs; check <see cref="ModelStateDictionary.IsValid"/> and return the form again when it is not.
+    /// </summary>
+    /// <value>The model state, passed on to the view returned by <see cref="View(object?)"/>.</value>
+    public ModelStateDictionary ModelState { get; internal set; } = new();
+
+    /// <summary>
     /// Creates a <see cref="ViewResult"/> that renders the view corresponding to the
     /// current action, optionally passing a model to the view.
     /// </summary>
@@ -49,13 +57,47 @@ public abstract class Controller
     /// </remarks>
     protected ViewResult View(object? model = null)
     {
+        return View(RouteContext.Action, model);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="ViewResult"/> that renders the view of another action on this controller — typically
+    /// to show a form again after validation fails.
+    /// </summary>
+    /// <param name="viewName">The action whose view to render, e.g. <c>"Index"</c> for <c>IndexView</c>.</param>
+    /// <param name="model">The view model, or <see langword="null"/>.</param>
+    /// <returns>A <see cref="ViewResult"/> for the named view.</returns>
+    /// <example>
+    /// <code>
+    /// if (!ModelState.IsValid)
+    ///     return View("Index", model);
+    /// </code>
+    /// </example>
+    protected ViewResult View(string viewName, object? model)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(viewName);
+
         return new ViewResult
         {
             ControllerName = GetControllerName(),
-            ViewName = RouteContext.Action,
+            ViewName = viewName,
             Model = model,
-            ViewData = ViewData
+            ViewData = ViewData,
+            ModelState = ModelState
         };
+    }
+
+    /// <summary>
+    /// Validates <paramref name="model"/> with its DataAnnotations attributes and adds any errors to
+    /// <see cref="ModelState"/>. Useful for models built in code rather than posted from a view.
+    /// </summary>
+    /// <param name="model">The object to validate.</param>
+    /// <returns><see langword="true"/> when the model is valid.</returns>
+    /// <example><code>if (!TryValidateModel(order)) return View("Edit", order);</code></example>
+    protected bool TryValidateModel(object model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        return ModelValidator.ValidateModel(model, ModelState);
     }
 
     /// <summary>
