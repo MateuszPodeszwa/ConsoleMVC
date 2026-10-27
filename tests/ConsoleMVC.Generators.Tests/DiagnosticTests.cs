@@ -209,4 +209,13 @@ public class DiagnosticTests
     {
         Single($"<menu><option key=\"1\" nav=\"{route}\">x</option></menu>" + Quit, "CVW101");
     }
+
+    [Fact]
+    public void Option_QuitFalse_CountsAsAbsent()
+    {
+        var result = ViewHarness.Generate("<menu><option key=\"1\" nav=\"Home/Index\" quit=\"false\">x</option></menu>");
+
+        Assert.DoesNotContain(result.GeneratorDiagnostics, d => d.Id == "CVW109");
+        Single("<menu><option key=\"1\" quit=\"false\">x</option></menu>", "CVW109");
+    }
 }

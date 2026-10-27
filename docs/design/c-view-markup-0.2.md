@@ -194,7 +194,7 @@ for each row:
 bottom border:  └──┴──┘
 ```
 
-Header cells are bold unless the cell sets its own style.
+Header cells are bold unless the cell sets its own decoration (`bold`, `dim`, `italic` or `underline`).
 
 ### 4.3 Input
 

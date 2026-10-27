@@ -24,7 +24,38 @@ public class LayoutRegressionTests
     }
 
     /// <summary>Elements covering every layout path, used by the width invariant below.</summary>
-    public static TheoryData<string> Samples => new() { "text", "cjk", "box", "padded", "nested", "untitled", "separator", "notitle" };
+    public static TheoryData<string> Samples => new()
+    {
+        "text", "cjk", "box", "padded", "nested", "untitled", "separator", "notitle", "table", "cjktable", "menu", "longkey"
+    };
+
+    private static TableElement Table(params string[][] rows)
+    {
+        var table = new TableElement();
+        foreach (var cells in rows)
+        {
+            var row = new TableRowElement();
+            foreach (var content in cells)
+            {
+                var cell = new TableCellElement();
+                cell.AppendText(content);
+                row.Add(cell);
+            }
+
+            table.Add(row);
+        }
+
+        return table;
+    }
+
+    private static MenuElement Menu(string key, string label)
+    {
+        var option = new MenuOptionElement { Key = key, Target = "A" };
+        option.AppendText(label);
+        var menu = new MenuElement();
+        menu.Add(option);
+        return menu;
+    }
 
     private static Element Sample(string name) => name switch
     {
@@ -35,6 +66,10 @@ public class LayoutRegressionTests
         "nested" => Box(Box(Text("Inner 日本"), b => b.Width = "50%"), b => b.Title = "Outer"),
         "untitled" => Box(Text("x"), b => b.Border = BorderStyle.Double),
         "separator" => new SeparatorElement { Width = 12 },
+        "table" => Table(["Name", "Age"], ["Ada Lovelace", "36"]),
+        "cjktable" => Table(["日本語日本語", "x"]),
+        "menu" => Menu("1", "A fairly long menu label"),
+        "longkey" => Menu("verylongkey", "Label"),
         _ => Box(Text("item"), b => { b.Border = BorderStyle.None; b.Title = "A long heading"; })
     };
 
@@ -109,5 +144,39 @@ public class LayoutRegressionTests
 
         Assert.Equal("ab日", line.Clip(5).ToPlainText());
         Assert.Same(line, line.Clip(6));
+    }
+
+    [Fact]
+    public void PercentageTable_InsideAutoBox_IsSizedOnce()
+    {
+        var table = Table(["x"]);
+        table.Width = "50%";
+        var outer = Box(table);
+
+        Assert.Equal(80, outer.Layout(80)[0].Width);
+        Assert.Equal(38, outer.Layout(80)[1].ToPlainText().Trim('│', ' ').Length);
+    }
+
+    [Fact]
+    public void Table_FixedWidthSmallerThanItsGrid_StaysWithinWidth()
+    {
+        var table = Table(["a", "b"]);
+        table.Width = 5;
+
+        Assert.All(table.Layout(80), l => Assert.True(l.Width <= 5, l.ToPlainText()));
+    }
+
+    [Fact]
+    public void Table_HeaderCells_KeepTheirOwnDecoration()
+    {
+        var table = new TableElement();
+        var header = new TableRowElement { IsHeader = true };
+        var cell = new TableCellElement { Dim = true };
+        cell.AppendText("H");
+        header.Add(cell);
+        table.Add(header);
+
+        var span = table.Layout(80)[1].Spans.Single(s => s.Text == "H");
+        Assert.Equal(TextDecoration.Dim, span.Style.Decoration);
     }
 }

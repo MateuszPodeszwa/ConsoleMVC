@@ -113,6 +113,7 @@ internal static class CvwDiagnostics
     public static readonly DiagnosticDescriptor MissingAttribute = new(
         "CVW111", "Required attribute missing",
         "<{0}> requires the '{1}' attribute",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
     /// <summary>CVW112: an explicit expression with nothing in it.</summary>
     public static readonly DiagnosticDescriptor EmptyExpression = new(

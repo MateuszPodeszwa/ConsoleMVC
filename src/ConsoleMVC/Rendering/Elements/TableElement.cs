@@ -119,7 +119,8 @@ public sealed class TableElement : Element
         if (columns == 0)
             return [];
 
-        var widths = ColumnWidths(columns, MeasureWidth(width) - Chrome(columns));
+        var tableWidth = MeasureWidth(width);
+        var widths = ColumnWidths(columns, tableWidth - Chrome(columns));
         var borderStyle = TextStyle.Plain.WithForeground(BorderColour);
         var lines = new List<RenderedLine>();
 
@@ -137,8 +138,12 @@ public sealed class TableElement : Element
         if (Border.IsVisible)
             lines.Add(HorizontalRule(widths, Border.BottomLeft, Border.TeeUp, Border.BottomRight, borderStyle));
 
-        return lines;
+        // When even one column per cell does not fit, the grid cannot be drawn whole: never exceed the width
+        return lines.Select(line => line.Clip(tableWidth)).ToList();
     }
+
+    /// <inheritdoc />
+    protected internal override bool HasRelativeWidth => Width.Kind == LengthKind.Percent;
 
     /// <summary>Columns used by vertical grid lines and cell padding.</summary>
     private int Chrome(int columns) => (Border.IsVisible ? columns + 1 : 0) + 2 * SafePadding * columns;
@@ -182,12 +187,20 @@ public sealed class TableElement : Element
 
     private IEnumerable<RenderedLine> LayoutRow(TableRowElement row, int[] widths, TextStyle borderStyle)
     {
-        var decoration = row.IsHeader ? TextDecoration.Bold : TextDecoration.None;
         var cellLines = new IReadOnlyList<RenderedLine>[widths.Length];
 
         for (var c = 0; c < widths.Length; c++)
         {
-            cellLines[c] = c < row.Cells.Count ? row.Cells[c].Layout(widths[c], decoration) : [RenderedLine.Empty];
+            if (c >= row.Cells.Count)
+            {
+                cellLines[c] = [RenderedLine.Empty];
+                continue;
+            }
+
+            // Header cells are bold unless the cell sets its own decoration
+            var cell = row.Cells[c];
+            var decoration = row.IsHeader && cell.Style.Decoration == TextDecoration.None ? TextDecoration.Bold : TextDecoration.None;
+            cellLines[c] = cell.Layout(widths[c], decoration);
         }
 
         var height = cellLines.Max(l => l.Count);

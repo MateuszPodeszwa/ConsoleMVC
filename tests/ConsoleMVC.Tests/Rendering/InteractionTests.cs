@@ -158,4 +158,23 @@ public class InteractionTests
 
         Assert.Equal("Name: ", output.ToString());
     }
+
+    [Fact]
+    public void Menu_KeyWithControlCharacters_MatchesWhatIsDisplayed()
+    {
+        var (renderer, output) = PlainRenderer();
+        var option = Option("\u001b[31mX", "Red", "A");
+        var menu = Menu(option);
+
+        Assert.Same(option, menu.Choose(renderer, new ScriptedInput("[31mX")));
+        Assert.StartsWith("[[31mX] Red", output.ToString());
+    }
+
+    [Fact]
+    public void Menu_KeysEqualAfterSanitising_AreDuplicates()
+    {
+        var menu = Menu(Option("x", "One", "A"));
+
+        Assert.Throws<ArgumentException>(() => menu.Add(Option("\u001bx", "Two", "B")));
+    }
 }

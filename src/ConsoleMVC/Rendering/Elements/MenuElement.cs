@@ -75,11 +75,11 @@ public sealed class MenuElement : Element
     {
         ArgumentNullException.ThrowIfNull(option);
 
-        var key = option.Key.Trim();
+        var key = NormalisedKey(option);
         if (key.Length == 0)
             throw new ArgumentException("A menu option must have a key.", nameof(option));
 
-        if (_options.Any(o => string.Equals(o.Key.Trim(), key, StringComparison.OrdinalIgnoreCase)))
+        if (_options.Any(o => string.Equals(NormalisedKey(o), key, StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException($"The menu already has an option with the key '{key}'.", nameof(option));
 
         _options.Add(option);
@@ -100,7 +100,16 @@ public sealed class MenuElement : Element
         foreach (var option in _options)
         {
             var prefixWidth = PrefixWidth(option);
-            var labelLines = option.Layout(Math.Max(width - prefixWidth, 1));
+
+            if (width - prefixWidth < 1)
+            {
+                // The [key] prefix leaves no room beside it: show it on its own line, then the label below
+                lines.Add(new RenderedLine([new Span(KeyLabel(option), keyStyle)]).Clip(Math.Max(width, 0)));
+                lines.AddRange(option.Layout(Math.Max(width, 1)).Select(l => l.Clip(Math.Max(width, 0))));
+                continue;
+            }
+
+            var labelLines = option.Layout(width - prefixWidth);
 
             for (var i = 0; i < labelLines.Count; i++)
             {
@@ -138,7 +147,7 @@ public sealed class MenuElement : Element
                 return null;
 
             var choice = line.Trim();
-            var option = _options.FirstOrDefault(o => string.Equals(o.Key.Trim(), choice, StringComparison.OrdinalIgnoreCase));
+            var option = _options.FirstOrDefault(o => string.Equals(NormalisedKey(o), choice, StringComparison.OrdinalIgnoreCase));
             if (option is not null)
                 return option;
 
@@ -148,7 +157,13 @@ public sealed class MenuElement : Element
         }
     }
 
-    private static string KeyLabel(MenuOptionElement option) => "[" + TextSanitiser.Sanitise(option.Key.Trim()) + "]";
+    /// <summary>
+    /// The key as displayed and matched: sanitised (so what the user sees is what they type) and trimmed.
+    /// </summary>
+    private static string NormalisedKey(MenuOptionElement option) =>
+        TextSanitiser.Sanitise(option.Key).Replace('\n', ' ').Trim();
+
+    private static string KeyLabel(MenuOptionElement option) => "[" + NormalisedKey(option) + "]";
 
     /// <summary>Width of "[key] ".</summary>
     private static int PrefixWidth(MenuOptionElement option) => TextWidth.Of(KeyLabel(option)) + 1;

@@ -179,7 +179,8 @@ internal sealed class MarkupSchema
     private static string? ValidateOption(IReadOnlyList<Syntax.AttributeNode> attributes)
     {
         var navigates = attributes.Any(a => a.Schema.Property == "Target");
-        var quits = attributes.Any(a => a.Schema.Property == "Quit");
+        // quit="false" is the same as leaving quit out
+        var quits = attributes.Any(a => a.Schema.Property == "Quit" && a.LiteralCode != "false");
 
         if (navigates == quits)
             return "<option> needs exactly one of 'nav' (e.g. nav=\"Home/Index\") or 'quit'";

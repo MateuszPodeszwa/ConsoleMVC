@@ -156,7 +156,7 @@ A grid whose columns size themselves to the content. When the table is wider tha
 | | `padding` | blank columns on each side of every cell (0–20) | `1` |
 | | `width` | `auto`, a column count, or a percentage; a larger width widens the last column | `auto` |
 | | `color` / `colour` | grid colour | terminal default |
-| `<row>` | `header` | flag: bold cells followed by a separator line | off |
+| `<row>` | `header` | flag: bold cells (unless a cell sets its own decoration) followed by a separator line | off |
 | `<cell>` | same as `<text>` | `align`, `color`, `background`, `bold`, `dim`, `italic`, `underline`, `wrap` | |
 
 A `<table>` may only contain `<row>` elements, and a `<row>` only `<cell>` elements; loops and conditions around them are fine. Rows with fewer cells are padded with empty cells.
@@ -179,7 +179,7 @@ return NavigationResult.ToAction("Result", Form);
 | `label` | the prompt written before reading | none |
 | `default` | used when the user enters nothing | empty |
 | `required` | flag: ask again until a value is entered | off |
-| `masked` | flag: hide typed characters (shows `*`); for passwords and other secrets | off |
+| `masked` | flag: hide typed characters (shows one `*` per character); for passwords and other secrets. Backspace works, and Ctrl+D (or Ctrl+Z on Windows) on an empty line ends the input | off |
 | `color` / `colour` | label colour | terminal default |
 
 Values are trimmed. `Form` is also available to ordinary C# in the view, for example `int.Parse(Form["Age"])`.

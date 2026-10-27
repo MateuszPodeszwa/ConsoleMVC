@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace ConsoleMVC.Rendering;
 
 /// <summary>
@@ -20,40 +18,21 @@ public sealed class ConsoleTextInput : ITextInput
     public string? ReadLine() => Console.ReadLine();
 
     /// <inheritdoc />
-    /// <remarks>Supports Backspace. Control characters other than Enter and Backspace are ignored.</remarks>
+    /// <remarks>
+    /// Supports Backspace; Ctrl+D or Ctrl+Z on an empty line ends the input. See <see cref="MaskedLineEditor"/>.
+    /// </remarks>
     public string? ReadMasked(char mask)
     {
         if (Console.IsInputRedirected)
             return Console.ReadLine();
 
-        var value = new StringBuilder();
+        var editor = new MaskedLineEditor(mask, Console.Out);
+        string? value;
 
-        while (true)
+        while (!editor.Process(Console.ReadKey(intercept: true), out value))
         {
-            var key = Console.ReadKey(intercept: true);
-
-            if (key.Key == ConsoleKey.Enter)
-            {
-                Console.WriteLine();
-                return value.ToString();
-            }
-
-            if (key.Key == ConsoleKey.Backspace)
-            {
-                if (value.Length > 0)
-                {
-                    value.Length--;
-                    Console.Write("\b \b");
-                }
-
-                continue;
-            }
-
-            if (char.IsControl(key.KeyChar))
-                continue;
-
-            value.Append(key.KeyChar);
-            Console.Write(mask);
         }
+
+        return value;
     }
 }
