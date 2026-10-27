@@ -40,7 +40,7 @@ public class ChoiceInputTests
 
     private static (MarkupRenderer Renderer, StringWriter Output) Typed()
     {
-        var output = new StringWriter();
+        var output = new StringWriter { NewLine = "\n" };
         return (new MarkupRenderer(new PlainTextRenderTarget(output), () => 60), output);
     }
 
