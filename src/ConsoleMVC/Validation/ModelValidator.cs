@@ -36,7 +36,7 @@ internal static class ModelValidator
         {
             if (ModelBinder.IsSimpleType(parameters[i].ParameterType))
                 ValidateParameter(parameters[i], arguments[i], modelState);
-            else if (arguments[i] is { } model)
+            else if (arguments[i] is { } model and not CancellationToken)
                 ValidateModel(model, modelState);
         }
     }

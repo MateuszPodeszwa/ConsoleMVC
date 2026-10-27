@@ -11,4 +11,5 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 - [Getting Started](getting-started.md) — install the framework and create your first console MVC application.
 - [C-View Markup](c-view-markup.md) — describe screens with `<box>`, `<text>` and `<table>`, and collect input with `<input>` and `<menu>`.
 - [Dependency Injection](dependency-injection.md) — register services and receive them in controllers and views (`@inject`).
+- [Async Actions and Middleware](async-and-middleware.md) — `await` in actions and run code around every action with `app.Use`.
 - [API Reference](../api/) — auto-generated reference documentation for all public types.

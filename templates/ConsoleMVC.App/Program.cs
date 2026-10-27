@@ -8,4 +8,14 @@ var builder = MvcApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IGreetingService, GreetingService>();
 
 using var app = builder.Build();
-app.Run();
+
+// Middleware runs around every action: here it shows the current page in the terminal's title bar
+app.Use(async (context, next) =>
+{
+    if (!Console.IsOutputRedirected)
+        Console.Title = $"ConsoleMVC — {context.Route}";
+
+    await next(context);
+});
+
+await app.RunAsync();
