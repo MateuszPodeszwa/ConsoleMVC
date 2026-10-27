@@ -1,25 +1,14 @@
 @model object
 
-Console.WriteLine("=== Calculator ===");
-Console.WriteLine();
+<box title="Calculator" border="rounded" color="yellow">
+    <text>Enter two whole numbers and an operator.</text>
+</box>
+<br />
 
-Console.Write("  First number:  ");
-var a = Console.ReadLine()?.Trim() ?? "0";
+@* The values are posted individually and bound by name to the parameters of
+   CalcController.Result(int a, int b, string op). *@
+<input name="a" label="  First number:  " default="0" />
+<input name="op" label="  Operator (+, -, *, /): " default="+" />
+<input name="b" label="  Second number: " default="0" />
 
-Console.Write("  Operator (+, -, *, /): ");
-var op = Console.ReadLine()?.Trim() ?? "+";
-
-Console.Write("  Second number: ");
-var b = Console.ReadLine()?.Trim() ?? "0";
-
-// Post individual values to the Result action.
-// The framework binds each dictionary entry to the matching
-// parameter name on CalcController.Result(int a, int b, string op).
-var formData = new Dictionary<string, string>
-{
-    ["a"] = a,
-    ["b"] = b,
-    ["op"] = op
-};
-
-return NavigationResult.ToAction("Result", formData);
+return NavigationResult.ToAction("Result", Form);

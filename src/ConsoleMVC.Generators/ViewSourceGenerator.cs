@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
+using ConsoleMVC.Generators.Diagnostics;
+using ConsoleMVC.Generators.Emit;
+using ConsoleMVC.Generators.Parsing;
+using ConsoleMVC.Generators.Schema;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
 
 #nullable enable
 
@@ -16,27 +20,25 @@ namespace ConsoleMVC.Generators;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Each <c>.cvw</c> file is expected to reside at <c>Views/{Controller}/{Action}View.cvw</c>
-/// and must begin with an <c>@model</c> directive declaring the fully-qualified view model type.
-/// Optional <c>@using</c> directives may follow to add additional namespace imports.
-/// All subsequent lines are treated as the body of the generated <c>Render</c> method.
+/// Each <c>.cvw</c> file must reside at <c>Views/{Controller}/{Action}View.cvw</c>. It may begin with an
+/// <c>@model</c> directive (defaulting to <c>object</c>) and <c>@using</c> directives; the rest of the file
+/// is the body of the generated <c>Render</c> method — C# code that may embed C-View Markup elements.
+/// </para>
+/// <para>
+/// The pipeline is: <see cref="CvwDocumentParser"/> (directives and body) → diagnostics →
+/// <see cref="ViewEmitter"/> (C# with <c>#line</c> mapping). See <c>docs/design/c-view-markup.md</c>.
 /// </para>
 /// <para>
 /// The generator reads the <c>RootNamespace</c> build property from the consuming project
-/// so that generated classes are placed under <c>{RootNamespace}.Views.{Controller}</c>,
-/// ensuring correct namespace alignment regardless of the project name.
-/// </para>
-/// <para>
-/// <b>Supported directives:</b>
-/// <list type="bullet">
-///   <item><description><c>@model FullTypeName</c> — declares the view model type (required).</description></item>
-///   <item><description><c>@using Namespace</c> — adds a <c>using</c> statement to the generated class.</description></item>
-/// </list>
+/// so that generated classes are placed under <c>{RootNamespace}.Views.{Controller}</c>.
 /// </para>
 /// </remarks>
 [Generator]
 public class ViewSourceGenerator : IIncrementalGenerator
 {
+    /// <summary>The namespace used when the consuming project does not define <c>RootNamespace</c>.</summary>
+    private const string FallbackRootNamespace = "ConsoleMVC";
+
     /// <summary>
     /// Registers the source generation pipeline. Collects <c>.cvw</c> additional files
     /// and the consuming project's <c>RootNamespace</c>, then generates a
@@ -45,118 +47,138 @@ public class ViewSourceGenerator : IIncrementalGenerator
     /// <param name="context">The initialisation context provided by the Roslyn compiler.</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Collect .cvw view files from AdditionalFiles
         var viewFiles = context.AdditionalTextsProvider
             .Where(static file => file.Path.EndsWith(".cvw", StringComparison.OrdinalIgnoreCase));
 
-        // Read the RootNamespace build property from the consuming project
         var rootNamespace = context.AnalyzerConfigOptionsProvider
             .Select(static (provider, _) =>
             {
                 provider.GlobalOptions.TryGetValue("build_property.RootNamespace", out var ns);
-                return ns ?? "ConsoleMVC";
+                return string.IsNullOrWhiteSpace(ns) ? FallbackRootNamespace : ns!.Trim();
             });
 
-        // Pair each view file with the root namespace for code generation
-        var viewsWithNamespace = viewFiles.Combine(rootNamespace);
+        // Views that would generate the same class as an earlier view (by path order) are reported and skipped.
+        // Only the list of paths feeds this step, so editing a view's contents keeps the per-file caching.
+        var duplicates = viewFiles
+            .Select(static (file, _) => file.Path)
+            .Collect()
+            .Combine(rootNamespace)
+            .Select(static (pair, _) => FindDuplicates(pair.Left, pair.Right));
 
-        context.RegisterSourceOutput(viewsWithNamespace, static (ctx, pair) =>
+        context.RegisterSourceOutput(viewFiles.Combine(rootNamespace).Combine(duplicates), static (ctx, pair) =>
         {
-            var (file, rootNs) = pair;
+            var ((file, rootNs), duplicateOf) = pair;
+
+            if (duplicateOf.TryGetValue(file.Path, out var original))
+            {
+                ViewInfo.TryCreate(file.Path, rootNs, out var info);
+                ctx.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.DuplicateView,
+                    Location.Create(file.Path, default, default), file.Path, info.FullClassName, original));
+                return;
+            }
 
             var text = file.GetText(ctx.CancellationToken);
-            if (text == null) return;
-
-            var content = text.ToString();
-            var lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-
-            string? modelType = null;
-            var usings = new List<string>();
-            var codeStartIndex = 0;
-
-            // Parse directives (@model, @using) at the top of the file
-            for (var i = 0; i < lines.Length; i++)
-            {
-                var trimmed = lines[i].Trim();
-
-                if (string.IsNullOrWhiteSpace(trimmed))
-                {
-                    codeStartIndex = i + 1;
-                    continue;
-                }
-
-                if (trimmed.StartsWith("@model "))
-                {
-                    modelType = trimmed.Substring("@model ".Length).Trim();
-                    codeStartIndex = i + 1;
-                    continue;
-                }
-
-                if (trimmed.StartsWith("@using "))
-                {
-                    usings.Add(trimmed.Substring("@using ".Length).Trim());
-                    codeStartIndex = i + 1;
-                    continue;
-                }
-
-                // First non-directive, non-empty line — view body code starts here
-                codeStartIndex = i;
-                break;
-            }
-
-            // Files without an @model directive cannot be processed
-            if (modelType == null) return;
-
-            // Extract the view and controller names from the file path
-            // Expected pattern: .../Views/{Controller}/{Action}View.cvw
-            var fileName = Path.GetFileNameWithoutExtension(file.Path);
-            var pathParts = file.Path.Replace('\\', '/').Split('/');
-
-            string? controllerName = null;
-            for (var i = 0; i < pathParts.Length - 1; i++)
-            {
-                if (string.Equals(pathParts[i], "Views", StringComparison.OrdinalIgnoreCase)
-                    && i + 1 < pathParts.Length - 1)
-                {
-                    controllerName = pathParts[i + 1];
-                    break;
-                }
-            }
-
-            if (controllerName == null) return;
-
-            // Build the view body code with correct indentation
-            var codeLines = lines.Skip(codeStartIndex).ToArray();
-            var codeBody = string.Join("\n",
-                codeLines.Select(l => "        " + l));
-
-            // Build the using directives block
-            var usingBuilder = new StringBuilder();
-            usingBuilder.AppendLine("using System.Collections.Generic;");
-            usingBuilder.AppendLine("using ConsoleMVC.Mvc;");
-            foreach (var u in usings)
-            {
-                usingBuilder.AppendLine($"using {u};");
-            }
-
-            // Emit the generated ConsoleView<TModel> subclass
-            var source = $@"// <auto-generated>
-// Generated by ConsoleMVC ViewEngine from {controllerName}/{fileName}.cvw
-// Do not modify this file directly — edit the .cvw source instead.
-// </auto-generated>
-{usingBuilder}
-namespace {rootNs}.Views.{controllerName}
-{{
-    public class {fileName} : ConsoleView<{modelType}>
-    {{
-        public override NavigationResult Render({modelType} Model)
-        {{
-{codeBody}
-        }}
-    }}
-}}";
-
-            ctx.AddSource($"{controllerName}_{fileName}.g.cs", source);
+            if (text is not null)
+                GenerateView(ctx, file.Path, text, rootNs);
         });
     }
+
+    /// <summary>
+    /// Maps each view path that collides with an earlier one (same class name, ignoring case, because the router
+    /// matches names case-insensitively) to the path of the earlier view.
+    /// </summary>
+    private static EquatableMap FindDuplicates(ImmutableArray<string> paths, string rootNamespace)
+    {
+        var first = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var duplicates = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var path in paths.OrderBy(p => p, StringComparer.Ordinal))
+        {
+            if (!ViewInfo.TryCreate(path, rootNamespace, out var info))
+                continue;
+
+            if (first.TryGetValue(info.FullClassName, out var original))
+                duplicates[path] = original;
+            else
+                first[info.FullClassName] = path;
+        }
+
+        return new EquatableMap(duplicates);
+    }
+
+    /// <summary>
+    /// A read-only path map with value equality, so the incremental pipeline can tell when it has not changed.
+    /// </summary>
+    private sealed class EquatableMap : IEquatable<EquatableMap>
+    {
+        private readonly Dictionary<string, string> _map;
+
+        public EquatableMap(Dictionary<string, string> map) => _map = map;
+
+        public bool TryGetValue(string key, out string value) => _map.TryGetValue(key, out value!);
+
+        public bool Equals(EquatableMap? other) =>
+            other is not null && _map.Count == other._map.Count
+            && _map.All(pair => other._map.TryGetValue(pair.Key, out var value) && value == pair.Value);
+
+        public override bool Equals(object? obj) => Equals(obj as EquatableMap);
+
+        public override int GetHashCode() => _map.Count;
+    }
+
+    /// <summary>
+    /// Validates, parses and emits a single view, reporting diagnostics against the <c>.cvw</c> file.
+    /// </summary>
+    private static void GenerateView(SourceProductionContext context, string path, SourceText text, string rootNamespace)
+    {
+        if (!ViewInfo.TryCreate(path, rootNamespace, out var info))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.MisplacedView, Location.Create(path, default, default), path));
+            return;
+        }
+
+        if (!IsValidNamespace(rootNamespace))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidRootNamespace, Location.Create(path, default, default), rootNamespace));
+            return;
+        }
+
+        if (!IsValidName(info.ControllerName))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ControllerName, "controller folder"));
+            return;
+        }
+
+        if (!IsValidName(info.ClassName))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ClassName, "view"));
+            return;
+        }
+
+        if (!info.ClassName.EndsWith("View", StringComparison.Ordinal))
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.ViewNameSuffix, Location.Create(path, default, default), info.ClassName));
+
+        var document = CvwDocumentParser.Parse(text.ToString(), MarkupSchema.Default);
+
+        foreach (var diagnostic in document.Diagnostics)
+        {
+            var span = TextSpan.FromBounds(
+                Math.Min(diagnostic.Span.Start, text.Length),
+                Math.Min(diagnostic.Span.End, text.Length));
+            var location = Location.Create(path, span, text.Lines.GetLinePositionSpan(span));
+            context.ReportDiagnostic(Diagnostic.Create(diagnostic.Descriptor, location, diagnostic.Arguments));
+        }
+
+        if (document.HasErrors)
+            return;
+
+        context.AddSource(info.HintName, ViewEmitter.Emit(document, info));
+    }
+
+    /// <summary>A name usable as a C# identifier: valid characters and not a reserved keyword such as <c>class</c>.</summary>
+    private static bool IsValidName(string name) =>
+        SyntaxFacts.IsValidIdentifier(name) && SyntaxFacts.GetKeywordKind(name) == SyntaxKind.None;
+
+    /// <summary>A dotted namespace whose every part is a valid name.</summary>
+    private static bool IsValidNamespace(string ns) => ns.Split('.').All(IsValidName);
 }

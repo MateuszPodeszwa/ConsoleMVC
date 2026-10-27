@@ -16,8 +16,7 @@ public class HomeController : Controller
         var model = new HomeViewModel
         {
             Title = "Welcome to ConsoleMVC",
-            Message = "A structured MVC framework for console applications.",
-            MenuOptions = ["About", "Greeting Form", "Calculator", "Exit"]
+            Message = "A structured MVC framework for console applications."
         };
 
         return View(model);
@@ -39,8 +38,28 @@ public class HomeController : Controller
                     + "  - Form data posting from views to controller actions\n"
                     + "\n"
                     + "The Greeting example shows complex model binding (GreetFormModel),\n"
-                    + "while the Calculator shows simple parameter binding (int a, int b, string op).",
-            MenuOptions = ["Back to Home", "Exit"]
+                    + "while the Calculator shows simple parameter binding (int a, int b, string op)."
+        };
+
+        return View(model);
+    }
+
+    /// <summary>
+    /// Displays a table of the C-View Markup elements used by this template.
+    /// </summary>
+    public ActionResult Features()
+    {
+        var model = new FeaturesViewModel
+        {
+            Features =
+            [
+                new("<box>", "A bordered panel with an optional title"),
+                new("<text>", "Styled text that wraps to the available width"),
+                new("<separator>", "A horizontal rule"),
+                new("<table>", "Rows and cells with columns sized to the content"),
+                new("<input>", "Reads a value into the view's Form"),
+                new("<menu>", "Shows options, reads the choice and navigates")
+            ]
         };
 
         return View(model);

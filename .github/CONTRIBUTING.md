@@ -20,9 +20,10 @@ Thank you for your interest in contributing to ConsoleMVC! This guide will help 
 1. Fork the repository
 2. Create a feature branch from `main`
 3. Make your changes
-4. Ensure your code builds without warnings:
+4. Ensure your code builds without warnings and all tests pass:
    ```bash
    dotnet build
+   dotnet test
    ```
 5. Submit a pull request targeting `main`
 
@@ -47,8 +48,11 @@ Thank you for your interest in contributing to ConsoleMVC! This guide will help 
 
 ## Project Structure
 
-- `src/ConsoleMVC/` — Framework library (NuGet package)
+- `src/ConsoleMVC/` — Framework library (NuGet package), including the `Rendering/` engine
+- `src/ConsoleMVC.Generators/` — Source generator that compiles `.cvw` views and C-View Markup
+- `tests/` — `ConsoleMVC.Tests` (framework and rendering) and `ConsoleMVC.Generators.Tests` (generator end-to-end)
 - `templates/ConsoleMVC.App/` — Project template (NuGet template package)
+- `docs/design/` — Design documents with UML diagrams and pseudocode
 
 ## Code of Conduct
 

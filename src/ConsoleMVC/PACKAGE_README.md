@@ -37,15 +37,20 @@ public class HomeController : Controller
 }
 ```
 
-**Views** — `.cvw` files with `@model` directive, no class boilerplate:
+**Views** — `.cvw` files with an `@model` directive and C-View Markup, no class boilerplate:
 ```
 @model MyApp.Models.HomeViewModel
 
-Console.WriteLine(Model.Title);
-Console.Write("Press any key...");
-Console.ReadKey();
+<box title="@Model.Title" border="rounded" color="cyan">
+    <text>@Model.Message</text>
+</box>
 
-return NavigationResult.To("Home", "Index");
+<input name="Name" label="Your name: " required />
+
+<menu>
+    <option key="1" nav="Greet/Result" post>Greet me</option>
+    <option key="q" quit>Exit</option>
+</menu>
 ```
 
 **Models** — simple DTOs:
@@ -61,6 +66,10 @@ public class HomeViewModel
 - **Convention-based routing** — Controllers and Views are auto-discovered via reflection and namespace conventions
 - **Razor-like view engine** — `.cvw` files are compiled into `ConsoleView<TModel>` classes at build time by a source generator
 - **No boilerplate** — Views are plain C# code with an `@model` directive, no class inheritance required
+- **C-View Markup** — `<box>`, `<text>`, `<separator>`, `<br>` and `<table>` elements with colours, borders, alignment and word wrapping, plus `@` expressions and `@if`/`@foreach`; validated at compile time with errors pointing at the `.cvw` file
+- **Declarative input and navigation** — `<input>` fields (required, default, masked) collect a `Form`, and `<menu>` reads the choice and navigates
+- **Secure output** — model values are sanitised so they cannot inject terminal escape sequences
+- **Reusable rendering engine** — the `ConsoleMVC.Rendering` namespace can draw elements in any console app
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — all the patterns you know from ASP.NET Core MVC
 - **Navigation** — Views return `NavigationResult` to control app flow (`NavigationResult.To()`, `NavigationResult.Quit()`)
 - **Form data posting** — Views collect user input via `Console.ReadLine()` and post it to controller actions using `NavigationResult.To("Controller", "Action", formData)`. The framework automatically binds the data to action method parameters — either as individual simple types (`int`, `string`, etc.) or as a complex model class with matching property names

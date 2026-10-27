@@ -77,14 +77,14 @@ Right now, `.cvw` files are plain C# code. You write `Console.WriteLine()` calls
 - [ ] Form validation framework — attributes like `[Required]`, `[MaxLength]` on form models, with automatic validation before the action executes
 
 ### Medium-term
-- [ ] C-View Markup v0.1 — basic tags (`<text>`, `<box>`, `<separator>`, `<br>`)
-- [ ] Console rendering engine — ANSI-based rendering with colour, alignment, and borders
-- [ ] `<table>` support — data-driven tables with column widths and alignment
-- [ ] `<menu>` and `<input>` tags — declarative input collection that auto-generates form data
+- [x] C-View Markup v0.1 — basic tags (`<text>`, `<box>`, `<separator>`, `<br>`) — **shipped in 1.2.0**, see the [guide](docs/guides/docs/c-view-markup.md) and [design](docs/design/c-view-markup.md)
+- [x] Console rendering engine — ANSI-based rendering with colour, alignment, and borders — **shipped in 1.2.0**
+- [x] `<table>` support — data-driven tables with column widths and alignment — **shipped in 1.3.0**
+- [x] `<menu>` and `<input>` tags — declarative input collection that auto-generates form data — **shipped in 1.3.0**, see the [design](docs/design/c-view-markup-0.2.md)
 
 ### Long-term
 - [ ] C-View Markup v1.0 — full markup language with layout system, theming, and responsive terminal sizing
-- [ ] IDE plugin support for markup — syntax highlighting, completion, and preview for C-View Markup in Rider and VS Code
+- [ ] IDE plugin support for markup — syntax highlighting, completion, and preview for C-View Markup in Rider and VS Code (the Rider plugin currently treats markup as plain text)
 - [ ] Component system — reusable markup components (`<partial name="Header" />`)
 - [ ] Live reload — detect `.cvw` changes and hot-reload the running console app during development
 

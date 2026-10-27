@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **Where this project is headed:** A console-native markup language called **C-View Markup** — think HTML-like syntax purpose-built for terminal UIs, with `@` expressions from Razor, layout primitives like `<box>`, `<table>`, and `<menu>`, and a rendering engine that compiles it all at build time. Read the full vision, roadmap, and how to get involved in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.3: tables, form inputs and menus. See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -14,6 +14,9 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Convention over configuration** — Controllers and Views are auto-discovered at startup via reflection
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — the same patterns from ASP.NET Core MVC
 - **Razor-like view engine** — `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
+- **C-View Markup** — declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
+- **Declarative input and navigation** — `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Safe by default** — model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 
 ## Getting Started
@@ -53,18 +56,20 @@ MyApp/
     CalcController.cs           # Form posting with simple parameter binding
   Models/
     HomeViewModel.cs
+    FeaturesViewModel.cs        # Rows for the <table> on the feature tour page
     GreetFormModel.cs           # Bound from form data (complex model)
     GreetResultModel.cs
     CalcResultModel.cs
   Views/
     Home/
-      IndexView.cvw
+      IndexView.cvw             # <menu> navigation
       AboutView.cvw
+      FeaturesView.cvw          # <table> generated from the model
     Greet/
-      IndexView.cvw             # Collects input, posts form data
+      IndexView.cvw             # <input> fields, posts the Form
       ResultView.cvw
     Calc/
-      IndexView.cvw             # Collects input, posts form data
+      IndexView.cvw             # <input> fields, posts the Form
       ResultView.cvw
 ```
 
@@ -114,6 +119,8 @@ public class HomeController : Controller
 }
 ```
 
+Any public method that returns `ActionResult` is an action. Mark helper methods with `[NonAction]` to keep them out of navigation. Action names are matched case-insensitively and must be unique (overloads are not supported).
+
 **Available methods:**
 
 | Method | Description |
@@ -148,12 +155,54 @@ return input switch
 
 | Directive | Purpose |
 |-----------|---------|
-| `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. |
+| `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional — defaults to `object`. |
 | `@using Namespace` | Adds a `using` statement to the generated class. |
+
+**C-View Markup:**
+
+Instead of formatting output and reading input by hand, views can describe the screen with markup. Markup and C# mix freely — top-level elements run in source order, and `@` switches back to C# inside an element:
+
+```
+@model MyApp.Models.HomeViewModel
+
+<box title="@Model.Title" border="rounded" color="cyan" padding="2">
+    <text>@Model.Message</text>
+</box>
+
+<menu key-color="cyan">
+    <option key="1" nav="Home/About">About</option>
+    <option key="2" nav="Users/Index">Users</option>
+    <option key="q" quit>Exit</option>
+</menu>
+```
+
+```
+╭─ Welcome to ConsoleMVC ────────────────────────────────╮
+│  A structured MVC framework for console applications.  │
+╰────────────────────────────────────────────────────────╯
+[1] About
+[2] Users
+[q] Exit
+Select an option:
+```
+
+The `<menu>` shows the options, re-prompts on an invalid choice and returns the navigation, so the view needs no `return`. Tables are just as short:
+
+```
+<table border="rounded">
+    <row header><cell>Name</cell><cell align="right">Age</cell></row>
+    @foreach (var user in Model.Users)
+    {
+        <row><cell>@user.Name</cell><cell align="right">@user.Age</cell></row>
+    }
+</table>
+```
+
+Mistakes such as an unknown attribute or a missing closing tag are build errors pointing at the `.cvw` line, and C# errors inside views are mapped back to the `.cvw` file too. The full element and attribute reference is in the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**.
 
 **Navigation from views:**
 
-Every view must return a `NavigationResult` to tell the framework what to do next:
+Every view must return a `NavigationResult` to tell the framework what to do next — either from C#, or by ending with a `<menu>`:
 
 | Method | Description |
 |--------|-------------|
@@ -165,9 +214,21 @@ Every view must return a `NavigationResult` to tell the framework what to do nex
 
 ### Form Data Posting
 
-Views can collect user input and post it to a controller action — just like HTML forms in web MVC. The view builds a `Dictionary<string, string>` of form data and passes it via `NavigationResult`. The framework then binds the values to the target action's method parameters automatically.
+Views can collect user input and post it to a controller action — just like HTML forms in web MVC. The framework binds the posted values to the target action's method parameters automatically.
 
-**Collecting input in a view** — `Views/Greet/IndexView.cvw`:
+**Collecting input with `<input>`** — `Views/Greet/IndexView.cvw`:
+```
+@model object
+
+<input name="Name" label="Name: " required />
+<input name="Color" label="Favourite colour: " />
+
+return NavigationResult.ToAction("Result", Form);
+```
+
+Each `<input>` stores its value in the view's `Form` dictionary under its `name`. Use `required` to re-prompt until a value is entered, `default` for a fallback value and `masked` for passwords. A menu option marked `post` sends the `Form` too: `<option key="s" nav="Result" post>Submit</option>`.
+
+**Collecting input in C#** — any `Dictionary<string, string>` can be posted, so plain C# views keep working:
 ```
 @model object
 
@@ -280,9 +341,10 @@ The model binder converts string values from the form data dictionary to the fol
 | `int`, `long`, `short`, `byte` | Integer types |
 | `float`, `double`, `decimal` | Floating-point types |
 | `bool` | `"true"` / `"false"` |
-| `DateTime`, `DateTimeOffset`, `TimeSpan` | Date/time types |
-| `Guid` | GUID strings |
-| `enum` | Enum name or numeric value |
+| `Half`, `Int128`, `UInt128` | Additional numeric types |
+| `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan` | Date/time types |
+| `Guid`, `Uri`, `Version` | GUID, URI and version strings |
+| `enum` | Enum name or numeric value; numbers must be defined members (or, for `[Flags]` enums, a combination of them) |
 | Nullable variants (`int?`, `bool?`, etc.) | Empty string → `null` |
 | Complex types (classes with properties) | Properties populated by name |
 
@@ -353,7 +415,9 @@ Start → Home/Index (default route)
 
 ### <a id="IDESupport"></a> IDE Support for `.cvw` Files
 
-To get C# syntax highlighting in `.cvw` files:
+The [ConsoleMVC CVWSupport](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport) plugin for JetBrains Rider understands directives and the C# code in views. Highlighting and completion for C-View Markup elements are planned for the plugin; until then markup is shown as plain text and errors are reported by the build.
+
+To get basic C# syntax highlighting in `.cvw` files in other editors:
 
 **JetBrains Rider / IntelliJ:**
 Settings → Editor → File Types → find C# → add `*.cvw` pattern
@@ -406,15 +470,27 @@ Build and run — the new page is automatically discovered and routable.
 
 ## Configuration
 
-The builder allows configuring the default route:
+The builder configures the application before it starts:
 
 ```csharp
 var builder = MvcApplication.CreateBuilder(args);
-builder.DefaultController = "Dashboard";  // Default: "Home"
-builder.DefaultAction = "Overview";       // Default: "Index"
+builder.DefaultController = "Dashboard";        // Default: "Home"
+builder.DefaultAction = "Overview";             // Default: "Index"
+builder.ClearScreenBetweenViews = false;        // Default: true
+builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
+builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
+builder.Input = ConsoleTextInput.Instance;              // Default: the console
 var app = builder.Build();
 app.Run();
 ```
+
+| Option | Purpose |
+|--------|---------|
+| `DefaultController` / `DefaultAction` | The first route to run |
+| `ClearScreenBetweenViews` | Clear the console before each view renders |
+| `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
+| `Input` | Where `<input>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests |
+| `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output. Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
 
 ## Package Information
 
@@ -448,13 +524,19 @@ ConsoleMVC/
       ConsoleMVC.csproj                   #   Packs lib + generator + build props
       build/ConsoleMVC.Framework.props    #   Auto-imported by consuming projects
       PACKAGE_README.md                   #   README shown on NuGet gallery
-      *.cs                                #   Framework source (Controller, Router, ModelBinder, etc.)
+      Application/ Controllers/ Results/  #   MVC framework (namespace ConsoleMVC.Mvc)
+      Routing/ Binding/ Views/
+      Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
       ConsoleMVC.Generators.csproj
-      ViewSourceGenerator.cs              #   Transforms .cvw → ConsoleView<T> at compile time
+      ViewSourceGenerator.cs              #   Pipeline: .cvw → parse → diagnostics → emit ConsoleView<T>
+      Parsing/ Syntax/ Schema/            #   Directive, C# and markup parsing; element/attribute schema
+      Emit/ Diagnostics/                  #   C# generation with #line mapping; CVWxxx diagnostics
   tests/
-    ConsoleMVC.Tests/                     # Unit and integration tests
-      ConsoleMVC.Tests.csproj
+    ConsoleMVC.Tests/                     # Framework and rendering unit/integration tests
+    ConsoleMVC.Generators.Tests/          # Runs the generator, compiles and executes views
+  docs/
+    design/c-view-markup.md               # Design: UML, grammar, pseudocode
   templates/
     ConsoleMVC.App/                       # Template content (what users get from dotnet new)
       .template.config/template.json      #   Template engine configuration
@@ -465,10 +547,11 @@ ConsoleMVC/
       Views/
 ```
 
-### Building
+### Building and Testing
 
 ```bash
 dotnet build ConsoleMVC.sln
+dotnet test ConsoleMVC.sln
 ```
 
 ### Releasing a New Version
@@ -508,9 +591,11 @@ When modifying the template content (files in `templates/ConsoleMVC.App/`):
 
 ### Updating the Source Generator
 
-When modifying `ViewSourceGenerator.cs`:
+When modifying the source generator (`src/ConsoleMVC.Generators`):
 
 - The generator targets `netstandard2.0` — avoid APIs not available in that target
+- To add a markup element, add its runtime class under `src/ConsoleMVC/Rendering/Elements` and register it in `Schema/MarkupSchema.cs`; add a rendering test in `ConsoleMVC.Generators.Tests`
+- New diagnostics need an entry in `AnalyzerReleases.Unshipped.md`
 - `Environment.NewLine` and similar banned symbols cannot be used (Roslyn analyzer restriction)
 - After changes, you must repack the `ConsoleMVC` package since the generator DLL is bundled inside it
 - Clear the local NuGet cache (`rm -rf ~/.nuget/packages/consolemvc.framework`) when testing locally to avoid stale generator DLLs
