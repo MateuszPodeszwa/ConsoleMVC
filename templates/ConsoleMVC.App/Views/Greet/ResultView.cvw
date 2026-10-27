@@ -1,13 +1,13 @@
 @model ConsoleMVC.App.Models.GreetResultModel
 
-Console.WriteLine("=== Greeting ===");
-Console.WriteLine();
-Console.WriteLine($"  {Model.Greeting}");
-Console.WriteLine();
-Console.WriteLine("  [1] Submit another greeting");
-Console.WriteLine("  [2] Back to Home");
-Console.WriteLine("  [3] Exit");
-Console.WriteLine();
+<box title="Greeting" border="rounded" color="green" padding="2">
+    <text bold>@Model.Greeting</text>
+    <separator color="darkgrey" />
+    <text>[1] Submit another greeting</text>
+    <text>[2] Back to Home</text>
+    <text>[3] Exit</text>
+</box>
+
 Console.Write("Select an option: ");
 var input = Console.ReadLine()?.Trim();
 

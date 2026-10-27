@@ -1,14 +1,16 @@
 @model ConsoleMVC.App.Models.HomeViewModel
 
-Console.WriteLine($"=== {Model.Title} ===");
-Console.WriteLine();
-Console.WriteLine(Model.Message);
-Console.WriteLine();
+@* C-View Markup: elements such as <box> and <text> describe the screen;
+   plain C# (below) handles input and navigation. *@
+<box title="@Model.Title" border="rounded" color="cyan" padding="2">
+    <text>@Model.Message</text>
+    <br />
+    @for (var i = 0; i < Model.MenuOptions.Count; i++)
+    {
+        <text>[@(i + 1)] @Model.MenuOptions[i]</text>
+    }
+</box>
 
-for (var i = 0; i < Model.MenuOptions.Count; i++)
-    Console.WriteLine($"  [{i + 1}] {Model.MenuOptions[i]}");
-
-Console.WriteLine();
 Console.Write("Select an option: ");
 var input = Console.ReadLine()?.Trim();
 

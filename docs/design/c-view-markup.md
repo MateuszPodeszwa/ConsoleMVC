@@ -374,3 +374,5 @@ EmitElement(el, parent):
 | 10 | Generator | Missing `@model` or a misplaced file were silently ignored, giving a confusing *View not found* at run time. | `@model` defaults to `object`; misplaced files raise CVW001. |
 | 11 | Generator | Compile errors pointed at the generated `.g.cs` file instead of the `.cvw` file. | `#line` directives map view code back to the `.cvw` source. |
 | 12 | Generator | Generated code relied on `ImplicitUsings`; with them disabled, `Console` was unresolved. | Generated files import `System`, `System.Collections.Generic` and `System.Linq` explicitly. |
+| 13 | Generator | The controller name was taken from the first `Views` folder in the path, so a project inside a folder named `Views` got the wrong namespace; nested folders could produce duplicate classes. | The controller is the folder directly inside `Views`; anything else raises CVW001. |
+| 14 | Generator | Generated public classes triggered CS1591 in projects with XML documentation enabled. | Generated files suppress CS1591. |

@@ -1,7 +1,9 @@
 @model object
 
-Console.WriteLine("=== Calculator ===");
-Console.WriteLine();
+<box title="Calculator" border="rounded" color="yellow">
+    <text>Enter two whole numbers and an operator.</text>
+</box>
+<br />
 
 Console.Write("  First number:  ");
 var a = Console.ReadLine()?.Trim() ?? "0";
