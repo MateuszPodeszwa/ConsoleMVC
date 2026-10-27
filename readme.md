@@ -789,23 +789,34 @@ dotnet test ConsoleMVC.sln
 
 If the template references a new framework version, also update the `<PackageReference>` version in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj`.
 
-**2. Pack both packages:**
+**2. Merge to `main` and publish a GitHub release** tagged `vX.Y.Z` (for example `v1.9.0`). The [Publish packages](.github/workflows/publish.yml) workflow then:
+
+- checks that the tag matches both `<Version>` values and the template's framework reference;
+- builds with `-warnaserror` and runs every test;
+- packs `ConsoleMVC.Framework` and `ConsoleMVC.Template`;
+- pushes them to **NuGet.org** (using the `NUGET_API_KEY` repository secret, an API key from your [nuget.org account](https://www.nuget.org/account/apikeys) with push scope for `ConsoleMVC.*`) and to **GitHub Packages** (using the built-in `GITHUB_TOKEN`);
+- attaches the `.nupkg` files to the release.
+
+It can also be started by hand from the Actions tab (**Publish packages → Run workflow**) with the version to publish.
+
+**To publish manually** instead:
 
 ```bash
 dotnet pack src/ConsoleMVC/ConsoleMVC.csproj -c Release -o nupkg
 dotnet pack ConsoleMVC.Template.csproj -c Release -o nupkg
+dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org
+dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_GITHUB_TOKEN --source https://nuget.pkg.github.com/MateuszPodeszwa/index.json
 ```
 
-**3. Publish to NuGet.org:**
+**3. Verify** the packages appear on your [NuGet.org profile](https://www.nuget.org/profiles/MateuszPodeszwa) and under the repository's **Packages**.
+
+**Installing from GitHub Packages** needs a personal access token with `read:packages`:
 
 ```bash
-dotnet nuget push "nupkg/ConsoleMVC.Framework.X.Y.Z.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org
-dotnet nuget push "nupkg/ConsoleMVC.Template.X.Y.Z.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org
+dotnet nuget add source https://nuget.pkg.github.com/MateuszPodeszwa/index.json \
+    --name github --username YOUR_GITHUB_USERNAME --password YOUR_TOKEN
+dotnet add package ConsoleMVC.Framework --source github
 ```
-
-Replace `X.Y.Z` with the new version number and `YOUR_NUGET_API_KEY` with an API key from your [nuget.org account](https://www.nuget.org/account/apikeys).
-
-**4. Verify** the packages appear on your [NuGet.org profile](https://www.nuget.org/profiles/MateuszPodeszwa).
 
 ### Updating the Template
 
