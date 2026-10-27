@@ -789,22 +789,33 @@ dotnet test ConsoleMVC.sln
 
 If the template references a new framework version, also update the `<PackageReference>` version in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj`.
 
-**2. Merge to `main` and publish a GitHub release** tagged `vX.Y.Z` (for example `v1.9.0`). The [Publish packages](.github/workflows/publish.yml) workflow then:
+**2. Merge to `main`.** The [Publish packages](.github/workflows/publish.yml) workflow notices that the version has no `vX.Y.Z` tag yet and:
 
-- checks that the tag matches both `<Version>` values and the template's framework reference;
+- checks that both `<Version>` values and the template's framework reference agree;
 - builds with `-warnaserror` and runs every test;
 - packs `ConsoleMVC.Framework` and `ConsoleMVC.Template`;
-- pushes them to **NuGet.org** (using the `NUGET_API_KEY` repository secret, an API key from your [nuget.org account](https://www.nuget.org/account/apikeys) with push scope for `ConsoleMVC.*`) and to **GitHub Packages** (using the built-in `GITHUB_TOKEN`);
-- attaches the `.nupkg` files to the release.
+- pushes them to **NuGet.org** with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key: GitHub issues a short-lived token that nuget.org exchanges for a one-hour key) and to **GitHub Packages** with the built-in `GITHUB_TOKEN`;
+- creates the GitHub release `vX.Y.Z` with this version's section of `CHANGELOG.md` and the `.nupkg` files attached.
 
-It can also be started by hand from the Actions tab (**Publish packages → Run workflow**) with the version to publish.
+Publishing a release by hand, or **Actions → Publish packages → Run workflow**, publishes the declared version too; versions already on NuGet.org are skipped.
+
+**One-time setup on nuget.org:** open your profile → **Trusted Publishing** → add a policy for the packages' owner with:
+
+| Field | Value |
+|---|---|
+| Repository Owner | `MateuszPodeszwa` |
+| Repository | `ConsoleMVC` |
+| Workflow File | `publish.yml` |
+| Environment | `release` |
+
+The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repository variable `NUGET_USER` to use another account. GitHub creates the `release` environment on the first run; add required reviewers to it under **Settings → Environments** if you want to approve each release.
 
 **To publish manually** instead:
 
 ```bash
 dotnet pack src/ConsoleMVC/ConsoleMVC.csproj -c Release -o nupkg
 dotnet pack ConsoleMVC.Template.csproj -c Release -o nupkg
-dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org
+dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org   # a key from nuget.org/account/apikeys
 dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_GITHUB_TOKEN --source https://nuget.pkg.github.com/MateuszPodeszwa/index.json
 ```
 

@@ -15,7 +15,8 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   - `min-width` and `max-width` on `<box>` and `<table>` (`MinWidth` / `MaxWidth`).
 - The template's feature tour uses columns and theme classes.
 - `MvcApplication` implements `IAsyncDisposable` (`await using var app = builder.Build();`).
-- A release workflow publishes both packages to NuGet.org and GitHub Packages when a GitHub release is published.
+- A release workflow publishes both packages to NuGet.org (with Trusted Publishing, so no API key is stored) and
+  GitHub Packages whenever a new version reaches `main`, and creates the GitHub release with its changelog section.
 - Guides for controllers and forms, validation, and configuration and testing.
 
 ### Changed
