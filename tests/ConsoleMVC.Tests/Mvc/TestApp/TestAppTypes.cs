@@ -85,7 +85,7 @@ namespace ConsoleMVC.Tests.Mvc.TestApp.Controllers
 
         public ActionResult Broken() => throw new ApplicationException("boom");
 
-        public ActionResult WrongModel() => View("not an OrderModel");
+        public ActionResult WrongModel() => View((object)"not an OrderModel");
 
         public ActionResult Rendering() => View();
 

@@ -45,24 +45,50 @@ internal static class ModelValidator
     /// Validates every property of <paramref name="model"/> and records the failures.
     /// </summary>
     /// <param name="model">The object to validate.</param>
-    /// <param name="modelState">Receives the errors.</param>
-    /// <returns><see langword="true"/> when the model produced no new errors.</returns>
+    /// <param name="modelState">Receives the errors; a message already recorded for a field is not added again.</param>
+    /// <returns><see langword="true"/> when the model has no validation failures.</returns>
+    /// <remarks>
+    /// When a property could not be converted, only the other properties' attributes are checked:
+    /// object-level checks (<see cref="IValidatableObject"/>) would compare the fallback value and report
+    /// misleading errors, as ASP.NET Core also avoids.
+    /// </remarks>
     public static bool ValidateModel(object model, ModelStateDictionary modelState)
     {
-        var results = new List<ValidationResult>();
-        Validator.TryValidateObject(model, new ValidationContext(model), results, validateAllProperties: true);
+        var properties = model.GetType()
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
+            .ToArray();
 
-        var before = modelState.ErrorCount;
+        var results = new List<ValidationResult>();
+        if (properties.Any(p => modelState.HasBindingError(p.Name)))
+        {
+            foreach (var property in properties.Where(p => !modelState.HasBindingError(p.Name)))
+            {
+                var context = new ValidationContext(model) { MemberName = property.Name };
+                Validator.TryValidateProperty(property.GetValue(model), context, results);
+            }
+        }
+        else
+        {
+            Validator.TryValidateObject(model, new ValidationContext(model), results, validateAllProperties: true);
+        }
+
+        var valid = true;
         foreach (var result in results)
         {
             foreach (var member in result.MemberNames.DefaultIfEmpty(""))
             {
-                if (!modelState.HasBindingError(member))
-                    modelState.AddModelError(member, result.ErrorMessage ?? $"The {member} field is invalid.");
+                if (modelState.HasBindingError(member))
+                    continue;
+
+                valid = false;
+                var message = result.ErrorMessage ?? $"The {member} field is invalid.";
+                if (!modelState.ErrorsFor(member).Contains(message))
+                    modelState.AddModelError(member, message);
             }
         }
 
-        return modelState.ErrorCount == before;
+        return valid;
     }
 
     private static void ValidateParameter(ParameterInfo parameter, object? value, ModelStateDictionary modelState)

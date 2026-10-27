@@ -50,7 +50,12 @@ public sealed class ValidationErrorsElement : Element
         if (messages.Count == 0)
             return 0;
 
-        return Math.Min(messages.Max(m => TextWidth.Of(TextSanitiser.Sanitise(m))) + Bullet.Length, Math.Max(maxWidth, 0));
+        // Like text: the widest line of each message, ignoring trailing spaces
+        var widest = messages
+            .SelectMany(m => TextSanitiser.Sanitise(m).Split('\n'))
+            .Max(line => TextWidth.Of(line.TrimEnd(' ')));
+
+        return Math.Min(widest + Bullet.Length, Math.Max(maxWidth, 0));
     }
 
     /// <inheritdoc />

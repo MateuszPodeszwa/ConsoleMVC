@@ -420,11 +420,16 @@ Name: _
 | `ModelState.IsValid` | `true` when binding and validation produced no errors |
 | `ModelState.AddModelError(key, message)` | Add your own error (an empty key for a general error) |
 | `ModelState.ErrorsFor(key)` | The messages for one field |
-| `View("ActionName", model)` | Render another action's view, e.g. the form again |
-| `TryValidateModel(model)` | Validate an object built in code |
+| `View("ActionName", model)` / `View("ActionName")` | Render another action's view, e.g. the form again |
+| `TryValidateModel(model)` | Validate an object built in code (calling it twice does not repeat errors) |
 | `ConsoleView.ModelState` | The errors, available in the view |
 
-Validation runs only when form data is posted. A value that can't be converted produces one message (`The value 'abc' is not valid for Age.`) and that field is not validated again. Error keys are the form field names, so they match `<input name="…">`. `IValidatableObject` is supported for rules that involve several fields.
+Validation runs only when form data is posted. A value that can't be converted produces one message (`The value 'abc' is not valid for Age.`, using `[Display(Name = "…")]` when present) and that field is not validated again. Error keys are the form field names, so they match `<input name="…">`.
+
+- **Several fields:** `IValidatableObject` is supported for rules that involve several fields. As in ASP.NET Core, it runs only once every attribute passes and no value failed to convert, so it never compares fallback values.
+- **Required values:** `[Required]` checks reference and nullable types (`string`, `int?`). A non-nullable `int` always has a value (its default), so use `int?` with `[Required]` to demand one.
+- **Records:** models without a parameterless constructor, such as `record Review([property: Range(1, 5)] int Stars, string Comment)`, are created through their constructor, whose parameters are bound by name.
+- **Strings as models:** `View("Index")` renders the Index view, as in ASP.NET Core; pass a string model to the current view with `View((object)text)`.
 
 ### Conventions
 

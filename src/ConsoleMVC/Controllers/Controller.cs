@@ -53,11 +53,25 @@ public abstract class Controller
     /// <returns>A <see cref="ViewResult"/> that instructs the framework to render the matching view.</returns>
     /// <remarks>
     /// The view is resolved by convention: the framework looks for a class named
-    /// <c>{Action}View</c> in the <c>*.Views.{Controller}</c> namespace.
+    /// <c>{Action}View</c> in the <c>*.Views.{Controller}</c> namespace. A <see cref="string"/> argument selects
+    /// <see cref="View(string)"/> instead; cast it to <see cref="object"/> to pass a string model.
     /// </remarks>
     protected ViewResult View(object? model = null)
     {
         return View(RouteContext.Action, model);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="ViewResult"/> that renders the view of another action on this controller without a model,
+    /// as in ASP.NET Core MVC.
+    /// </summary>
+    /// <param name="viewName">The action whose view to render, e.g. <c>"Index"</c> for <c>IndexView</c>.</param>
+    /// <returns>A <see cref="ViewResult"/> for the named view.</returns>
+    /// <remarks>To pass a <see cref="string"/> as the model of the current view, cast it: <c>View((object)text)</c>.</remarks>
+    /// <example><code>return View("Index");</code></example>
+    protected ViewResult View(string viewName)
+    {
+        return View(viewName, null);
     }
 
     /// <summary>
@@ -92,7 +106,7 @@ public abstract class Controller
     /// <see cref="ModelState"/>. Useful for models built in code rather than posted from a view.
     /// </summary>
     /// <param name="model">The object to validate.</param>
-    /// <returns><see langword="true"/> when the model is valid.</returns>
+    /// <returns><see langword="true"/> when the model is valid. Calling it again does not add the same errors twice.</returns>
     /// <example><code>if (!TryValidateModel(order)) return View("Edit", order);</code></example>
     protected bool TryValidateModel(object model)
     {
