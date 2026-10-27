@@ -122,6 +122,13 @@ internal sealed class ViewEmitter
             return _output.ToString();
         }
 
+        if (!_info.IsPartial && _document.Refresh is not null
+            && RefreshInterval.TryParse(_document.Refresh.Value, out var refreshMilliseconds, out _))
+        {
+            Line("        protected override global::System.TimeSpan? RefreshInterval => global::System.TimeSpan.FromMilliseconds(" +
+                 refreshMilliseconds.ToString(CultureInfo.InvariantCulture) + ");");
+        }
+
         // Map the method to the first line so "not all code paths return a value" points at the .cvw file
         Map(_document.Model?.Span.Start ?? 0, includeColumn: false);
         Line(_info.IsPartial

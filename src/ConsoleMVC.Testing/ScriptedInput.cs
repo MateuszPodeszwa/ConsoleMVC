@@ -14,6 +14,7 @@ namespace ConsoleMVC.Testing;
 ///     .Keys(ConsoleKey.DownArrow, ConsoleKey.Enter)          // a &lt;select&gt; with the arrow keys
 ///     .Key(ScriptedInput.Char('y'))                          // a &lt;checkbox&gt;
 ///     .Line("q");
+/// var dashboard = new ScriptedInput().Wait().Wait().Line("q"); // a screen that refreshes twice, then quits
 /// </code>
 /// </example>
 public sealed class ScriptedInput : ITextInput
@@ -93,6 +94,34 @@ public sealed class ScriptedInput : ITextInput
     }
 
     /// <summary>
+    /// Adds a pause in which the user types nothing, long enough for a screen with <c>@refresh</c> (or
+    /// <see cref="Mvc.ViewResult.RefreshEvery"/>) to be drawn again. The screen's <see cref="WaitForInput"/> uses it up.
+    /// </summary>
+    /// <returns>This script, for chaining.</returns>
+    /// <example><code>input.Wait().Wait().Line("q"); // two refreshes, then a menu choice</code></example>
+    public ScriptedInput Wait()
+    {
+        _steps.Enqueue(new Step(null, null));
+        return this;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Returns <see langword="false"/> and uses up the next step when it is a <see cref="Wait"/>; otherwise
+    /// <see langword="true"/>, at once.
+    /// </remarks>
+    public bool WaitForInput(TimeSpan timeout)
+    {
+        if (_steps.TryPeek(out var step) && step.IsWait)
+        {
+            _steps.Dequeue();
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Returns the key information a terminal reports for a special key.
     /// </summary>
     /// <param name="key">The key.</param>
@@ -140,6 +169,7 @@ public sealed class ScriptedInput : ITextInput
         if (!_steps.TryPeek(out var step))
             return null;
 
+        ThrowIfWait(step, "a line");
         if (step.Line is null)
             throw new InvalidOperationException(
                 $"The application read a line, but the next step of the script is the key {Describe(step.Key!.Value)}. " +
@@ -160,6 +190,7 @@ public sealed class ScriptedInput : ITextInput
         if (!_steps.TryPeek(out var step))
             return null;
 
+        ThrowIfWait(step, "a key");
         if (step.Key is null)
             throw new InvalidOperationException(
                 $"The application read a key, but the next step of the script is the line '{step.Line}'. " +
@@ -169,9 +200,20 @@ public sealed class ScriptedInput : ITextInput
         return step.Key;
     }
 
+    private static void ThrowIfWait(Step step, string what)
+    {
+        if (step.IsWait)
+            throw new InvalidOperationException(
+                $"The application read {what}, but the next step of the script is Wait(), which only a screen that " +
+                "refreshes (@refresh or RefreshEvery) uses up.");
+    }
+
     private static string Describe(ConsoleKeyInfo key) =>
         key.KeyChar is >= ' ' and not '\u007f' ? $"'{key.KeyChar}'" : key.Key.ToString();
 
-    /// <summary>One step: a line or a key.</summary>
-    private readonly record struct Step(string? Line, ConsoleKeyInfo? Key);
+    /// <summary>One step: a line, a key, or (neither) a pause for a refresh.</summary>
+    private readonly record struct Step(string? Line, ConsoleKeyInfo? Key)
+    {
+        public bool IsWait => Line is null && Key is null;
+    }
 }

@@ -116,6 +116,14 @@ public sealed record ThemeStyle
             case ShortcutsElement shortcuts:
                 if (Foreground is { } shortcutsColour) shortcuts.Colour = shortcutsColour;
                 break;
+
+            case ProgressElement progress:
+                if (Foreground is { } progressColour) progress.Colour = progressColour;
+                break;
+
+            case SpinnerElement spinner:
+                if (Foreground is { } spinnerColour) spinner.Colour = spinnerColour;
+                break;
         }
     }
 }

@@ -82,6 +82,13 @@ A `<select>`, `<radio>` or `<checkbox>` uses the arrow keys when the next step o
 answer when it is a line, so both ways can be tested. A step of the wrong kind (a key where the application reads a
 line) fails with a message naming both.
 
+`Wait()` is a pause in which nothing is typed, for screens that [refresh](live-screens.md#refreshing-a-view-on-a-timer)
+with `@refresh` or `RefreshEvery`: the screen uses it up and is drawn again. Elsewhere a `Wait()` step fails the run.
+
+```csharp
+var run = Host().Run(new ScriptedInput("4").Wait().Line("q")); // the status page refreshes once, then quits
+```
+
 ## Snapshots
 
 `Snapshot.Match` compares text with a file in a `__snapshots__` folder beside the test file:

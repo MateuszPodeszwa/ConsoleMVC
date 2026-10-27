@@ -67,6 +67,12 @@ internal static class CvwDiagnostics
         "'{0}' cannot be used as a partial view name because it is the name of the partial's Render method; rename the file",
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
+    /// <summary>CVW010: an <c>@refresh</c> directive with an interval that cannot be used, more than once, or outside a view.</summary>
+    public static readonly DiagnosticDescriptor InvalidRefresh = new(
+        "CVW010", "Invalid @refresh directive",
+        "{0}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
     /// <summary>CVW100: unknown attribute on an element.</summary>
     public static readonly DiagnosticDescriptor UnknownAttribute = new(
         "CVW100", "Unknown attribute",

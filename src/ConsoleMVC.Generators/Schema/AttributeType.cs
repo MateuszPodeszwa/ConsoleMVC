@@ -102,9 +102,23 @@ internal sealed class IntegerAttributeType : AttributeType
     }
 }
 
-/// <summary>A decimal number in the invariant culture, e.g. <c>0</c>, <c>-5</c> or <c>2.5</c>; emitted as a <c>decimal</c>.</summary>
+/// <summary>
+/// A number in the invariant culture, e.g. <c>0</c>, <c>-5</c> or <c>2.5</c>; emitted as a <c>decimal</c> (for
+/// <c>&lt;number&gt;</c>) or a <c>double</c> (for <c>&lt;progress&gt;</c>).
+/// </summary>
 internal sealed class DecimalAttributeType : AttributeType
 {
+    private readonly string _suffix;
+
+    /// <summary>
+    /// Creates a number attribute type.
+    /// </summary>
+    /// <param name="asDouble"><see langword="true"/> to emit a <c>double</c> literal instead of a <c>decimal</c>.</param>
+    public DecimalAttributeType(bool asDouble = false)
+    {
+        _suffix = asDouble ? "d" : "m";
+    }
+
     /// <inheritdoc />
     public override string Description => "a number such as 0, -5 or 2.5";
 
@@ -118,7 +132,7 @@ internal sealed class DecimalAttributeType : AttributeType
                 CultureInfo.InvariantCulture, out var value))
             return false;
 
-        code = value.ToString(CultureInfo.InvariantCulture) + "m";
+        code = value.ToString(CultureInfo.InvariantCulture) + _suffix;
         return true;
     }
 }

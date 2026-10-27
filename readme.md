@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.23: keyboard shortcuts on every screen (`app.MapKey(ConsoleKey.F1, "Help/Index", "Help")`) and `<shortcuts />`. 1.22 added a rolling file logger (`builder.Logging.AddFile`), 1.21 build warnings for `RedirectToAction` and `View` typos. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.24: `<progress>` and `<spinner>` that update while an action works (`ILiveDisplay`), and views that refresh on a timer (`@refresh 5s`). 1.23 added keyboard shortcuts on every screen (`app.MapKey`) and `<shortcuts />`, 1.22 a rolling file logger (`builder.Logging.AddFile`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -19,6 +19,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
 - **Keyboard shortcuts**: `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` works on every screen, in menus and fields alike, and `<shortcuts />` lists them
+- **Live screens**: `<progress>` and `<spinner>` redraw in place while an async action works (`ILiveDisplay`), and `@refresh 5s` redraws a dashboard with fresh data until the user starts typing
 - **Declarative input and navigation**: `<input>`, `<number>` and `<date>` collect form values, `<select>` (with type-to-filter), `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
@@ -71,6 +72,7 @@ MyApp/
   Models/
     HomeViewModel.cs
     FeaturesViewModel.cs        # Rows for the <table> on the feature tour page
+    StatusViewModel.cs          # The status page, which refreshes every second
     GreetFormModel.cs           # Bound from form data (complex model)
     GreetResultModel.cs
     CalcResultModel.cs
@@ -83,6 +85,7 @@ MyApp/
       IndexView.cvw             # <menu> navigation
       AboutView.cvw
       FeaturesView.cvw          # <table> generated from the model
+      StatusView.cvw            # @refresh 1s, <spinner> and <progress>
     Greet/
       IndexView.cvw             # <input>, <select> and <checkbox>, posts the Form
       ResultView.cvw
@@ -589,6 +592,48 @@ await app.RunAsync();
 | `context.Result` / `context.RedirectTo(…)` | Replace the action's result, or skip the action by setting it without calling `next` |
 
 Views render after the pipeline. See the [guide](docs/guides/docs/async-and-middleware.md) and the [design](docs/design/async-and-middleware.md).
+
+### Live Screens
+
+A long action can show its progress while it works. `ILiveDisplay` is registered for you; `Update` changes the element and redraws it in place:
+
+```csharp
+public class ImportController(ILiveDisplay live, IImporter importer) : Controller
+{
+    public async Task<ActionResult> Run(CancellationToken cancellationToken)
+    {
+        var progress = new ProgressElement { Label = "Import ", Max = importer.Count };
+        await using (var region = live.Start(progress))           // Import ████████░░░░░░░░  50%
+        {
+            await foreach (var _ in importer.ImportAsync(cancellationToken))
+                region.Update(() => progress.Value++);
+        }
+
+        return View();
+    }
+}
+```
+
+A view with `@refresh 5s` is drawn again every 5 seconds, running its action again for fresh data, until the user starts typing:
+
+```
+@model StatusViewModel
+@refresh 5s
+
+<spinner label="Watching the queue" frame="@DateTime.Now.Second" />
+<progress label="Disk " value="@Model.DiskUsed" max="@Model.DiskSize" />
+```
+
+| API | Purpose |
+|-----|---------|
+| `<progress value max label bar-width percent style />` | A progress bar (`ProgressElement`) |
+| `<spinner label style frame done />` | A spinner (`SpinnerElement`), turned by a live region at each tick |
+| `ILiveDisplay.Start(element, interval?)` | Draws an element and keeps it up to date until the `LiveRegion` is disposed; on a pipe or file it is drawn once, in its final state |
+| `@refresh 5s` | Redraws the view every interval (`ms`, `s` or `m`) until the user types; CVW010 for an invalid interval |
+| `View(model).RefreshEvery(TimeSpan)` / `.NoRefresh()` | The action chooses, winning over `@refresh` |
+| `ScriptedInput.Wait()` | In tests: a pause in which a refreshing screen is drawn again |
+
+See the [Live Screens guide](docs/guides/docs/live-screens.md) and the [design](docs/design/live-elements.md).
 
 ### Live Reload
 

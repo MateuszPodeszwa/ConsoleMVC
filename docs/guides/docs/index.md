@@ -14,6 +14,7 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 - [Validation](validation.md): DataAnnotations, `ModelState` and `<errors />`.
 - [Dependency Injection](dependency-injection.md): register services and receive them in controllers and views (`@inject`).
 - [Async Actions and Middleware](async-and-middleware.md): `await` in actions and run code around every action with `app.Use`.
+- [Live Screens](live-screens.md): `<progress>` and `<spinner>` while an action works, and views that refresh on a timer with `@refresh`.
 - [Configuration Files and Logging](hosting.md): `appsettings.json`, environment variables, options and `ILogger<T>`.
 - [Builder Options](configuration.md): the builder, themes and live reload.
 - [Testing](testing.md): run the application in tests with `ConsoleMVC.Testing`, scripted input and snapshots.

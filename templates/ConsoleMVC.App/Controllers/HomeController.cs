@@ -1,13 +1,18 @@
 using ConsoleMVC.App.Models;
 using ConsoleMVC.Mvc;
+using ConsoleMVC.Rendering;
 
 namespace ConsoleMVC.App.Controllers;
 
 /// <summary>
 /// The default controller for the application, handling the home page and about page actions.
 /// </summary>
-public class HomeController : Controller
+/// <param name="live">Draws the progress bar while <see cref="Check"/> works; registered by the framework.</param>
+public class HomeController(ILiveDisplay live) : Controller
 {
+    /// <summary>The number of services the status page checks.</summary>
+    private const int ServiceCount = 5;
+
     /// <summary>
     /// Displays the main welcome page with navigation options.
     /// </summary>
@@ -63,10 +68,42 @@ public class HomeController : Controller
                 new("<errors>", "Shows validation messages for the form"),
                 new("<partial>", "Renders a reusable view from Views/Shared"),
                 new("<columns>", "Places columns side by side, stacking them on narrow terminals"),
+                new("<progress>", "A progress bar, kept up to date while an action works"),
+                new("<spinner>", "Turns while an action works, then shows a tick"),
                 new("class=\"…\"", "Applies a named style from the theme")
             ]
         };
 
+        return View(model);
+    }
+
+    /// <summary>
+    /// Checks the services, showing a progress bar while it works, then shows the status page.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the check when the application stops.</param>
+    public async Task<ActionResult> Check(CancellationToken cancellationToken)
+    {
+        var progress = new ProgressElement { Label = "Checking services ", Max = ServiceCount };
+
+        // The bar is redrawn in place on each update, and stays on the screen when the region ends
+        await using (var region = live.Start(progress))
+        {
+            for (var i = 0; i < ServiceCount; i++)
+            {
+                await Task.Delay(150, cancellationToken);
+                region.Update(() => progress.Value++);
+            }
+        }
+
+        return RedirectToAction("Status");
+    }
+
+    /// <summary>
+    /// Displays the status page; its view refreshes every second with <c>@refresh</c>, running this action again.
+    /// </summary>
+    public ActionResult Status()
+    {
+        var model = new StatusViewModel { Time = DateTime.Now, Healthy = ServiceCount, Total = ServiceCount };
         return View(model);
     }
 }

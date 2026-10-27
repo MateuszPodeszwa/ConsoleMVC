@@ -415,6 +415,51 @@ place for it. See [Keyboard shortcuts](controllers-and-forms.md#keyboard-shortcu
 | `key-color` / `key-colour` | key colour (keys are bold) | terminal default |
 | `class` | theme style | none |
 
+### `<progress />`
+
+A progress bar on one line: `Import ████████░░░░░░░░  50%`. Draw it in a view to show how far something has got, or
+keep it up to date while an action works with a [live region](live-screens.md).
+
+```
+<progress label="Disk " value="@Model.Used" max="@Model.Size" bar-width="30" class="success" />
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `value` | how much is done, a number or an expression; clamped to 0 to `max` | 0 |
+| `max` | the value at which the bar is full | 100 |
+| `label` | text before the bar; shortened first when the line is narrow | none |
+| `bar-width` | width of the bar in columns | fills the line |
+| `percent` | `false` hides the percentage | shown |
+| `style` | `block` (`██░░`), `line` (`━━──`), `ascii` (`##--`) | `block` |
+| `color` / `colour` | colour of the done part | terminal default |
+| `empty-color` / `empty-colour` | colour of the part still to do | terminal default |
+| `label-color` / `label-colour` | colour of the label and the percentage | terminal default |
+| `class` | theme style (its colour colours the bar) | none |
+
+A `max` of 0 or less, or a value that is not a number, draws an empty bar.
+
+### `<spinner />`
+
+A spinner and its label: `⠋ Connecting`. It turns while it is in a [live region](live-screens.md); drawn in a view, it
+shows the frame you give it.
+
+```
+<spinner label="Waiting for the printer" />
+<spinner label="Printed" done />                         ✓ Printed
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `label` | text after the spinner | none |
+| `style` | `dots` (`⠋⠙⠹…`), `line` (a turning line in plain ASCII), `circle` (`◐◓◑◒`) | `dots` |
+| `frame` | the frame to show, any whole number (it wraps), e.g. `@DateTime.Now.Second` | 0 |
+| `done` | show the done symbol instead of a frame | off |
+| `done-symbol` | what `done` shows | `✓` |
+| `color` / `colour` | spinner colour | terminal default |
+| `label-color` / `label-colour` | label colour | terminal default |
+| `class` | theme style | none |
+
 ### `<errors />`
 
 Shows validation messages from the view's `ModelState` (see [Validation](https://github.com/MateuszPodeszwa/ConsoleMVC#validation)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.
@@ -461,6 +506,11 @@ Renders a **partial view**: a reusable piece of markup in `Views/Shared/{Name}.c
 * A partial shares the view's `Form`, `ModelState`, `ViewData`, renderer and input: an `<input>` in a partial fills the view's form, and `<errors />` shows the view's errors.
 * Partials may use `@inject`, C# code and other partials (a partial cannot render itself: CVW116).
 * Like `<input>`, `<partial>` is written at the top level of the view (it may be inside a C# `if` or loop), not inside another element.
+
+### Refreshing with `@refresh`
+
+`@refresh 5s` at the top of a view draws it again every 5 seconds (the action runs again for fresh data) until the user
+starts typing. The interval takes `ms`, `s` or `m`, from `100ms` to 24 hours. See [Live Screens](live-screens.md).
 
 ### Layouts and `<body />`
 
@@ -536,6 +586,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW007 | `@inject` without a type and a property name, or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
 | CVW008 | Two `@inject` directives declare the same property name |
 | CVW009 | A partial view file is named `Render`, the name of its own method |
+| CVW010 | `@refresh` with an interval that is not a number with `ms`, `s` or `m` from 100 ms to 24 hours, used twice, or used in a partial view or a layout |
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |

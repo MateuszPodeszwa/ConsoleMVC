@@ -37,5 +37,6 @@
 <menu key-color="cyan">
     <option key="b" back>Back</option>
     <option key="1" nav="Index">Home</option>
+    <option key="2" nav="Check">Live status (progress, spinner, refresh)</option>
     <option key="q" quit>Exit</option>
 </menu>

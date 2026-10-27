@@ -74,6 +74,7 @@ public class HomeViewModel
 - **Partial views**: reusable markup in `Views/Shared/{Name}.cvw`, rendered with `<partial name="Header" model="@Model.Title" />` and checked at build time
 - **Declarative input and navigation**: `<input>` fields (required, default, masked), `<number>` and `<date>` with ranges, `<select>` (with type-to-filter) and `<radio>` lists and `<checkbox>` (answered with the arrow keys in a terminal) collect a `Form`, and `<menu>` reads the choice and navigates
 - **Keyboard shortcuts**: `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")`, `NavigationResult.Back()` on Esc, and `<shortcuts />` to list them
+- **Live screens**: `<progress>` and `<spinner>`, kept up to date while an async action works with `ILiveDisplay.Start(element)`, and views that refresh on a timer with `@refresh 5s` or `View(model).RefreshEvery(...)` until the user types
 - **Secure output**: model values are sanitised so they cannot inject terminal escape sequences
 - **Reusable rendering engine**: the `ConsoleMVC.Rendering` namespace can draw elements in any console app
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, all the patterns you know from ASP.NET Core MVC

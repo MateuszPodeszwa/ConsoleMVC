@@ -252,6 +252,7 @@ public class MvcApplicationBuilder
             services.TryAddSingleton<IMarkupRenderer>(_ => MarkupRenderer.CreateForConsole());
 
         services.AddSingleton(Theme ?? Theme.Empty);
+        services.TryAddSingleton<ILiveDisplay>(provider => new LiveDisplay(provider.GetRequiredService<IMarkupRenderer>()));
 
         // Also when Services was cleared: these calls only add what is missing
         services.TryAddSingleton<IConfiguration>(Configuration);

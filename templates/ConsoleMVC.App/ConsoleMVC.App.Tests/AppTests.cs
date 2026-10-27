@@ -51,4 +51,18 @@ public class AppTests
         Assert.Contains("This field is required.", run.Screens[1]);
         Assert.Contains("Hello, Ada!", run.LastScreen);
     }
+
+    [Fact]
+    public void StatusPage_RefreshesUntilYouType()
+    {
+        var input = new ScriptedInput("4", "2")                 // the feature tour, then the live status
+            .Wait()                                             // a second passes with nothing typed: the page refreshes
+            .Line("b");                                         // back to the tour
+
+        var run = Host().Run(input);
+
+        Assert.Equal(["Home/Index", "Home/Features", "Home/Check", "Home/Status", "Home/Status", "Home/Features"], run.Routes);
+        Assert.Contains("Checking services ████", run.Output);
+        Assert.Contains("Services up ████████████████████ 100%", run.Output);
+    }
 }

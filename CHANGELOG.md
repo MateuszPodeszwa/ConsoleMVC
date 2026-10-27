@@ -2,6 +2,24 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.24.0]
+
+### Added
+
+- **Live regions** ([design](docs/design/live-elements.md), [guide](docs/guides/docs/live-screens.md)): `ILiveDisplay`
+  (registered as `LiveDisplay`) `Start(element, interval?)` draws an element and keeps it up to date while an action
+  works; `LiveRegion.Update(change)`, `Refresh()` and disposal draw it in place, and a timer turns spinners
+  (`IAnimatedElement`). On a pipe or a file the element is drawn once, in its final state.
+- **`<progress />`** (`ProgressElement`, `ProgressStyle`: `block`, `line`, `ascii`) and **`<spinner />`**
+  (`SpinnerElement`, `SpinnerStyle`: `dots`, `line`, `circle`; `done` shows a tick).
+- **Timed refresh**: `@refresh 5s` in a view, or `View(model).RefreshEvery(TimeSpan)` and `NoRefresh()` in the action,
+  draws the screen again with fresh data until the user starts typing. CVW010 reports an invalid interval and
+  `@refresh` in a partial or a layout.
+- `ITextInput.WaitForInput(timeout)` (implemented by `ConsoleTextInput`), and `ScriptedInput.Wait()` for testing
+  refreshing screens.
+- The template's feature tour has a live status option: a progress bar while the services are checked, then a page
+  that refreshes every second, with a test for it in `--tests`.
+
 ## [1.23.0]
 
 ### Added

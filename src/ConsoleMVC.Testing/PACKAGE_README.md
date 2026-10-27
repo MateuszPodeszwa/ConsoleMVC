@@ -31,7 +31,7 @@ public void Greeting_ShowsTheName()
 |---|---|
 | `MvcTestHost` | Builds a fresh application per run with a fixed `Width` (80), the `Testing` environment and a `MaxScreens` guard (100) against applications that never wait |
 | `TestRun` | `Screens`, `LastScreen`, `Output`, `Routes` and `RemainingInput` |
-| `ScriptedInput` | Lines (`Line`, `Lines`) and keys (`Keys`, `Key`, `Char`); fields use the arrow keys exactly when the next step is a key |
+| `ScriptedInput` | Lines (`Line`, `Lines`) and keys (`Keys`, `Key`, `Char`); fields use the arrow keys exactly when the next step is a key. `Wait()` is a pause in which a screen with `@refresh` is drawn again |
 | `ScreenRecorder` | The render target behind the host, one entry per screen; usable with your own `MarkupRenderer` |
 | `Snapshot` | `Snapshot.Match(text, "name")`: creates the file on the first run, fails with the first different line afterwards, never creates one when `CI` is set; `CONSOLEMVC_UPDATE_SNAPSHOTS=1` accepts changes |
 

@@ -124,6 +124,21 @@ internal sealed class MarkupSchema
         ];
 
         var number = new DecimalAttributeType();
+        var amount = new DecimalAttributeType(asDouble: true);
+
+        var progressStyle = new ChoiceAttributeType(new Dictionary<string, string>
+        {
+            ["block"] = Rendering + "ProgressStyle.Block",
+            ["line"] = Rendering + "ProgressStyle.Line",
+            ["ascii"] = Rendering + "ProgressStyle.Ascii"
+        });
+
+        var spinnerStyle = new ChoiceAttributeType(new Dictionary<string, string>
+        {
+            ["dots"] = Rendering + "SpinnerStyle.Dots",
+            ["line"] = Rendering + "SpinnerStyle.Line",
+            ["circle"] = Rendering + "SpinnerStyle.Circle"
+        });
         var date = new DateAttributeType();
 
         // Shared by <number> and <date>
@@ -295,6 +310,37 @@ internal sealed class MarkupSchema
                 new AttributeSchema("key-color", "KeyColour", colour),
                 new AttributeSchema("key-colour", "KeyColour", colour)
             ], initialisers: ["Items = this.ShortcutHints"]),
+
+            // ---- 1.24: live elements
+            new ElementSchema("progress", Rendering + "ProgressElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("value", "Value", amount),
+                new AttributeSchema("max", "Max", amount),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("bar-width", "BarWidth", new IntegerAttributeType(1, 1000)),
+                new AttributeSchema("percent", "ShowPercent", boolean),
+                new AttributeSchema("style", "Style", progressStyle),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("empty-color", "EmptyColour", colour),
+                new AttributeSchema("empty-colour", "EmptyColour", colour),
+                new AttributeSchema("label-color", "LabelColour", colour),
+                new AttributeSchema("label-colour", "LabelColour", colour)
+            ]),
+            new ElementSchema("spinner", Rendering + "SpinnerElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("style", "Style", spinnerStyle),
+                new AttributeSchema("frame", "Frame", new IntegerAttributeType(0, int.MaxValue)),
+                new AttributeSchema("done", "Done", boolean),
+                new AttributeSchema("done-symbol", "DoneSymbol", text),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("label-color", "LabelColour", colour),
+                new AttributeSchema("label-colour", "LabelColour", colour)
+            ]),
 
             // ---- 1.0: layout
             new ElementSchema("columns", Rendering + "ColumnsElement", ContentModel.Elements,

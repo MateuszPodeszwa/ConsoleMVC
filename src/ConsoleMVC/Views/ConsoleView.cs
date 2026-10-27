@@ -68,6 +68,22 @@ public abstract class ConsoleView : ConsoleViewBase
     /// </exception>
     internal abstract NavigationResult RenderInternal(object? model);
 
+    /// <summary>
+    /// Gets how often the screen is drawn again while the user has not started answering, or <see langword="null"/> (the
+    /// default) to wait for the user. The <c>@refresh 5s</c> directive overrides this; an action's
+    /// <see cref="ViewResult.RefreshEvery"/> or <see cref="ViewResult.NoRefresh"/> wins over both.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// // @refresh 5s generates:
+    /// protected override TimeSpan? RefreshInterval => TimeSpan.FromMilliseconds(5000);
+    /// </code>
+    /// </example>
+    protected virtual TimeSpan? RefreshInterval => null;
+
+    /// <summary>Gets <see cref="RefreshInterval"/> for the application loop.</summary>
+    internal TimeSpan? DeclaredRefreshInterval => RefreshInterval;
+
     /// <summary>The layout whose footer is still to be drawn, or <see langword="null"/>.</summary>
     private ConsoleLayoutView? _pendingLayout;
 

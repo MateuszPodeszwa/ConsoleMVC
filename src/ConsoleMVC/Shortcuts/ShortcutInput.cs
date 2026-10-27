@@ -30,6 +30,9 @@ internal sealed class ShortcutInput(ITextInput inner, IReadOnlyList<KeyShortcut>
     public bool CanReadKeys => inner.CanReadKeys;
 
     /// <inheritdoc />
+    public bool WaitForInput(TimeSpan timeout) => inner.WaitForInput(timeout);
+
+    /// <inheritdoc />
     public ConsoleKeyInfo? ReadKey()
     {
         var key = inner.ReadKey();

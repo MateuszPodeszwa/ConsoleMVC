@@ -345,6 +345,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             var echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
             input = new ShortcutInput(input, _shortcuts.ToArray(), echo);
         }
+
+        // Outermost, so a refreshing screen notices the time passing before any other input reads a key
+        var refreshing = new RefreshingInput(input);
         var theme = _services.GetRequiredService<Theme>();
         var logger = _services.GetRequiredService<ILogger<MvcApplication>>();
         MvcApplicationLog.Starting(logger, _currentRoute, Environment.EnvironmentName);
@@ -352,7 +355,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         HotReloadHandler.Updated += OnHotReload;
         try
         {
-            await RunLoopAsync(pipeline, assembly, renderer, input, theme, logger, cancellationToken).ConfigureAwait(false);
+            await RunLoopAsync(pipeline, assembly, renderer, refreshing, theme, logger, cancellationToken).ConfigureAwait(false);
             MvcApplicationLog.Stopped(logger);
         }
         catch (Exception e) when (e is not OperationCanceledException)
@@ -382,10 +385,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <summary>
     /// Runs navigation cycles until a view quits: the pipeline, then rendering the view or following the redirect.
     /// </summary>
-    private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, IMarkupRenderer renderer, ITextInput input,
+    private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, IMarkupRenderer renderer, RefreshingInput input,
         Theme theme, ILogger logger, CancellationToken cancellationToken)
     {
         var consecutiveRedirects = 0;
+        var refreshing = false;
 
         while (true)
         {
@@ -415,11 +419,24 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                         NavigationResult navigation;
                         try
                         {
-                            navigation = RenderView(viewResult, renderer, input, theme, context);
+                            navigation = RenderView(viewResult, renderer, input, theme, context, clear: refreshing);
+                            refreshing = false;
                         }
                         catch (ShortcutPressedException shortcut)
                         {
                             navigation = shortcut.Navigation;
+                            refreshing = false;
+                        }
+                        catch (ViewRefreshException)
+                        {
+                            // Nothing typed in time: run the same route again for fresh data, on a cleared screen
+                            refreshing = true;
+                            _currentRoute = context.Route;
+                            break;
+                        }
+                        finally
+                        {
+                            input.Disarm();
                         }
 
                         if (navigation.Exit)
@@ -570,8 +587,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.
     /// </summary>
-    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input, Theme theme,
-        ActionContext context)
+    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, RefreshingInput input, Theme theme,
+        ActionContext context, bool clear)
     {
         var view = context.Own(_router.ResolveView(viewResult.ControllerName, viewResult.ViewName, context.Services));
         view.ViewData = viewResult.ViewData;
@@ -583,9 +600,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         view.ShortcutHints = _shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Description))
             .Select(s => new ShortcutHint(s.Gesture.ToString(), s.Description!)).ToArray();
 
-        if (_clearScreenBetweenViews)
+        // A refresh always clears, or the screen would be drawn again below itself
+        if (_clearScreenBetweenViews || clear)
             renderer.Clear();
 
+        input.Arm(viewResult.ResolveRefresh(view.DeclaredRefreshInterval));
         return view.RenderInternal(viewResult.Model)
                ?? throw new InvalidOperationException(
                    $"View '{view.GetType().Name}' returned null. Views must return a NavigationResult.");

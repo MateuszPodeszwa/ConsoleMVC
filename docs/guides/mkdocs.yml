@@ -39,6 +39,7 @@ nav:
   - Validation: validation.md
   - Dependency Injection: dependency-injection.md
   - Async Actions and Middleware: async-and-middleware.md
+  - Live Screens: live-screens.md
   - Configuration Files and Logging: hosting.md
   - Builder Options: configuration.md
   - Testing: testing.md
