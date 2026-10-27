@@ -22,6 +22,13 @@ public sealed class SystemConsoleRenderTarget : IRenderTarget
     /// <inheritdoc />
     public void Write(RenderedLine line)
     {
+        WriteInline(line);
+        Console.WriteLine();
+    }
+
+    /// <inheritdoc />
+    public void WriteInline(RenderedLine line)
+    {
         foreach (var span in line.Spans)
         {
             var coloured = _useColour && (!span.Style.Foreground.IsDefault || !span.Style.Background.IsDefault);
@@ -39,8 +46,6 @@ public sealed class SystemConsoleRenderTarget : IRenderTarget
             if (coloured)
                 Console.ResetColor();
         }
-
-        Console.WriteLine();
     }
 
     /// <inheritdoc />

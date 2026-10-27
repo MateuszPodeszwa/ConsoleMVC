@@ -61,6 +61,18 @@ public class MvcApplicationBuilder
     public IMarkupRenderer? Renderer { get; set; }
 
     /// <summary>
+    /// Gets or sets where <c>&lt;input&gt;</c> and <c>&lt;menu&gt;</c> elements read user input from.
+    /// </summary>
+    /// <value>Defaults to <see langword="null"/>, meaning <see cref="ConsoleTextInput.Instance"/>.</value>
+    /// <example>
+    /// <code>
+    /// // Drive an application with scripted input, e.g. in an end-to-end test
+    /// builder.Input = new MyScriptedInput("1", "Ada", "q");
+    /// </code>
+    /// </example>
+    public ITextInput? Input { get; set; }
+
+    /// <summary>
     /// Gets or sets whether the screen is cleared before each view renders.
     /// </summary>
     /// <value>Defaults to <see langword="true"/>.</value>

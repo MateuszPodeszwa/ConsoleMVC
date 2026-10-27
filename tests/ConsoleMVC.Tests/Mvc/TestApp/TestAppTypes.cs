@@ -79,6 +79,8 @@ namespace ConsoleMVC.Tests.Mvc.TestApp.Controllers
         public ActionResult WrongModel() => View("not an OrderModel");
 
         public ActionResult Rendering() => View();
+
+        public ActionResult Ask() => View();
     }
 }
 
@@ -114,6 +116,18 @@ namespace ConsoleMVC.Tests.Mvc.TestApp.Views.Shop
         public override NavigationResult Render(object Model)
         {
             Renderer.Render(new ConsoleMVC.Rendering.LineBreakElement());
+            return NavigationResult.Quit();
+        }
+    }
+
+    public class AskView : ConsoleView<object>
+    {
+        /// <summary>The value read by the last run, for assertions.</summary>
+        public static string? Answer;
+
+        public override NavigationResult Render(object Model)
+        {
+            Answer = ReadInput(new ConsoleMVC.Rendering.InputElement { Name = "Answer" });
             return NavigationResult.Quit();
         }
     }

@@ -16,19 +16,24 @@ namespace ConsoleMVC.Rendering;
 public sealed class BorderStyle
 {
     /// <summary>No border. The box's title, if any, is shown as a heading line.</summary>
-    public static BorderStyle None { get; } = new("none", ' ', ' ', ' ', ' ', ' ', ' ', isVisible: false);
+    public static BorderStyle None { get; } = new("none", ' ', ' ', ' ', ' ', ' ', ' ', isVisible: false,
+        teeDown: ' ', teeUp: ' ', teeRight: ' ', teeLeft: ' ', cross: ' ');
 
     /// <summary>Single-line box drawing characters: <c>┌─┐│└┘</c>.</summary>
-    public static BorderStyle Single { get; } = new("single", '┌', '┐', '└', '┘', '─', '│');
+    public static BorderStyle Single { get; } = new("single", '┌', '┐', '└', '┘', '─', '│',
+        teeDown: '┬', teeUp: '┴', teeRight: '├', teeLeft: '┤', cross: '┼');
 
     /// <summary>Double-line box drawing characters: <c>╔═╗║╚╝</c>.</summary>
-    public static BorderStyle Double { get; } = new("double", '╔', '╗', '╚', '╝', '═', '║');
+    public static BorderStyle Double { get; } = new("double", '╔', '╗', '╚', '╝', '═', '║',
+        teeDown: '╦', teeUp: '╩', teeRight: '╠', teeLeft: '╣', cross: '╬');
 
     /// <summary>Single-line characters with rounded corners: <c>╭─╮│╰╯</c>.</summary>
-    public static BorderStyle Rounded { get; } = new("rounded", '╭', '╮', '╰', '╯', '─', '│');
+    public static BorderStyle Rounded { get; } = new("rounded", '╭', '╮', '╰', '╯', '─', '│',
+        teeDown: '┬', teeUp: '┴', teeRight: '├', teeLeft: '┤', cross: '┼');
 
     /// <summary>Heavy (thick) line characters: <c>┏━┓┃┗┛</c>.</summary>
-    public static BorderStyle Heavy { get; } = new("heavy", '┏', '┓', '┗', '┛', '━', '┃');
+    public static BorderStyle Heavy { get; } = new("heavy", '┏', '┓', '┗', '┛', '━', '┃',
+        teeDown: '┳', teeUp: '┻', teeRight: '┣', teeLeft: '┫', cross: '╋');
 
     /// <summary>Plain ASCII characters for terminals without Unicode support: <c>+-+|++</c>.</summary>
     public static BorderStyle Ascii { get; } = new("ascii", '+', '+', '+', '+', '-', '|');
@@ -44,8 +49,14 @@ public sealed class BorderStyle
     /// <param name="horizontal">Character for the top and bottom edges.</param>
     /// <param name="vertical">Character for the left and right edges.</param>
     /// <param name="isVisible"><see langword="false"/> for a style that draws nothing.</param>
+    /// <param name="teeDown">Junction on the top edge of a table (<c>┬</c>); defaults to <c>+</c>.</param>
+    /// <param name="teeUp">Junction on the bottom edge of a table (<c>┴</c>); defaults to <c>+</c>.</param>
+    /// <param name="teeRight">Junction on the left edge of a table (<c>├</c>); defaults to <c>+</c>.</param>
+    /// <param name="teeLeft">Junction on the right edge of a table (<c>┤</c>); defaults to <c>+</c>.</param>
+    /// <param name="cross">Junction inside a table (<c>┼</c>); defaults to <c>+</c>.</param>
     public BorderStyle(string name, char topLeft, char topRight, char bottomLeft, char bottomRight,
-        char horizontal, char vertical, bool isVisible = true)
+        char horizontal, char vertical, bool isVisible = true,
+        char teeDown = '+', char teeUp = '+', char teeRight = '+', char teeLeft = '+', char cross = '+')
     {
         Name = name;
         TopLeft = topLeft;
@@ -55,6 +66,11 @@ public sealed class BorderStyle
         Horizontal = horizontal;
         Vertical = vertical;
         IsVisible = isVisible;
+        TeeDown = teeDown;
+        TeeUp = teeUp;
+        TeeRight = teeRight;
+        TeeLeft = teeLeft;
+        Cross = cross;
     }
 
     /// <summary>Gets the descriptive name of the style.</summary>
@@ -77,6 +93,21 @@ public sealed class BorderStyle
 
     /// <summary>Gets the character used for vertical edges.</summary>
     public char Vertical { get; }
+
+    /// <summary>Gets the junction where a column line meets the top edge (<c>┬</c>).</summary>
+    public char TeeDown { get; }
+
+    /// <summary>Gets the junction where a column line meets the bottom edge (<c>┴</c>).</summary>
+    public char TeeUp { get; }
+
+    /// <summary>Gets the junction where a row line meets the left edge (<c>├</c>).</summary>
+    public char TeeRight { get; }
+
+    /// <summary>Gets the junction where a row line meets the right edge (<c>┤</c>).</summary>
+    public char TeeLeft { get; }
+
+    /// <summary>Gets the junction where a row line crosses a column line (<c>┼</c>).</summary>
+    public char Cross { get; }
 
     /// <summary>Gets a value indicating whether the border is drawn at all.</summary>
     public bool IsVisible { get; }

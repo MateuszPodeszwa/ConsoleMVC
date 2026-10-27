@@ -24,6 +24,12 @@ public interface IRenderTarget
     void Write(RenderedLine line);
 
     /// <summary>
+    /// Writes one line without a line terminator, leaving the cursor after it (used for prompts).
+    /// </summary>
+    /// <param name="line">The text to write.</param>
+    void WriteInline(RenderedLine line);
+
+    /// <summary>
     /// Clears the output, if the destination supports it. Must never throw because the output is redirected.
     /// </summary>
     void Clear();

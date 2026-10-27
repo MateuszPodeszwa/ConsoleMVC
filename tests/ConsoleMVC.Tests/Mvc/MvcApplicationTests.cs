@@ -18,6 +18,7 @@ public class MvcApplicationTests
         public List<Element> Rendered { get; } = [];
         public int Width => 80;
         public void Render(Element element) => Rendered.Add(element);
+        public void WritePrompt(string text, TextStyle style) { }
         public void Clear() => ClearCount++;
     }
 

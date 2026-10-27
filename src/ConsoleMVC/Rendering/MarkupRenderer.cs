@@ -22,6 +22,14 @@ public interface IMarkupRenderer
     void Render(Element element);
 
     /// <summary>
+    /// Writes a prompt without a line break, so the user types on the same line. The text is sanitised.
+    /// </summary>
+    /// <param name="text">The prompt text.</param>
+    /// <param name="style">The style of the prompt.</param>
+    /// <example><code>renderer.WritePrompt("Name: ", TextStyle.Plain);</code></example>
+    void WritePrompt(string text, TextStyle style);
+
+    /// <summary>
     /// Clears the output, if supported. Never throws because output is redirected.
     /// </summary>
     void Clear();
@@ -82,6 +90,14 @@ public sealed class MarkupRenderer : IMarkupRenderer
         foreach (var line in element.Layout(Width))
             _target.Write(line);
 
+        _target.Flush();
+    }
+
+    /// <inheritdoc />
+    public void WritePrompt(string text, TextStyle style)
+    {
+        var safe = TextSanitiser.Sanitise(text).Replace('\n', ' ');
+        _target.WriteInline(new RenderedLine([new Span(safe, style)]));
         _target.Flush();
     }
 

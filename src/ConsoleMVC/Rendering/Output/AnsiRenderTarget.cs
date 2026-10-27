@@ -38,7 +38,13 @@ public sealed class AnsiRenderTarget : IRenderTarget
     }
 
     /// <inheritdoc />
-    public void Write(RenderedLine line)
+    public void Write(RenderedLine line) => _writer.WriteLine(Format(line));
+
+    /// <inheritdoc />
+    public void WriteInline(RenderedLine line) => _writer.Write(Format(line));
+
+    /// <summary>Builds the escape-coded text of a line; one write per line keeps output fast and unbroken.</summary>
+    private string Format(RenderedLine line)
     {
         _buffer.Clear();
 
@@ -55,8 +61,7 @@ public sealed class AnsiRenderTarget : IRenderTarget
             _buffer.Append(Escape).Append(codes).Append('m').Append(span.Text).Append(Reset);
         }
 
-        // One write per line keeps output fast and avoids interleaving with other writers
-        _writer.WriteLine(_buffer.ToString());
+        return _buffer.ToString();
     }
 
     /// <inheritdoc />

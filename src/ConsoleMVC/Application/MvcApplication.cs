@@ -42,6 +42,7 @@ public class MvcApplication
     private readonly Router _router = new();
     private readonly Assembly? _applicationAssembly;
     private readonly IMarkupRenderer? _configuredRenderer;
+    private readonly ITextInput _input;
     private readonly bool _clearScreenBetweenViews;
     private RouteContext _currentRoute;
 
@@ -59,6 +60,7 @@ public class MvcApplication
         };
         _applicationAssembly = builder.ApplicationAssembly;
         _configuredRenderer = builder.Renderer;
+        _input = builder.Input ?? ConsoleTextInput.Instance;
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
     }
 
@@ -191,6 +193,7 @@ public class MvcApplication
         var view = _router.ResolveView(viewResult.ControllerName, viewResult.ViewName);
         view.ViewData = viewResult.ViewData;
         view.Renderer = renderer;
+        view.Input = _input;
 
         if (_clearScreenBetweenViews)
             renderer.Clear();

@@ -29,6 +29,9 @@ public sealed class PlainTextRenderTarget : IRenderTarget
     public void Write(RenderedLine line) => _writer.WriteLine(line.ToPlainText());
 
     /// <inheritdoc />
+    public void WriteInline(RenderedLine line) => _writer.Write(line.ToPlainText());
+
+    /// <inheritdoc />
     public void Clear()
     {
         // Redirected output cannot be cleared; deliberately do nothing.

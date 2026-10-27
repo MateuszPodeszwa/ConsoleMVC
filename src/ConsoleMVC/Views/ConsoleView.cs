@@ -22,6 +22,7 @@ public abstract class ConsoleView
     private static readonly Lazy<IMarkupRenderer> DefaultRenderer = new(MarkupRenderer.CreateForConsole);
 
     private IMarkupRenderer? _renderer;
+    private ITextInput? _input;
 
     /// <summary>
     /// Gets or sets the <see cref="ViewDataDictionary"/> used to pass supplementary
@@ -47,6 +48,79 @@ public abstract class ConsoleView
     {
         get => _renderer ??= DefaultRenderer.Value;
         internal set => _renderer = value;
+    }
+
+    /// <summary>
+    /// Gets the source of user input used by <c>&lt;input&gt;</c> and <c>&lt;menu&gt;</c>. The framework assigns
+    /// <see cref="MvcApplicationBuilder.Input"/>; views created manually fall back to the console.
+    /// </summary>
+    public ITextInput Input
+    {
+        get => _input ??= ConsoleTextInput.Instance;
+        internal set => _input = value;
+    }
+
+    /// <summary>
+    /// Gets the values collected by <c>&lt;input&gt;</c> elements in this view, keyed by their <c>name</c>
+    /// (case-insensitive). Post them to a controller with <c>NavigationResult.ToAction("Save", Form)</c> or a
+    /// menu option marked <c>post</c>.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// &lt;input name="Name" label="Name: " required /&gt;
+    /// return NavigationResult.ToAction("Result", Form);
+    /// </code>
+    /// </example>
+    public Dictionary<string, string> Form { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Reads a value for an <c>&lt;input&gt;</c> element and stores it in <see cref="Form"/>. Generated code calls
+    /// this for every top-level <c>&lt;input&gt;</c>.
+    /// </summary>
+    /// <param name="input">The input element to read.</param>
+    /// <returns>The value read; an empty string when the input has ended.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="input"/> is <see langword="null"/>.</exception>
+    protected internal string ReadInput(InputElement input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        var value = input.Read(Renderer, Input) ?? "";
+        Form[input.Name] = value;
+        return value;
+    }
+
+    /// <summary>
+    /// Shows a <c>&lt;menu&gt;</c>, waits for a valid choice and converts it into a <see cref="NavigationResult"/>.
+    /// Generated code returns the result of this method for a top-level <c>&lt;menu&gt;</c>.
+    /// </summary>
+    /// <param name="menu">The menu to show.</param>
+    /// <returns>
+    /// <see cref="NavigationResult.Quit"/> for a <c>quit</c> option or when the input ends; otherwise navigation to
+    /// the option's <c>nav</c> target, carrying a copy of <see cref="Form"/> when the option is marked <c>post</c>.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">Thrown when an option's target is not <c>Controller/Action</c> or <c>Action</c>.</exception>
+    protected internal NavigationResult RunMenu(MenuElement menu)
+    {
+        ArgumentNullException.ThrowIfNull(menu);
+
+        var option = menu.Choose(Renderer, Input);
+        if (option is null || option.Quit)
+            return NavigationResult.Quit();
+
+        var target = option.Target ?? "";
+        var parts = target.Split('/');
+        if (parts.Length > 2 || parts.Any(p => p.Trim().Length == 0))
+        {
+            throw new InvalidOperationException(
+                $"Menu option '{option.Key}' in view '{GetType().Name}' has an invalid target '{target}'. " +
+                "Use 'Controller/Action' or 'Action'.");
+        }
+
+        var formData = option.PostForm ? new Dictionary<string, string>(Form, StringComparer.OrdinalIgnoreCase) : null;
+
+        return parts.Length == 2
+            ? new NavigationResult { Controller = parts[0].Trim(), Action = parts[1].Trim(), FormData = formData }
+            : new NavigationResult { Action = parts[0].Trim(), FormData = formData };
     }
 
     /// <summary>
