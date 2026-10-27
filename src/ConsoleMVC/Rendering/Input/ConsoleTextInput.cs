@@ -4,7 +4,12 @@ namespace ConsoleMVC.Rendering;
 /// Reads input from <see cref="Console.In"/>. Masked reading intercepts keys so typed characters are never
 /// echoed; when input is redirected (keys cannot be intercepted) it falls back to <see cref="Console.ReadLine"/>.
 /// </summary>
-/// <example><code>var password = ConsoleTextInput.Instance.ReadMasked('*');</code></example>
+/// <example>
+/// <code>
+/// var password = ConsoleTextInput.Instance.ReadMasked('*');
+/// ConsoleKeyInfo? key = ConsoleTextInput.Instance.CanReadKeys ? ConsoleTextInput.Instance.ReadKey() : null;
+/// </code>
+/// </example>
 public sealed class ConsoleTextInput : ITextInput
 {
     private ConsoleTextInput()
@@ -41,6 +46,30 @@ public sealed class ConsoleTextInput : ITextInput
             }
 
             return value;
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <see langword="true"/> when both input and output are a terminal: keys can be intercepted and the element can be
+    /// redrawn where the user sees it.
+    /// </remarks>
+    public bool CanReadKeys => !Console.IsInputRedirected && !Console.IsOutputRedirected;
+
+    /// <inheritdoc />
+    /// <remarks>Ctrl+D and Ctrl+Z end the input, as they do for a typed line.</remarks>
+    public ConsoleKeyInfo? ReadKey()
+    {
+        try
+        {
+            var key = Console.ReadKey(intercept: true);
+            var endOfInput = key.Modifiers.HasFlag(ConsoleModifiers.Control) && key.Key is ConsoleKey.D or ConsoleKey.Z;
+            return endOfInput ? null : key;
+        }
+        catch (InvalidOperationException)
+        {
+            // Input became redirected or has no console
+            return null;
         }
     }
 }

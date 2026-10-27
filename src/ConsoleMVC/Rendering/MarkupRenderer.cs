@@ -44,6 +44,22 @@ public interface IMarkupRenderer
     void RecordInput(string text)
     {
     }
+
+    /// <summary>
+    /// Gets whether <see cref="Rewrite"/> can replace an element in place, so interactive elements can be answered with
+    /// the arrow keys. The default is <see langword="false"/>.
+    /// </summary>
+    /// <example><code>if (renderer.CanRewrite) renderer.Rewrite(select);</code></example>
+    bool CanRewrite => false;
+
+    /// <summary>
+    /// Replaces what the most recent <see cref="Render"/> call wrote with <paramref name="element"/>, laid out again.
+    /// <c>&lt;select&gt;</c>, <c>&lt;radio&gt;</c> and <c>&lt;checkbox&gt;</c> call this after every key press. The
+    /// default implementation renders the element again below.
+    /// </summary>
+    /// <param name="element">The element to show instead; usually the same element in a new state.</param>
+    /// <example><code>renderer.Render(select); /* a key is pressed */ renderer.Rewrite(select);</code></example>
+    void Rewrite(Element element) => Render(element);
 }
 
 /// <summary>
@@ -72,6 +88,8 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
 
     private readonly IRenderTarget _target;
     private readonly Func<int> _widthProvider;
+    private readonly Func<int> _heightProvider;
+    private readonly bool _canEraseLines;
     private readonly object _sync = new();
 
     // What is on the screen since the renderer last cleared it, to lay out again when the terminal is resized
@@ -81,6 +99,10 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     private int _renderedWidth;
     private IDisposable? _resizeWatcher;
 
+    // The lines and width of the last element written, while nothing else has been written after it; -1 otherwise
+    private int _lastElementLines = -1;
+    private int _lastElementWidth;
+
     /// <summary>
     /// Initialises a renderer.
     /// </summary>
@@ -88,11 +110,30 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     /// <param name="widthProvider">Returns the current width; called for every top-level element so resizing the terminal takes effect.</param>
     /// <exception cref="ArgumentNullException">Thrown when an argument is <see langword="null"/>.</exception>
     public MarkupRenderer(IRenderTarget target, Func<int> widthProvider)
+        : this(target, widthProvider, static () => int.MaxValue)
+    {
+    }
+
+    /// <summary>
+    /// Initialises a renderer that knows the terminal height, so <see cref="Rewrite"/> never tries to move the cursor
+    /// above the top of the window.
+    /// </summary>
+    /// <param name="target">Where rendered lines are written.</param>
+    /// <param name="widthProvider">Returns the current width.</param>
+    /// <param name="heightProvider">Returns the current height in rows.</param>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is <see langword="null"/>.</exception>
+    /// <example><code>var renderer = new MarkupRenderer(target, () => 80, () => 24);</code></example>
+    public MarkupRenderer(IRenderTarget target, Func<int> widthProvider, Func<int> heightProvider)
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(widthProvider);
+        ArgumentNullException.ThrowIfNull(heightProvider);
         _target = target;
         _widthProvider = widthProvider;
+        _heightProvider = heightProvider;
+
+        // Erasing no lines writes nothing; it only tells whether the target can move the cursor
+        _canEraseLines = target.TryEraseLines(0);
     }
 
     /// <summary>
@@ -108,7 +149,8 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     public static MarkupRenderer CreateForConsole(bool redrawOnResize = true)
     {
         // The target keeps the real console writer; what views write to Console.Out afterwards is tracked separately
-        var renderer = new MarkupRenderer(TerminalCapabilities.CreateRenderTarget(), TerminalCapabilities.GetWidth);
+        var renderer = new MarkupRenderer(TerminalCapabilities.CreateRenderTarget(), TerminalCapabilities.GetWidth,
+            TerminalCapabilities.GetHeight);
 
         if (redrawOnResize && !Console.IsOutputRedirected)
         {
@@ -142,6 +184,7 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
         {
             var safe = TextSanitiser.Sanitise(text).Replace('\n', ' ');
             Remember(new ScreenEntry(null, safe, style, null));
+            _lastElementLines = -1;
             using (ForeignOutputTracker.Suppress())
                 _target.WriteInline(new RenderedLine([new Span(safe, style)]));
             _target.Flush();
@@ -168,7 +211,53 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
             _historyComplete = true;
             _ownsScreen = true;
             _renderedWidth = Width;
+            _lastElementLines = -1;
         }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <see langword="true"/> when the target can erase lines (ANSI terminals). Other targets still accept
+    /// <see cref="Rewrite"/>, but it renders the element again below.
+    /// </remarks>
+    public bool CanRewrite => _canEraseLines;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// When the last thing written was an element at the current width and it fits in the window, its lines are erased
+    /// and <paramref name="element"/> is written in their place. Otherwise the screen is redrawn from its history with
+    /// the last element replaced, or, when there is no usable history, the element is rendered again.
+    /// </remarks>
+    public void Rewrite(Element element)
+    {
+        ArgumentNullException.ThrowIfNull(element);
+
+        lock (_sync)
+        {
+            var width = Width;
+            var last = _history.FindLastIndex(e => e.Element is not null);
+
+            if (_canEraseLines && _lastElementLines >= 0 && _lastElementWidth == width && _lastElementLines < _heightProvider())
+            {
+                if (_historyComplete && last == _history.Count - 1 && last >= 0)
+                    _history[last] = new ScreenEntry(element, null, default, null);
+
+                using (ForeignOutputTracker.Suppress())
+                    _target.TryEraseLines(_lastElementLines);
+                WriteElement(element, width);
+                _target.Flush();
+                return;
+            }
+
+            if (_ownsScreen && _historyComplete && last >= 0)
+            {
+                _history[last] = new ScreenEntry(element, null, default, null);
+                RedrawLocked(width);
+                return;
+            }
+        }
+
+        Render(element);
     }
 
     /// <summary>
@@ -190,22 +279,7 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
             if (!_ownsScreen || !_historyComplete || width == _renderedWidth)
                 return false;
 
-            _renderedWidth = width;
-            using (ForeignOutputTracker.Suppress())
-            {
-                _target.Clear();
-                foreach (var entry in _history)
-                {
-                    if (entry.Element is not null)
-                        WriteElement(entry.Element, width);
-                    else if (entry.Prompt is not null)
-                        _target.WriteInline(new RenderedLine([new Span(entry.Prompt, entry.PromptStyle)]));
-                    else
-                        _target.Write(new RenderedLine([new Span(entry.Input!, TextStyle.Plain)]));
-                }
-            }
-
-            _target.Flush();
+            RedrawLocked(width);
             return true;
         }
     }
@@ -217,7 +291,10 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     public void MarkForeignOutput()
     {
         lock (_sync)
+        {
             _historyComplete = false;
+            _lastElementLines = -1;
+        }
     }
 
     /// <summary>Stops watching the terminal for resizes.</summary>
@@ -226,13 +303,44 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
         Interlocked.Exchange(ref _resizeWatcher, null)?.Dispose();
     }
 
-    private void WriteElement(Element element, int width)
+    /// <summary>Clears the screen and writes the history again at <paramref name="width"/>. Call inside the lock.</summary>
+    private void RedrawLocked(int width)
     {
+        _renderedWidth = width;
         using (ForeignOutputTracker.Suppress())
         {
-            foreach (var line in element.Layout(width))
+            _target.Clear();
+            foreach (var entry in _history)
+            {
+                if (entry.Element is not null)
+                {
+                    WriteElement(entry.Element, width);
+                    continue;
+                }
+
+                if (entry.Prompt is not null)
+                    _target.WriteInline(new RenderedLine([new Span(entry.Prompt, entry.PromptStyle)]));
+                else
+                    _target.Write(new RenderedLine([new Span(entry.Input!, TextStyle.Plain)]));
+
+                _lastElementLines = -1;
+            }
+        }
+
+        _target.Flush();
+    }
+
+    private void WriteElement(Element element, int width)
+    {
+        var lines = element.Layout(width);
+        using (ForeignOutputTracker.Suppress())
+        {
+            foreach (var line in lines)
                 _target.Write(line);
         }
+
+        _lastElementLines = lines.Count;
+        _lastElementWidth = width;
     }
 
     private void Remember(ScreenEntry entry)

@@ -82,6 +82,28 @@ public static class TerminalCapabilities
     }
 
     /// <summary>
+    /// Returns the height of the terminal in rows, so elements taller than the window are not rewritten in place (the
+    /// cursor cannot move above the top of the window).
+    /// </summary>
+    /// <returns>The terminal height, or <see cref="int.MaxValue"/> when it cannot be determined.</returns>
+    /// <example><code>var rows = TerminalCapabilities.GetHeight();</code></example>
+    public static int GetHeight()
+    {
+        if (Console.IsOutputRedirected)
+            return int.MaxValue;
+
+        try
+        {
+            var height = Console.WindowHeight;
+            return height > 0 ? height : int.MaxValue;
+        }
+        catch (Exception e) when (e is IOException or PlatformNotSupportedException)
+        {
+            return int.MaxValue;
+        }
+    }
+
+    /// <summary>
     /// Enables ANSI escape sequence processing on Windows consoles via <c>SetConsoleMode</c>.
     /// </summary>
     private static class WindowsConsoleMode

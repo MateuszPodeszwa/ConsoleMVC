@@ -33,6 +33,7 @@ public class GreetController(IGreetingService greetings) : Controller
         if (!ModelState.IsValid)
             return View("Index", null);
 
-        return View(new GreetResultModel { Greeting = greetings.Greet(model.Name, model.Color) });
+        var greeting = greetings.Greet(model.Name, model.Color);
+        return View(new GreetResultModel { Greeting = model.Shout ? greeting.ToUpperInvariant() : greeting });
     }
 }

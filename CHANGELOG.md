@@ -2,6 +2,27 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.15.0]
+
+### Added
+
+- **Choice inputs** ([design](docs/design/choice-inputs.md), [guide](docs/guides/docs/c-view-markup.md#select-radio-and-choice)):
+  `<select>` (one under another, `multiple` for several answers), `<radio>` (side by side) with `<choice value="…">`, and
+  `<checkbox>` (`true`/`false`). In a terminal they are answered with the arrow keys, Space and Enter and redrawn in
+  place; with piped input or in tests the choices are numbered and typed (a number, a value or a label).
+- `SelectElement`, `RadioElement`, `ChoiceElement`, `CheckboxElement`, the `ChoiceFieldElement` base class and the
+  `IFormField` interface (`InputElement` implements it too).
+- `ITextInput.CanReadKeys` and `ReadKey`, `IMarkupRenderer.CanRewrite` and `Rewrite`, and `IRenderTarget.TryEraseLines`
+  (default implementations keep existing implementations working). `MarkupRenderer` has a constructor taking the
+  terminal height, and `TerminalCapabilities.GetHeight`.
+- Model binding of comma-separated values to `T[]`, `List<T>` and the collection interfaces of simple types, for
+  properties, parameters and record constructors.
+- The template's greeting form uses a `<select>` and a `<checkbox>`.
+
+### Changed
+
+- `ConsoleViewBase.ReadInput` takes any `IFormField`.
+
 ## [1.14.0]
 
 ### Added

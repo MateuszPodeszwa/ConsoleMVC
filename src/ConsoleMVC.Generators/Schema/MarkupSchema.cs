@@ -9,7 +9,8 @@ namespace ConsoleMVC.Generators.Schema;
 /// <summary>
 /// The set of C-View Markup elements known to the generator: v0.1 <c>text</c>, <c>box</c>, <c>separator</c>,
 /// <c>br</c>; v0.2 <c>table</c>/<c>row</c>/<c>cell</c>, <c>menu</c>/<c>option</c> and <c>input</c>; and
-/// <c>errors</c> for validation messages; and <c>partial</c> to render a partial view.
+/// <c>errors</c> for validation messages; <c>partial</c> to render a partial view; and the choice inputs
+/// <c>select</c>, <c>radio</c>, <c>choice</c> and <c>checkbox</c>.
 /// </summary>
 /// <remarks>
 /// To add an element: create its runtime class in <c>ConsoleMVC.Rendering</c> and register an
@@ -122,6 +123,19 @@ internal sealed class MarkupSchema
             new AttributeSchema("wrap", "Wrap", boolean)
         ];
 
+        // Shared by <select> and <radio>
+        AttributeSchema[] ChoiceField() =>
+        [
+            new AttributeSchema("name", "Name", text, required: true),
+            new AttributeSchema("label", "Label", text),
+            new AttributeSchema("default", "Default", text),
+            new AttributeSchema("required", "Required", boolean),
+            new AttributeSchema("color", "LabelColour", colour),
+            new AttributeSchema("colour", "LabelColour", colour),
+            new AttributeSchema("highlight-color", "HighlightColour", colour),
+            new AttributeSchema("highlight-colour", "HighlightColour", colour)
+        ];
+
         return new MarkupSchema(
         [
             new ElementSchema(TextTag, Rendering + "TextElement", ContentModel.Inline, InlineStyle()),
@@ -195,6 +209,29 @@ internal sealed class MarkupSchema
                 new AttributeSchema("default", "Default", text),
                 new AttributeSchema("required", "Required", boolean),
                 new AttributeSchema("masked", "Masked", boolean),
+                new AttributeSchema("color", "LabelColour", colour),
+                new AttributeSchema("colour", "LabelColour", colour)
+            ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+
+            // ---- choice inputs
+            new ElementSchema("select", Rendering + "SelectElement", ContentModel.Elements,
+            [
+                ..ChoiceField(),
+                new AttributeSchema("multiple", "Multiple", boolean)
+            ], allowedChildren: ["choice"], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+            new ElementSchema("radio", Rendering + "RadioElement", ContentModel.Elements, ChoiceField(),
+                allowedChildren: ["choice"], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+            new ElementSchema("choice", Rendering + "ChoiceElement", ContentModel.Inline,
+            [
+                ..InlineStyle(),
+                new AttributeSchema("value", "Value", text)
+            ], requiredParents: ["select", "radio"]),
+            new ElementSchema("checkbox", Rendering + "CheckboxElement", ContentModel.Void,
+            [
+                new AttributeSchema("name", "Name", text, required: true),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("checked", "Checked", boolean),
+                new AttributeSchema("required", "Required", boolean),
                 new AttributeSchema("color", "LabelColour", colour),
                 new AttributeSchema("colour", "LabelColour", colour)
             ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),

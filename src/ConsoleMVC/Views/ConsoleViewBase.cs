@@ -86,19 +86,21 @@ public abstract class ConsoleViewBase
     public Dictionary<string, string> Form { get; internal set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Reads a value for an <c>&lt;input&gt;</c> element and stores it in <see cref="Form"/>. Generated code calls
-    /// this for every top-level <c>&lt;input&gt;</c>.
+    /// Asks for the value of a form field (<c>&lt;input&gt;</c>, <c>&lt;select&gt;</c>, <c>&lt;radio&gt;</c> or
+    /// <c>&lt;checkbox&gt;</c>) and stores it in <see cref="Form"/> under the field's name. Generated code calls this for
+    /// every top-level field.
     /// </summary>
-    /// <param name="input">The input element to read.</param>
+    /// <param name="field">The field to read.</param>
     /// <returns>The value read; an empty string when the input has ended.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="input"/> is <see langword="null"/>.</exception>
-    protected internal string ReadInput(InputElement input)
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="field"/> is <see langword="null"/>.</exception>
+    /// <example><code>var answer = ReadInput(new CheckboxElement { Name = "Newsletter", Label = "Send news" });</code></example>
+    protected internal string ReadInput(IFormField field)
     {
-        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(field);
 
         BeforeInteraction?.Invoke();
-        var value = input.Read(Renderer, Input) ?? "";
-        Form[input.Name] = value;
+        var value = field.Read(Renderer, Input) ?? "";
+        Form[field.Name] = value;
         return value;
     }
 

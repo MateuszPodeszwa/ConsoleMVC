@@ -67,7 +67,7 @@ return NavigationResult.To("Orders", "Details", new { id = 42 });   // from a vi
 
 ## Posting forms
 
-`<input name="…">` stores each value in the view's `Form`; post it with a menu option marked `post` or from C#:
+`<input name="…">`, `<select>`, `<radio>` and `<checkbox>` store each value in the view's `Form`; post it with a menu option marked `post` or from C#:
 
 ```
 <input name="Name" label="Name: " required />
@@ -99,7 +99,8 @@ public ActionResult Review(ReviewModel review) { … }             // records: b
 | `Guid`, `Uri`, `Version` | |
 | enums | A name, or a number that is a defined member (or a combination of `[Flags]` members) |
 | nullable types (`int?`) | An empty value binds `null` |
-| classes and records | Simple properties by name; records and other classes without a parameterless constructor through their public constructor |
+| collections: `T[]`, `List<T>`, `IList<T>`, `ICollection<T>`, `IEnumerable<T>`, `IReadOnlyList<T>`, `IReadOnlyCollection<T>` of a type above | The value is split on commas (`<select multiple>` posts `red,blue`); parts are trimmed, empty parts dropped, and an empty value gives an empty collection |
+| classes and records | Simple and collection properties by name; records and other classes without a parameterless constructor through their public constructor |
 | `CancellationToken` | Never bound from the form: receives the token passed to `RunAsync` |
 
 A missing key leaves the default (or the parameter's default value, `int page = 1`). A value that cannot be converted

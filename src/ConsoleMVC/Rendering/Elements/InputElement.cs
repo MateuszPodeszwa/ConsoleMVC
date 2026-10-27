@@ -12,7 +12,7 @@ namespace ConsoleMVC.Rendering;
 /// var password = new InputElement { Name = "Password", Label = "Password: ", Masked = true };
 /// </code>
 /// </example>
-public sealed class InputElement : Element
+public sealed class InputElement : Element, IFormField
 {
     /// <summary>The message shown when a required field is left empty.</summary>
     public const string RequiredMessage = "This field is required.";

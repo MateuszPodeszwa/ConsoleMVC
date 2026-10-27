@@ -1,6 +1,6 @@
 # C-View Markup
 
-C-View Markup is a small markup language for describing console screens inside `.cvw` views: text, boxes, tables, form inputs and menus. It compiles to plain C# at build time, so there is no runtime template parsing, and it mixes freely with ordinary C# code.
+C-View Markup is a small markup language for describing console screens inside `.cvw` views: text, boxes, tables, form inputs, choice lists, checkboxes and menus. It compiles to plain C# at build time, so there is no runtime template parsing, and it mixes freely with ordinary C# code.
 
 ```
 @model MyApp.Models.DashboardViewModel
@@ -216,6 +216,99 @@ return NavigationResult.ToAction("Result", Form);
 
 Values are trimmed. `Form` is also available to ordinary C# in the view, for example `int.Parse(Form["Age"])`.
 
+### `<select>`, `<radio>` and `<choice>`
+
+Offer a fixed list of answers. The answer is stored in `Form` like an `<input>`, so it posts and binds the same way.
+`<select>` lists the choices one under another (and may allow several answers); `<radio>` shows a short list side by
+side.
+
+```
+<select name="Colour" label="Favourite colour:" default="green">
+    <choice value="red">Red</choice>
+    <choice value="green">Green</choice>
+    <choice value="blue">Blue</choice>
+</select>
+
+<select name="Toppings" label="Toppings:" multiple>
+    @foreach (var topping in Model.Toppings)
+    {
+        <choice value="@topping.Id">@topping.Name</choice>
+    }
+</select>
+
+<radio name="Size" label="Size:" default="M"><choice>S</choice><choice>M</choice><choice>L</choice></radio>
+```
+
+In a terminal the user answers with the keys; the field is redrawn in place and collapses to its answer:
+
+```
+Favourite colour: (Up/Down, Enter)        Size: ( ) S  (*) M  ( ) L  (Left/Right, Enter)
+   Red
+ > Green                                  Toppings: (Up/Down, Space, Enter)
+   Blue                                    > [x] Cheese
+                                             [ ] Ham
+after Enter:  Favourite colour: Green
+```
+
+| Key | Does |
+|---|---|
+| Up/Down (Left/Right, Tab, Home, End) | move the highlight; it wraps around |
+| 1 to 9 | jump to that choice |
+| Space | tick or untick the highlighted choice (`multiple` only) |
+| Enter | confirm; a single choice is the highlighted one |
+| Ctrl+D (Ctrl+Z on Windows) | end the input |
+
+When input is piped, in tests, or when the console cannot move the cursor, the choices are numbered instead and the
+user types a number, a value or a label (case-insensitive). Several answers are separated by commas (`1,3`). An
+empty answer takes the default:
+
+```
+Favourite colour:
+  1) Red
+  2) Green
+  3) Blue
+Choose 1-3 [Green]: _
+```
+
+| Element | Attribute | Values | Default |
+|---|---|---|---|
+| `<select>`, `<radio>` | `name` | **required**: the key in `Form` | |
+| | `label` | the text before the choices; leading spaces indent the whole field | none |
+| | `default` | the value chosen for an empty answer and highlighted first; for `multiple`, values separated by commas | none |
+| | `required` | flag: an empty answer (no tick, for `multiple`) is asked again | off |
+| | `color` / `colour` | label colour | terminal default |
+| | `highlight-color` / `highlight-colour` | colour of the `>` marker | cyan |
+| `<select>` | `multiple` | flag: several choices may be ticked; the answer is their values separated by commas, in the order of the choices | off |
+| `<choice>` | `value` | what the form receives | the label text |
+| | style attributes | as for `<text>` | |
+
+A `multiple` answer binds to `string[]`, `List<int>`, `IReadOnlyList<MyEnum>` and other collections (see
+[Model binding](controllers-and-forms.md#model-binding)), so its values cannot contain commas. A field without choices
+(for example built from an empty list) throws an `InvalidOperationException` when it is shown; two choices with the
+same value are an `ArgumentException`.
+
+### `<checkbox />`
+
+Asks a yes/no question. The answer is `"true"` or `"false"` and binds to a `bool`.
+
+```
+<checkbox name="Newsletter" label="Send me the newsletter" />
+<checkbox name="Terms" label="I accept the terms" required />
+```
+
+```
+Terminal:   [ ] Send me the newsletter  (Space, Enter)       Space ticks, Enter confirms, y or n answer at once
+Typed:      Send me the newsletter? [y/N]: _                 y, yes, true, 1 or n, no, false, 0
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `name` | **required**: the key in `Form` | |
+| `label` | the text beside the box (a `?` is added to the typed question unless it ends in punctuation) | none |
+| `checked` | flag: ticked at first, and the answer to an empty line | off |
+| `required` | flag: the box must be ticked to continue (`This box must be ticked.`) | off |
+| `color` / `colour` | label colour | terminal default |
+
 ### `<menu>` and `<option>`
 
 Shows keyed choices, reads the user's choice, repeats until it is valid, and navigates. A menu replaces the usual "write the options, `Console.ReadLine()`, `switch`" code, so it **ends the view**: no `return` is needed.
@@ -250,7 +343,7 @@ Select an option: _
 Each option needs exactly one of `nav`, `quit` or `back`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
 
 !!! note "Top level only"
-    `<input>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
+    `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
 
 ### `<breadcrumbs />`
 
@@ -393,7 +486,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |
-| CVW103 | Element not allowed here (e.g. `<box>` inside `<text>`, `<row>` outside `<table>`, `<menu>` inside `<box>` or in a partial view) |
+| CVW103 | Element not allowed here (e.g. `<box>` inside `<text>`, `<row>` outside `<table>`, `<choice>` outside `<select>` or `<radio>`, `<menu>` inside `<box>` or in a partial view) |
 | CVW104 | Unterminated expression, string, comment or block |
 | CVW105 | Unknown element (write `&lt;` for a literal `<`) |
 | CVW106 | Control flow or a code block inside `<text>` |
@@ -401,7 +494,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW108 | Malformed tag |
 | CVW109 | Element rule broken (an `<option>` needs exactly one of `nav` or `quit`) |
 | CVW110 | Text or an expression directly inside `<table>`, `<row>` or `<menu>` |
-| CVW111 | Required attribute missing (`<option key>`, `<input name>`) |
+| CVW111 | Required attribute missing (`<option key>`, `<input name>`, `<select name>`, `<checkbox name>`) |
 | CVW112 | `@()` contains no expression |
 | CVW113 | Markup nested more than 100 levels deep |
 | CVW114 | `<partial>` names no partial view in `Views/Shared`, or its name is not written literally |
@@ -446,4 +539,17 @@ Interactive elements work outside views too:
 ```csharp
 var name = new InputElement { Name = "Name", Label = "Name: ", Required = true };
 string? value = name.Read(renderer, ConsoleTextInput.Instance);
+
+var size = new RadioElement { Name = "Size", Label = "Size:" };
+foreach (var label in new[] { "S", "M", "L" })
+{
+    var choice = new ChoiceElement();
+    choice.AppendText(label);
+    size.Add(choice);
+}
+string? chosen = size.Read(renderer, ConsoleTextInput.Instance);
 ```
+
+Arrow keys are used when `ITextInput.CanReadKeys` and `IMarkupRenderer.CanRewrite` are both true; a scripted
+`ITextInput` can return keys from `ReadKey` to test that mode, and `IRenderTarget.TryEraseLines` lets your own render
+target support it.

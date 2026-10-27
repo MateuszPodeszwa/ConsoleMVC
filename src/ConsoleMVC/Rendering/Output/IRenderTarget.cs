@@ -38,4 +38,17 @@ public interface IRenderTarget
     /// Flushes any buffered output.
     /// </summary>
     void Flush();
+
+    /// <summary>
+    /// Erases the last <paramref name="count"/> lines written with <see cref="Write"/> and moves the cursor to the start
+    /// of the first of them, so they can be written again (used to update <c>&lt;select&gt;</c> as keys are pressed).
+    /// The cursor must be at the start of the line after them.
+    /// </summary>
+    /// <param name="count">The number of lines to erase.</param>
+    /// <returns>
+    /// <see langword="true"/> when the lines were erased; the default implementation returns <see langword="false"/>
+    /// for targets that cannot move the cursor (plain text, files, pipes).
+    /// </returns>
+    /// <example><code>if (!target.TryEraseLines(3)) target.Clear();</code></example>
+    bool TryEraseLines(int count) => false;
 }

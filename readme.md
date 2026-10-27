@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.13: route values (`nav="Orders/Details?id=@order.Id"`). 1.12 added Back and breadcrumbs, 1.11 layouts. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.15: `<select>`, `<radio>` and `<checkbox>`, answered with the arrow keys. 1.14 added fill columns (`width="*"`), 1.13 route values (`nav="Orders/Details?id=@order.Id"`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -18,7 +18,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Partial views and layouts**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time, and a `_Layout.cvw` that frames every screen
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
-- **Declarative input and navigation**: `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Declarative input and navigation**: `<input>` collects form values, `<select>`, `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation**: posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
@@ -281,17 +281,22 @@ Every view must return a `NavigationResult` to tell the framework what to do nex
 
 Views can collect user input and post it to a controller action, just like HTML forms in web MVC. The framework binds the posted values to the target action's method parameters automatically.
 
-**Collecting input with `<input>`**: `Views/Greet/IndexView.cvw`:
+**Collecting input with `<input>`, `<select>` and `<checkbox>`**: `Views/Greet/IndexView.cvw`:
 ```
 @model object
 
 <input name="Name" label="Name: " required />
-<input name="Color" label="Favourite colour: " />
+<select name="Color" label="Favourite colour:" default="blue">
+    <choice value="red">Red</choice>
+    <choice value="green">Green</choice>
+    <choice value="blue">Blue</choice>
+</select>
+<checkbox name="Shout" label="Shout the greeting" />
 
 return NavigationResult.ToAction("Result", Form);
 ```
 
-Each `<input>` stores its value in the view's `Form` dictionary under its `name`. Use `required` to re-prompt until a value is entered, `default` for a fallback value and `masked` for passwords. A menu option marked `post` sends the `Form` too: `<option key="s" nav="Result" post>Submit</option>`.
+Each field stores its value in the view's `Form` dictionary under its `name`. Use `required` to re-prompt until a value is entered, `default` for a fallback value and `masked` for passwords. In a terminal, `<select>` and `<radio>` are answered with the arrow keys and Enter (Space ticks the choices of `<select multiple>`), and `<checkbox>` with Space; with piped input the choices are numbered and typed. `<checkbox>` posts `true` or `false` for a `bool`, and `<select multiple>` posts `red,blue` for a `List<string>` or an array. A menu option marked `post` sends the `Form` too: `<option key="s" nav="Result" post>Submit</option>`. See [choice inputs](docs/guides/docs/c-view-markup.md#select-radio-and-choice) and the [design](docs/design/choice-inputs.md).
 
 **Collecting input in C#**: any `Dictionary<string, string>` can be posted, so plain C# views keep working:
 ```
@@ -715,7 +720,7 @@ app.Run();
 | `Theme` | Named styles used by `class="…"` in markup (see [Layout and Themes](#layout-and-themes)) |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
-| `Input` | Where `<input>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests |
+| `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |
 | `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output, and redraws the current screen when the terminal is resized (`MarkupRenderer.CreateForConsole(redrawOnResize: false)` turns that off). Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
 
 ## Roadmap
@@ -723,7 +728,6 @@ app.Run();
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
 - **Compile-time route checks** for `nav` targets
-- **More inputs** (`<select>`, `<checkbox>`, `<radio>`) with arrow-key selection
 - **Hosting integration** (configuration and logging) and a **`ConsoleMVC.Testing`** package for snapshot tests
 - **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
 - **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
