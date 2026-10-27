@@ -8,7 +8,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="ConsoleMVC.Framework" Version="1.9.0" />
+        <PackageReference Include="ConsoleMVC.Framework" Version="1.18.0" />
+    </ItemGroup>
+
+    <!-- builder.Configuration reads these from the application's folder -->
+    <ItemGroup>
+        <None Update="appsettings*.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 </Project>

@@ -69,6 +69,16 @@ public sealed class AnsiRenderTarget : IRenderTarget
     public void Clear() => _writer.Write("\u001b[H\u001b[2J\u001b[3J");
 
     /// <inheritdoc />
+    /// <remarks>Moves the cursor up to the first line (<c>ESC[nF</c>) and erases to the end of the screen (<c>ESC[J</c>).</remarks>
+    public bool TryEraseLines(int count)
+    {
+        if (count > 0)
+            _writer.Write($"{Escape}{count}F{Escape}J");
+
+        return true;
+    }
+
+    /// <inheritdoc />
     public void Flush() => _writer.Flush();
 
     /// <summary>

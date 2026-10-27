@@ -29,24 +29,32 @@ public abstract class ConsoleView : ConsoleViewBase
     {
         ArgumentNullException.ThrowIfNull(menu);
 
+        BeforeInteraction?.Invoke();
         var option = menu.Choose(Renderer, Input);
         if (option is null || option.Quit)
             return NavigationResult.Quit();
 
+        if (option.Back)
+            return NavigationResult.Back();
+
         var target = option.Target ?? "";
-        var parts = target.Split('/');
-        if (parts.Length > 2 || parts.Any(p => p.Trim().Length == 0))
+        string? controller;
+        string action;
+        Dictionary<string, string>? routeValues;
+        try
+        {
+            (controller, action, routeValues) = RouteValues.ParseTarget(target);
+        }
+        catch (ArgumentException)
         {
             throw new InvalidOperationException(
                 $"Menu option '{option.Key}' in view '{GetType().Name}' has an invalid target '{target}'. " +
-                "Use 'Controller/Action' or 'Action'.");
+                "Use 'Controller/Action' or 'Action', optionally followed by '?key=value'.");
         }
 
         var formData = option.PostForm ? new Dictionary<string, string>(Form, StringComparer.OrdinalIgnoreCase) : null;
 
-        return parts.Length == 2
-            ? new NavigationResult { Controller = parts[0].Trim(), Action = parts[1].Trim(), FormData = formData }
-            : new NavigationResult { Action = parts[0].Trim(), FormData = formData };
+        return new NavigationResult { Controller = controller, Action = action, FormData = formData, RouteValues = routeValues };
     }
 
     /// <summary>
@@ -59,6 +67,39 @@ public abstract class ConsoleView : ConsoleViewBase
     /// Thrown when <paramref name="model"/> is not compatible with the view's model type.
     /// </exception>
     internal abstract NavigationResult RenderInternal(object? model);
+
+    /// <summary>The layout whose footer is still to be drawn, or <see langword="null"/>.</summary>
+    private ConsoleLayoutView? _pendingLayout;
+
+    /// <summary>
+    /// Draws <paramref name="layout"/>'s header now and its footer before the view first waits for the user (or when it
+    /// returns). Generated code calls this at the start of <c>Render</c> for a view with a layout.
+    /// </summary>
+    /// <param name="layout">The layout, e.g. <c>new MyApp.Views.Shared._Layout()</c>.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="layout"/> is <see langword="null"/>.</exception>
+    /// <example><code>this.UseLayout(new global::MyApp.Views.Shared._Layout());</code></example>
+    protected internal void UseLayout(ConsoleLayoutView layout)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+
+        _pendingLayout = layout;
+        BeforeInteraction = CompleteLayout;
+        ShareStateWith(layout);
+        layout.BeforeInteraction = null; // the layout's own footer must not trigger itself
+        layout.RenderHeader();
+    }
+
+    /// <summary>Draws the pending layout footer, once.</summary>
+    private protected void CompleteLayout()
+    {
+        var layout = _pendingLayout;
+        if (layout is null)
+            return;
+
+        _pendingLayout = null;
+        BeforeInteraction = null;
+        layout.RenderFooter();
+    }
 }
 
 /// <summary>
@@ -84,7 +125,7 @@ public abstract class ConsoleView<TModel> : ConsoleView
     /// <inheritdoc />
     internal override NavigationResult RenderInternal(object? model)
     {
-        return model switch
+        var navigation = model switch
         {
             TModel typed => Render(typed),
             null when default(TModel) is null => Render(default!),
@@ -95,5 +136,9 @@ public abstract class ConsoleView<TModel> : ConsoleView
                 $"View '{GetType().Name}' expects a model of type '{typeof(TModel).FullName}', but the controller " +
                 $"passed '{model.GetType().FullName}'. Pass the correct model to View(), or change the view's @model directive.")
         };
+
+        // A view that never waited for the user still gets its layout's footer
+        CompleteLayout();
+        return navigation;
     }
 }

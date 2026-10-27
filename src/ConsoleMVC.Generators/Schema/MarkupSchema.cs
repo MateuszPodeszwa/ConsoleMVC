@@ -9,7 +9,8 @@ namespace ConsoleMVC.Generators.Schema;
 /// <summary>
 /// The set of C-View Markup elements known to the generator: v0.1 <c>text</c>, <c>box</c>, <c>separator</c>,
 /// <c>br</c>; v0.2 <c>table</c>/<c>row</c>/<c>cell</c>, <c>menu</c>/<c>option</c> and <c>input</c>; and
-/// <c>errors</c> for validation messages; and <c>partial</c> to render a partial view.
+/// <c>errors</c> for validation messages; <c>partial</c> to render a partial view; and the choice inputs
+/// <c>select</c>, <c>radio</c>, <c>choice</c> and <c>checkbox</c>.
 /// </summary>
 /// <remarks>
 /// To add an element: create its runtime class in <c>ConsoleMVC.Rendering</c> and register an
@@ -26,6 +27,9 @@ internal sealed class MarkupSchema
 
     /// <summary>The tag name of the partial view element, which the emitter handles itself.</summary>
     public const string PartialTag = "partial";
+
+    /// <summary>The tag name of a layout's placeholder for the view, which the emitter handles itself.</summary>
+    public const string BodyTag = "body";
 
     /// <summary>The tag name of the menu element, which partial views may not contain.</summary>
     public const string MenuTag = "menu";
@@ -119,6 +123,19 @@ internal sealed class MarkupSchema
             new AttributeSchema("wrap", "Wrap", boolean)
         ];
 
+        // Shared by <select> and <radio>
+        AttributeSchema[] ChoiceField() =>
+        [
+            new AttributeSchema("name", "Name", text, required: true),
+            new AttributeSchema("label", "Label", text),
+            new AttributeSchema("default", "Default", text),
+            new AttributeSchema("required", "Required", boolean),
+            new AttributeSchema("color", "LabelColour", colour),
+            new AttributeSchema("colour", "LabelColour", colour),
+            new AttributeSchema("highlight-color", "HighlightColour", colour),
+            new AttributeSchema("highlight-colour", "HighlightColour", colour)
+        ];
+
         return new MarkupSchema(
         [
             new ElementSchema(TextTag, Rendering + "TextElement", ContentModel.Inline, InlineStyle()),
@@ -182,6 +199,7 @@ internal sealed class MarkupSchema
                 new AttributeSchema("key", "Key", text, required: true),
                 new AttributeSchema("nav", "Target", new RouteAttributeType()),
                 new AttributeSchema("quit", "Quit", boolean),
+                new AttributeSchema("back", "Back", boolean),
                 new AttributeSchema("post", "PostForm", boolean)
             ], requiredParent: "menu", validator: ValidateOption),
             new ElementSchema("input", Rendering + "InputElement", ContentModel.Void,
@@ -195,6 +213,29 @@ internal sealed class MarkupSchema
                 new AttributeSchema("colour", "LabelColour", colour)
             ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
 
+            // ---- choice inputs
+            new ElementSchema("select", Rendering + "SelectElement", ContentModel.Elements,
+            [
+                ..ChoiceField(),
+                new AttributeSchema("multiple", "Multiple", boolean)
+            ], allowedChildren: ["choice"], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+            new ElementSchema("radio", Rendering + "RadioElement", ContentModel.Elements, ChoiceField(),
+                allowedChildren: ["choice"], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+            new ElementSchema("choice", Rendering + "ChoiceElement", ContentModel.Inline,
+            [
+                ..InlineStyle(),
+                new AttributeSchema("value", "Value", text)
+            ], requiredParents: ["select", "radio"]),
+            new ElementSchema("checkbox", Rendering + "CheckboxElement", ContentModel.Void,
+            [
+                new AttributeSchema("name", "Name", text, required: true),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("checked", "Checked", boolean),
+                new AttributeSchema("required", "Required", boolean),
+                new AttributeSchema("color", "LabelColour", colour),
+                new AttributeSchema("colour", "LabelColour", colour)
+            ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+
             // ---- validation
             new ElementSchema("errors", Rendering + "ValidationErrorsElement", ContentModel.Void,
             [
@@ -203,6 +244,15 @@ internal sealed class MarkupSchema
                 new AttributeSchema("color", "Colour", colour),
                 new AttributeSchema("colour", "Colour", colour)
             ], initialisers: ["Source = this.ModelState"]),
+
+            // ---- navigation
+            new ElementSchema("breadcrumbs", Rendering + "BreadcrumbsElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("separator", "Separator", text),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour)
+            ], initialisers: ["Items = this.Breadcrumbs"]),
 
             // ---- 1.0: layout
             new ElementSchema("columns", Rendering + "ColumnsElement", ContentModel.Elements,
@@ -220,7 +270,8 @@ internal sealed class MarkupSchema
             [
                 new AttributeSchema("name", "Name", text, required: true),
                 new AttributeSchema("model", "Model", new ModelAttributeType())
-            ], topLevelOnly: true)
+            ], topLevelOnly: true),
+            new ElementSchema(BodyTag, "", ContentModel.Void, [], topLevelOnly: true)
         ]);
     }
 
@@ -228,11 +279,12 @@ internal sealed class MarkupSchema
     private static string? ValidateOption(IReadOnlyList<Syntax.AttributeNode> attributes)
     {
         var navigates = attributes.Any(a => a.Schema.Property == "Target");
-        // quit="false" is the same as leaving quit out
+        // quit="false" is the same as leaving quit out, and so is back="false"
         var quits = attributes.Any(a => a.Schema.Property == "Quit" && a.LiteralCode != "false");
+        var goesBack = attributes.Any(a => a.Schema.Property == "Back" && a.LiteralCode != "false");
 
-        if (navigates == quits)
-            return "<option> needs exactly one of 'nav' (e.g. nav=\"Home/Index\") or 'quit'";
+        if ((navigates ? 1 : 0) + (quits ? 1 : 0) + (goesBack ? 1 : 0) != 1)
+            return "<option> needs exactly one of 'nav' (e.g. nav=\"Home/Index\"), 'quit' or 'back'";
 
         return null;
     }

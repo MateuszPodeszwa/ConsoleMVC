@@ -14,3 +14,6 @@ CVW111 | ConsoleMVC.Views | Error | Required attribute missing
 CVW114 | ConsoleMVC.Views | Error | Unknown partial view
 CVW115 | ConsoleMVC.Views | Error | Partial view needs a model
 CVW116 | ConsoleMVC.Views | Error | Partial view includes itself
+CVW117 | ConsoleMVC.Views | Error | Invalid layout
+CVW118 | ConsoleMVC.Views | Error | Unknown layout
+CVW119 | ConsoleMVC.Views | Warning | Unknown navigation target

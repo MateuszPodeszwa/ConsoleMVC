@@ -153,7 +153,7 @@ public sealed class TableElement : Element
     }
 
     /// <inheritdoc />
-    protected internal override bool HasRelativeWidth => Width.Kind == LengthKind.Percent;
+    protected internal override bool HasRelativeWidth => Width.IsRelative;
 
     /// <summary>Columns used by vertical grid lines and cell padding.</summary>
     private int Chrome(int columns) => (Border.IsVisible ? columns + 1 : 0) + 2 * SafePadding * columns;

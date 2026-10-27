@@ -29,6 +29,7 @@ internal static class CvwDocumentParser
     private const string ModelDirective = "@model";
     private const string UsingDirective = "@using";
     private const string InjectDirectiveName = "@inject";
+    private const string LayoutDirective = "@layout";
 
     /// <summary>
     /// Names an <c>@inject</c> property may not use: the <c>Render</c> parameter and the members of
@@ -57,6 +58,7 @@ internal static class CvwDocumentParser
         var usings = new List<DirectiveValue>();
         var injects = new List<InjectDirective>();
         DirectiveValue? model = null;
+        DirectiveValue? layout = null;
         var position = 0;
 
         while (position < text.Length)
@@ -112,6 +114,13 @@ internal static class CvwDocumentParser
                 continue;
             }
 
+            if (IsDirective(trimmed, LayoutDirective))
+            {
+                layout = ReadArgument(text, position, line, LayoutDirective);
+                position = lineEnd + 1;
+                continue;
+            }
+
             if (IsDirective(trimmed, InjectDirectiveName) || trimmed == InjectDirectiveName)
             {
                 ReadInject(text, position, line, injects, diagnostics);
@@ -126,7 +135,7 @@ internal static class CvwDocumentParser
             position = text.Length;
 
         var body = new MarkupParser(text, position, schema, diagnostics).ParseBody();
-        return new CvwDocument(text, model, usings, injects, body, diagnostics);
+        return new CvwDocument(text, model, usings, injects, body, diagnostics, layout);
     }
 
     /// <summary>

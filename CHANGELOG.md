@@ -2,6 +2,128 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.18.0]
+
+### Added
+
+- **The `ConsoleMVC.Testing` package** ([design](docs/design/testing-package.md), [guide](docs/guides/docs/testing.md)):
+  `MvcTestHost` runs an application with scripted input at a fixed width in the `Testing` environment, with a
+  `MaxScreens` guard; `TestRun` gives the screens, output, routes and unread input; `ScriptedInput` scripts lines and
+  keys (arrow-key fields are used when the next step is a key); `ScreenRecorder` records screens and supports in-place
+  redraws; `Snapshot.Match` compares text with `__snapshots__/<name>.txt`, never creates a snapshot when `CI` is set,
+  saves `.received.txt` on a difference and accepts changes with `CONSOLEMVC_UPDATE_SNAPSHOTS=1`.
+- The publish workflow packs and publishes `ConsoleMVC.Testing` with the other packages.
+
+## [1.17.0]
+
+### Added
+
+- **Compile-time route checks** ([design](docs/design/route-checks.md)): a literal `nav` target that names a missing
+  controller or action is warning CVW119, listing the controllers or actions that exist. Controllers and actions are
+  found with the same rules as the runtime router; targets with `@` expressions, and compilations without
+  controllers, are not checked. Raise it with `dotnet_diagnostic.CVW119.severity = error`.
+
+## [1.16.0]
+
+### Added
+
+- **Configuration and logging** ([design](docs/design/hosting-integration.md), [guide](docs/guides/docs/hosting.md)):
+  `builder.Configuration` reads `appsettings.json`, `appsettings.{Environment}.json`, environment variables and the
+  command line (later ones win); `builder.Environment` (`IHostEnvironment`); `builder.Logging` (`ILoggingBuilder`,
+  levels from the `Logging` section, no provider by default so nothing writes over the screen).
+- `IConfiguration`, `IHostEnvironment`, `IOptions<T>` and `ILogger<T>` can be injected into controllers, views and
+  services. Options registered with `ValidateOnStart()` are validated by `Build()`.
+- `MvcApplication.CreateBuilder(MvcApplicationOptions)` (arguments, environment name, content root, application name),
+  `MvcApplication.Configuration` and `MvcApplication.Environment`, and `ConsoleHostEnvironment`.
+- The framework logs the start, each screen (Debug), unhandled exceptions (Error, still rethrown) and the stop under
+  `ConsoleMVC.Mvc.MvcApplication`.
+- The template has an `appsettings.json` with a `Greeting` section bound to `GreetingOptions`.
+
+### Changed
+
+- `CreateBuilder(args)` now uses `args` (as command-line configuration).
+
+## [1.15.0]
+
+### Added
+
+- **Choice inputs** ([design](docs/design/choice-inputs.md), [guide](docs/guides/docs/c-view-markup.md#select-radio-and-choice)):
+  `<select>` (one under another, `multiple` for several answers), `<radio>` (side by side) with `<choice value="…">`, and
+  `<checkbox>` (`true`/`false`). In a terminal they are answered with the arrow keys, Space and Enter and redrawn in
+  place; with piped input or in tests the choices are numbered and typed (a number, a value or a label).
+- `SelectElement`, `RadioElement`, `ChoiceElement`, `CheckboxElement`, the `ChoiceFieldElement` base class and the
+  `IFormField` interface (`InputElement` implements it too).
+- `ITextInput.CanReadKeys` and `ReadKey`, `IMarkupRenderer.CanRewrite` and `Rewrite`, and `IRenderTarget.TryEraseLines`
+  (default implementations keep existing implementations working). `MarkupRenderer` has a constructor taking the
+  terminal height, and `TerminalCapabilities.GetHeight`.
+- Model binding of comma-separated values to `T[]`, `List<T>` and the collection interfaces of simple types, for
+  properties, parameters and record constructors.
+- The template's greeting form uses a `<select>` and a `<checkbox>`.
+
+### Changed
+
+- `ConsoleViewBase.ReadInput` takes any `IFormField`.
+
+## [1.14.0]
+
+### Added
+
+- **Fill columns**: `<column width="*">` takes the width the other columns leave (shared between fill columns), so
+  content can sit at the right edge. `Length.Fill`, `LengthKind.Fill` and `Length.IsRelative`; `*` is also accepted by
+  other `width` attributes, meaning all the available width.
+- The template's app bar shows the breadcrumbs on the left and the app name on the right.
+
+## [1.13.0]
+
+### Added
+
+- **Route values** ([design](docs/design/route-values.md), [guide](docs/guides/docs/controllers-and-forms.md#route-values)):
+  `nav="Orders/Details?id=@order.Id"`, `NavigationResult.To("Orders/Details?id=42")`,
+  `NavigationResult.To(controller, action, routeValues)` and `RedirectToAction(action, [controller,] routeValues)` pass
+  values that bind to the action's parameters. Form data wins over route values; route values do not trigger
+  validation. Expressions after `?` in `nav` are URL-escaped.
+- `RouteValues.From` and `RouteValues.ParseTarget`; `RouteValues` on `NavigationResult`, `RedirectToActionResult` and
+  `RouteContext`.
+- Back returns to the screen with the same route values.
+
+### Changed
+
+- Literal `nav` values may include `?key=value` route values (checked at build time, CVW101).
+
+## [1.12.0]
+
+### Added
+
+- **Navigation history** ([design](docs/design/navigation-history.md)): the screens shown are remembered (up to
+  `MvcApplication.MaxHistory`, 50). `NavigationResult.Back()` and `<option back>` return to the previous screen.
+- `ConsoleViewBase.NavigationHistory` and `Breadcrumbs`, and the `<breadcrumbs />` element (`BreadcrumbsElement`)
+  showing `Home › Orders › Details`, shortened from the start when it does not fit.
+- The template's layout shows breadcrumbs, and the About and feature tour pages have a Back option.
+
+## [1.11.0]
+
+### Added
+
+- **Layout views** ([design](docs/design/layout-views.md), [guide](docs/guides/docs/c-view-markup.md#layouts-and-body)):
+  a `.cvw` file in `Views/Shared` with a `<body />` placeholder frames views. `Views/Shared/_Layout.cvw` is the
+  default; views choose with `@layout Name` or `@layout none`. The header is drawn before the view and the footer just
+  before the view first waits for the user (`ConsoleLayoutView`, `ConsoleView.UseLayout`).
+- Diagnostics CVW117 (invalid `<body />` or layout) and CVW118 (unknown layout); CVW114 reports a `<partial>` that
+  names a layout.
+- The template has a `_Layout.cvw` with an app bar and a separator above every menu.
+
+## [1.10.0]
+
+### Added
+
+- **Responsive screens** ([design](docs/design/responsive-redraw.md),
+  [guide](docs/guides/docs/c-view-markup.md#resizing-the-terminal)): when the terminal is resized, the current screen
+  is laid out again at the new width, including prompts and the answers already typed. Tables, boxes and columns no
+  longer break onto new lines when the window gets narrower, and use the extra room when it gets wider.
+- `MarkupRenderer.RedrawIfWidthChanged`, `MarkupRenderer.MarkForeignOutput`, `MarkupRenderer.MaxRedrawHistory`,
+  `IMarkupRenderer.RecordInput` (with a default implementation) and `ForeignOutputTracker`.
+- `MarkupRenderer.CreateForConsole(redrawOnResize)`; `MarkupRenderer` implements `IDisposable` to stop watching.
+
 ## [1.9.0]
 
 ### Added

@@ -77,6 +77,7 @@ internal sealed class ElementSchema
     private readonly HashSet<string>? _allowedChildren;
     private readonly Func<IReadOnlyList<AttributeNode>, string?>? _validator;
     private readonly string[] _initialisers;
+    private readonly string _parentList;
 
     /// <summary>
     /// Creates an element schema.
@@ -87,6 +88,7 @@ internal sealed class ElementSchema
     /// <param name="attributes">The element's attributes. Several names may map to the same property (aliases).</param>
     /// <param name="allowedChildren">For <see cref="ContentModel.Elements"/>: the tags allowed as children.</param>
     /// <param name="requiredParent">The only parent tag the element may appear in, or <see langword="null"/>.</param>
+    /// <param name="requiredParents">Several parent tags the element may appear in (instead of <paramref name="requiredParent"/>).</param>
     /// <param name="topLevelOnly">Whether the element may only appear at the top level of a view (interactive elements).</param>
     /// <param name="topLevelStatement">
     /// The statement emitted for the element at the top level; <c>{0}</c> is the element variable.
@@ -100,14 +102,15 @@ internal sealed class ElementSchema
     public ElementSchema(string tag, string runtimeType, ContentModel content, IEnumerable<AttributeSchema> attributes,
         IEnumerable<string>? allowedChildren = null, string? requiredParent = null, bool topLevelOnly = false,
         string topLevelStatement = RenderStatement, Func<IReadOnlyList<AttributeNode>, string?>? validator = null,
-        IEnumerable<string>? initialisers = null)
+        IEnumerable<string>? initialisers = null, IEnumerable<string>? requiredParents = null)
     {
         Tag = tag;
         RuntimeType = runtimeType;
         Content = content;
         _attributes = attributes.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
         _allowedChildren = allowedChildren is null ? null : new HashSet<string>(allowedChildren, StringComparer.Ordinal);
-        RequiredParent = requiredParent;
+        RequiredParents = requiredParents?.ToArray() ?? (requiredParent is null ? null : [requiredParent]);
+        _parentList = RequiredParents is null ? "" : string.Join(" or ", RequiredParents.Select(t => "<" + t + ">"));
         TopLevelOnly = topLevelOnly;
         TopLevelStatement = topLevelStatement;
         _validator = validator;
@@ -127,8 +130,8 @@ internal sealed class ElementSchema
     /// <summary>Gets what the element may contain.</summary>
     public ContentModel Content { get; }
 
-    /// <summary>Gets the only parent tag this element may appear in, or <see langword="null"/>.</summary>
-    public string? RequiredParent { get; }
+    /// <summary>Gets the parent tags this element may appear in, or <see langword="null"/> when it may appear anywhere.</summary>
+    public IReadOnlyList<string>? RequiredParents { get; }
 
     /// <summary>Gets a value indicating whether the element may only appear at the top level of a view.</summary>
     public bool TopLevelOnly { get; }
@@ -169,7 +172,7 @@ internal sealed class ElementSchema
     /// </summary>
     /// <returns>An error message, or <see langword="null"/> when the placement is valid.</returns>
     public string? TopLevelPlacementError() =>
-        RequiredParent is null ? null : $"<{Tag}> is only allowed inside <{RequiredParent}>";
+        RequiredParents is null ? null : $"<{Tag}> is only allowed inside {_parentList}";
 
     /// <summary>
     /// Explains why <paramref name="child"/> may not appear directly inside this element.
@@ -178,8 +181,8 @@ internal sealed class ElementSchema
     /// <returns>An error message, or <see langword="null"/> when the child is allowed.</returns>
     public string? ChildPlacementError(ElementSchema child)
     {
-        if (child.RequiredParent is not null && child.RequiredParent != Tag)
-            return $"<{child.Tag}> is only allowed inside <{child.RequiredParent}>";
+        if (child.RequiredParents is not null && !child.RequiredParents.Contains(Tag))
+            return $"<{child.Tag}> is only allowed inside {child._parentList}";
 
         if (child.TopLevelOnly)
             return $"<{child.Tag}> must be written at the top level of the view, not inside <{Tag}>";

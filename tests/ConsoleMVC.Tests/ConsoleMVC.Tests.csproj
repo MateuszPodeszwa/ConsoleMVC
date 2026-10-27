@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/ConsoleMVC/ConsoleMVC.csproj" />
+    <ProjectReference Include="../../src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

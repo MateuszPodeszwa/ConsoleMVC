@@ -1,6 +1,9 @@
 using System.Reflection;
 using ConsoleMVC.Rendering;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace ConsoleMVC.Mvc;
 
@@ -20,7 +23,7 @@ namespace ConsoleMVC.Mvc;
 /// </para>
 /// <para>
 /// Instances are created via the builder pattern using
-/// <see cref="CreateBuilder"/> and <see cref="MvcApplicationBuilder.Build"/>,
+/// <see cref="CreateBuilder(string[])"/> and <see cref="MvcApplicationBuilder.Build"/>,
 /// mirroring ASP.NET Core's <c>WebApplication</c> approach.
 /// </para>
 /// </remarks>
@@ -40,6 +43,12 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// </summary>
     public const int MaxConsecutiveRedirects = 32;
 
+    /// <summary>
+    /// The most screens kept in the navigation history (<see cref="ConsoleViewBase.NavigationHistory"/>); older ones are
+    /// forgotten.
+    /// </summary>
+    public const int MaxHistory = 50;
+
     private Router _router = new();
     private int _reloadRequested;
     private readonly Assembly? _applicationAssembly;
@@ -49,6 +58,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     private int _running;
     private readonly bool _clearScreenBetweenViews;
     private RouteContext _currentRoute;
+
+    /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
+    private readonly List<RouteContext> _history = [];
 
     /// <summary>
     /// Initialises a new instance of the <see cref="MvcApplication"/> class using
@@ -100,8 +112,34 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// </remarks>
     public static MvcApplicationBuilder CreateBuilder(string[] args)
     {
-        return new MvcApplicationBuilder();
+        ArgumentNullException.ThrowIfNull(args);
+        return new MvcApplicationBuilder(new MvcApplicationOptions { Args = args });
     }
+
+    /// <summary>
+    /// Creates a new <see cref="MvcApplicationBuilder"/> with the environment and content root chosen in code.
+    /// </summary>
+    /// <param name="options">The command-line arguments, environment name, content root and application name.</param>
+    /// <returns>A new <see cref="MvcApplicationBuilder"/> instance.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <example>
+    /// <code>
+    /// var builder = MvcApplication.CreateBuilder(new MvcApplicationOptions { Args = args, EnvironmentName = "Development" });
+    /// </code>
+    /// </example>
+    public static MvcApplicationBuilder CreateBuilder(MvcApplicationOptions options) => new(options);
+
+    /// <summary>
+    /// Gets the application's configuration (<see cref="MvcApplicationBuilder.Configuration"/>).
+    /// </summary>
+    /// <example><code>var title = app.Configuration["App:Title"];</code></example>
+    public IConfiguration Configuration => _services.GetRequiredService<IConfiguration>();
+
+    /// <summary>
+    /// Gets the environment the application runs in (<see cref="MvcApplicationBuilder.Environment"/>).
+    /// </summary>
+    /// <example><code>if (app.Environment.IsDevelopment()) { /* seed test data */ }</code></example>
+    public IHostEnvironment Environment => _services.GetRequiredService<IHostEnvironment>();
 
     /// <summary>
     /// Adds a middleware that runs around every action, in registration order (the first one added is the outermost).
@@ -214,11 +252,20 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         var renderer = _services.GetRequiredService<IMarkupRenderer>();
         var input = _services.GetRequiredService<ITextInput>();
         var theme = _services.GetRequiredService<Theme>();
+        var logger = _services.GetRequiredService<ILogger<MvcApplication>>();
+        MvcApplicationLog.Starting(logger, _currentRoute, Environment.EnvironmentName);
 
         HotReloadHandler.Updated += OnHotReload;
         try
         {
-            await RunLoopAsync(pipeline, assembly, renderer, input, theme, cancellationToken).ConfigureAwait(false);
+            await RunLoopAsync(pipeline, assembly, renderer, input, theme, logger, cancellationToken).ConfigureAwait(false);
+            MvcApplicationLog.Stopped(logger);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Logged where it happened, then rethrown unchanged for the caller (and the terminal) to see
+            MvcApplicationLog.UnhandledException(logger, e, _currentRoute);
+            throw;
         }
         finally
         {
@@ -242,7 +289,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// Runs navigation cycles until a view quits: the pipeline, then rendering the view or following the redirect.
     /// </summary>
     private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, IMarkupRenderer renderer, ITextInput input,
-        Theme theme, CancellationToken cancellationToken)
+        Theme theme, ILogger logger, CancellationToken cancellationToken)
     {
         var consecutiveRedirects = 0;
 
@@ -253,6 +300,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             // dotnet watch applied an edit: pick up new or changed controllers and views from this screen on
             if (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
                 Discover(assembly);
+
+            MvcApplicationLog.Running(logger, _currentRoute);
 
             // One scope per navigation cycle: the action and the view it renders share scoped services
             await using var scope = _services.CreateAsyncScope();
@@ -267,17 +316,21 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                 {
                     case ViewResult viewResult:
                         consecutiveRedirects = 0;
+                        RecordScreen(context);
 
                         var navigation = RenderView(viewResult, renderer, input, theme, context);
                         if (navigation.Exit)
                             return;
 
-                        _currentRoute = new RouteContext
-                        {
-                            Controller = navigation.Controller ?? context.Route.Controller,
-                            Action = navigation.Action ?? context.Route.Action,
-                            FormData = navigation.FormData
-                        };
+                        _currentRoute = navigation.IsBack
+                            ? PreviousScreen()
+                            : new RouteContext
+                            {
+                                Controller = navigation.Controller ?? context.Route.Controller,
+                                Action = navigation.Action ?? context.Route.Action,
+                                FormData = navigation.FormData,
+                                RouteValues = navigation.RouteValues
+                            };
                         break;
 
                     case RedirectToActionResult redirect:
@@ -292,7 +345,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                         _currentRoute = new RouteContext
                         {
                             Controller = redirect.ControllerName,
-                            Action = redirect.ActionName
+                            Action = redirect.ActionName,
+                            RouteValues = redirect.RouteValues
                         };
                         break;
 
@@ -343,12 +397,13 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         {
             Controller = route.Controller,
             Action = actionMethod.Name,
-            FormData = route.FormData
+            FormData = route.FormData,
+            RouteValues = route.RouteValues
         };
 
         // Bind posted values, then validate them before the action runs
         var modelState = new ModelStateDictionary();
-        var args = ModelBinder.BindParameters(actionMethod, route.FormData, modelState);
+        var args = ModelBinder.BindParameters(actionMethod, route.FormData, route.RouteValues, modelState);
         if (route.FormData is not null)
             ModelValidator.Validate(actionMethod, args, modelState);
 
@@ -374,6 +429,42 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Adds the screen about to be shown to the history. Showing the same screen again (a form after validation failed,
+    /// or the screen reached with Back) replaces the last entry instead.
+    /// </summary>
+    private void RecordScreen(ActionContext context)
+    {
+        // The controller's route has the action's declared name, whatever casing navigation used
+        var route = context.Controller?.RouteContext ?? context.Route;
+        var screen = new RouteContext { Controller = route.Controller, Action = route.Action, RouteValues = route.RouteValues };
+
+        if (_history.Count > 0 && SameScreen(_history[^1], screen))
+            _history[^1] = screen;
+        else
+            _history.Add(screen);
+
+        if (_history.Count > MaxHistory)
+            _history.RemoveAt(0);
+    }
+
+    /// <summary>
+    /// Leaves the current screen for the one before it, which stays in the history as the current screen. On the first
+    /// screen, the current screen is shown again.
+    /// </summary>
+    private RouteContext PreviousScreen()
+    {
+        if (_history.Count > 1)
+            _history.RemoveAt(_history.Count - 1);
+
+        var previous = _history[^1];
+        return new RouteContext { Controller = previous.Controller, Action = previous.Action, RouteValues = previous.RouteValues };
+    }
+
+    private static bool SameScreen(RouteContext a, RouteContext b) =>
+        string.Equals(a.Controller, b.Controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(a.Action, b.Action, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.
     /// </summary>
     private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input, Theme theme,
@@ -385,6 +476,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         view.Renderer = renderer;
         view.Input = input;
         view.Theme = theme;
+        view.NavigationHistory = _history.ToArray();
 
         if (_clearScreenBetweenViews)
             renderer.Clear();

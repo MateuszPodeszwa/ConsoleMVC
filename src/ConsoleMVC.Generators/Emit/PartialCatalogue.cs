@@ -19,14 +19,20 @@ internal sealed class PartialEntry : IEquatable<PartialEntry>
     /// <param name="modelType">The type in its <c>@model</c> directive, or <see langword="null"/> when it has none.</param>
     /// <param name="path">The file path, which decides which of two clashing partials is kept (as for CVW004).</param>
     /// <param name="hasErrors">Whether the partial itself has errors, so no class is generated for it.</param>
-    public PartialEntry(string name, string fullClassName, string? modelType, string path = "", bool hasErrors = false)
+    /// <param name="isLayout">Whether the file has a <c>&lt;body /&gt;</c> placeholder, making it a layout.</param>
+    public PartialEntry(string name, string fullClassName, string? modelType, string path = "", bool hasErrors = false,
+        bool isLayout = false)
     {
+        IsLayout = isLayout;
         Name = name;
         FullClassName = fullClassName;
         ModelType = modelType;
         Path = path;
         HasErrors = hasErrors;
     }
+
+    /// <summary>Gets a value indicating whether this is a layout rather than a partial.</summary>
+    public bool IsLayout { get; }
 
     /// <summary>Gets the file path.</summary>
     public string Path { get; }
@@ -46,7 +52,7 @@ internal sealed class PartialEntry : IEquatable<PartialEntry>
     /// <inheritdoc />
     public bool Equals(PartialEntry? other) =>
         other is not null && Name == other.Name && FullClassName == other.FullClassName && ModelType == other.ModelType
-        && Path == other.Path && HasErrors == other.HasErrors;
+        && Path == other.Path && HasErrors == other.HasErrors && IsLayout == other.IsLayout;
 
     /// <inheritdoc />
     public override bool Equals(object? obj) => Equals(obj as PartialEntry);
@@ -88,8 +94,11 @@ internal sealed class PartialCatalogue : IEquatable<PartialCatalogue>
     /// <summary>Gets an empty catalogue.</summary>
     public static PartialCatalogue Empty { get; } = new([]);
 
-    /// <summary>Gets the partial names, sorted, for error messages.</summary>
-    public IEnumerable<string> Names => _entries.Values.Select(e => e.Name).OrderBy(n => n, StringComparer.Ordinal);
+    /// <summary>Gets the partial names (not layouts), sorted, for error messages.</summary>
+    public IEnumerable<string> Names => _entries.Values.Where(e => !e.IsLayout).Select(e => e.Name).OrderBy(n => n, StringComparer.Ordinal);
+
+    /// <summary>Gets the layout names, sorted, for error messages.</summary>
+    public IEnumerable<string> LayoutNames => _entries.Values.Where(e => e.IsLayout).Select(e => e.Name).OrderBy(n => n, StringComparer.Ordinal);
 
     /// <summary>
     /// Looks up a partial by name.

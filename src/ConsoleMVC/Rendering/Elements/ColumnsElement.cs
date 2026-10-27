@@ -71,7 +71,9 @@ public sealed class ColumnsElement : Element
         var stacked = IsStacked(available);
         var measured = stacked
             ? Math.Min(_columns.Max(c => c.MeasureWidth(available)), available)
-            : Math.Min(ResolveWidths(available).Sum() + SafeGap * (_columns.Count - 1), available);
+            : _columns.Any(c => c.Width.Kind == LengthKind.Fill)
+                ? available // fill columns take whatever width they are given
+                : Math.Min(ResolveWidths(available).Sum() + SafeGap * (_columns.Count - 1), available);
 
         _measuredWidth = measured;
         _measuredStacked = stacked;
@@ -121,7 +123,7 @@ public sealed class ColumnsElement : Element
     }
 
     /// <inheritdoc />
-    protected internal override bool HasRelativeWidth => _columns.Any(c => c.Width.Kind == LengthKind.Percent);
+    protected internal override bool HasRelativeWidth => _columns.Any(c => c.Width.IsRelative);
 
     private bool IsStacked(int available) => StackBelow is { } threshold && available < threshold;
 
@@ -136,7 +138,7 @@ public sealed class ColumnsElement : Element
         for (var i = 0; i < count; i++)
         {
             var length = _columns[i].Width;
-            if (length.Kind == LengthKind.Auto)
+            if (length.Kind is LengthKind.Auto or LengthKind.Fill)
                 continue;
 
             widths[i] = Math.Min(length.Resolve(content, 0), Math.Max(content - used, 0));
@@ -145,16 +147,31 @@ public sealed class ColumnsElement : Element
 
         var remaining = Math.Max(content - used, 0);
         var auto = Enumerable.Range(0, count).Where(i => _columns[i].Width.Kind == LengthKind.Auto).ToList();
-        if (auto.Count == 0)
+        var fill = Enumerable.Range(0, count).Where(i => _columns[i].Width.Kind == LengthKind.Fill).ToList();
+        if (auto.Count == 0 && fill.Count == 0)
             return widths;
 
+        // Natural widths are capped at the space there is, so with fill columns an exact fit still means "too wide":
+        // fill columns always get a share
         var natural = auto.ToDictionary(i => i, i => _columns[i].MeasureWidth(remaining));
-        if (natural.Values.Sum() <= remaining)
+        var autoTotal = natural.Values.Sum();
+        if (fill.Count == 0 ? autoTotal <= remaining : autoTotal < remaining)
         {
             foreach (var i in auto)
                 widths[i] = natural[i];
+
+            // Fill columns share what the auto columns leave, the first ones taking any odd column
+            var left = remaining - natural.Values.Sum();
+            for (var k = 0; k < fill.Count; k++)
+                widths[fill[k]] = left / fill.Count + (k < left % fill.Count ? 1 : 0);
+
             return widths;
         }
+
+        // Too narrow for every auto column: fill columns compete for space like auto columns that want everything
+        foreach (var i in fill)
+            natural[i] = int.MaxValue;
+        auto.AddRange(fill);
 
         // Water filling: columns narrower than an equal share keep their natural width; the others share the rest
         var pending = auto.OrderBy(i => natural[i]).ToList();

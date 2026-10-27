@@ -31,6 +31,12 @@ public class RouteContext
     /// </summary>
     public Dictionary<string, string>? FormData { get; init; }
 
+    /// <summary>
+    /// Gets the route values passed with the navigation (<c>Orders/Details?id=42</c>), or <see langword="null"/>. They are
+    /// bound to the action's parameters like form data, but do not trigger validation.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? RouteValues { get; init; }
+
     /// <summary>Returns the route as <c>Controller/Action</c>.</summary>
     /// <returns>For example <c>"Home/Index"</c>.</returns>
     /// <example><code>logger.LogInformation("Showing {Route}", context.Route);</code></example>

@@ -198,7 +198,7 @@ internal sealed class ColourAttributeType : AttributeType
 internal sealed class LengthAttributeType : AttributeType
 {
     /// <inheritdoc />
-    public override string Description => "'auto', a column count such as '40', or a percentage such as '50%'";
+    public override string Description => "'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width";
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
@@ -210,6 +210,12 @@ internal sealed class LengthAttributeType : AttributeType
         if (string.Equals(trimmed, "auto", StringComparison.OrdinalIgnoreCase))
         {
             code = "global::ConsoleMVC.Rendering.Length.Auto";
+            return true;
+        }
+
+        if (trimmed == "*")
+        {
+            code = "global::ConsoleMVC.Rendering.Length.Fill";
             return true;
         }
 
@@ -271,7 +277,7 @@ internal sealed class ChoiceAttributeType : AttributeType
 internal sealed class RouteAttributeType : AttributeType
 {
     /// <inheritdoc />
-    public override string Description => "a route such as 'Home/Index' or 'Index'";
+    public override string Description => "a route such as 'Home/Index', 'Index' or 'Orders/Details?id=42'";
 
     /// <inheritdoc />
     public override bool AllowsInterpolation => true;
@@ -281,18 +287,36 @@ internal sealed class RouteAttributeType : AttributeType
     {
         code = "";
         error = "expected " + Description;
-        var parts = (literal ?? "").Trim().Split('/');
+        var text = (literal ?? "").Trim();
+        var query = text.IndexOf('?');
+        var parts = (query < 0 ? text : text.Substring(0, query)).Split('/');
 
         if (parts.Length > 2 || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
             return false;
 
-        code = CSharpLiteral.String(string.Join("/", parts));
+        // Route values: key=value pairs separated by '&'; every key must have a name
+        if (query >= 0 && text.Substring(query + 1).Split('&').Any(pair => pair.Length > 0 && (pair[0] == '=' || pair.Trim().Length == 0)))
+        {
+            error = "expected route values such as '?id=42&tab=details'";
+            return false;
+        }
+
+        code = CSharpLiteral.String(string.Join("/", parts) + (query < 0 ? "" : text.Substring(query)));
         return true;
     }
 
     /// <inheritdoc />
     public override string WrapExpression(string expressionCode) =>
         "global::ConsoleMVC.Rendering.MarkupValue.Format(" + expressionCode + ")";
+
+    /// <summary>
+    /// Wraps an expression that appears after the <c>?</c> of a route, so its value is URL-escaped and cannot add or
+    /// split route values (<c>nav="Item?name=@name"</c> with a name containing <c>&amp;</c>).
+    /// </summary>
+    /// <param name="expressionCode">The C# expression.</param>
+    /// <returns>The escaped value.</returns>
+    public static string WrapQueryExpression(string expressionCode) =>
+        "global::System.Uri.EscapeDataString(global::ConsoleMVC.Rendering.MarkupValue.Format(" + expressionCode + "))";
 }
 
 /// <summary>

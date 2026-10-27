@@ -39,5 +39,7 @@ nav:
   - Validation: validation.md
   - Dependency Injection: dependency-injection.md
   - Async Actions and Middleware: async-and-middleware.md
+  - Configuration Files and Logging: hosting.md
   - Configuration and Testing: configuration.md
+  - Testing: testing.md
   - API Reference: ../api/

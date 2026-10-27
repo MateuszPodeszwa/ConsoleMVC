@@ -67,14 +67,18 @@ public class HomeViewModel
 - **Convention-based routing**: Controllers and Views are auto-discovered via reflection and namespace conventions
 - **Razor-like view engine**: `.cvw` files are compiled into `ConsoleView<TModel>` classes at build time by a source generator
 - **No boilerplate**: Views are plain C# code with an `@model` directive, no class inheritance required
-- **C-View Markup**: `<box>`, `<text>`, `<separator>`, `<br>` and `<table>` elements with colours, borders, alignment and word wrapping, plus `@` expressions and `@if`/`@foreach`; validated at compile time with errors pointing at the `.cvw` file
+- **C-View Markup**: `<box>`, `<text>`, `<separator>`, `<br>` and `<table>` elements with colours, borders, alignment and word wrapping, plus `@` expressions and `@if`/`@foreach`; validated at compile time with errors pointing at the `.cvw` file, including `nav` targets that name a missing controller or action (CVW119)
+- **Responsive screens**: resizing the terminal lays the current screen out again at the new width
 - **Layout and themes**: `<columns>` (stacking on narrow terminals), `min-width`/`max-width`, and theme classes with `class="title"`
+- **Layouts**: `Views/Shared/_Layout.cvw` frames every screen, with `<body />` where the view goes
 - **Partial views**: reusable markup in `Views/Shared/{Name}.cvw`, rendered with `<partial name="Header" model="@Model.Title" />` and checked at build time
-- **Declarative input and navigation**: `<input>` fields (required, default, masked) collect a `Form`, and `<menu>` reads the choice and navigates
+- **Declarative input and navigation**: `<input>` fields (required, default, masked), `<select>` and `<radio>` lists and `<checkbox>` (answered with the arrow keys in a terminal) collect a `Form`, and `<menu>` reads the choice and navigates
 - **Secure output**: model values are sanitised so they cannot inject terminal escape sequences
 - **Reusable rendering engine**: the `ConsoleMVC.Rendering` namespace can draw elements in any console app
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, all the patterns you know from ASP.NET Core MVC
-- **Navigation**: Views return `NavigationResult` to control app flow (`NavigationResult.To()`, `NavigationResult.Quit()`)
+- **Navigation**: Views return `NavigationResult` to control app flow (`NavigationResult.To()`, `Back()`, `Quit()`); menus offer `back` options and `<breadcrumbs />` shows the trail; route values (`nav="Orders/Details?id=@order.Id"`) bind to action parameters
+- **Testing**: the companion package [ConsoleMVC.Testing](https://www.nuget.org/packages/ConsoleMVC.Testing) runs the application with scripted input and compares screens with snapshot files
+- **Configuration and logging**: `builder.Configuration` (appsettings.json, environment variables, command line), options with `Configure<T>`, `builder.Environment` and `ILogger<T>` through `builder.Logging`
 - **Validation**: posted forms are checked with DataAnnotations (`[Required]`, `[Range]`, `[EmailAddress]`, …) before the action runs; use `ModelState.IsValid`, `View("Form", model)` and `<errors />` as in ASP.NET Core MVC
 - **Dependency injection**: `builder.Services` (Microsoft.Extensions.DependencyInjection); constructor injection into controllers, `@inject Type Name` in views, one scope per screen
 - **Async actions and middleware**: `Task<ActionResult>` actions, `RunAsync(token)`, and `app.Use(...)` / `UseMiddleware<T>()` around every action

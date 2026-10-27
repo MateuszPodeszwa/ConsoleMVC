@@ -35,6 +35,7 @@
 <br />
 
 <menu key-color="cyan">
-    <option key="1" nav="Index">Back to Home</option>
+    <option key="b" back>Back</option>
+    <option key="1" nav="Index">Home</option>
     <option key="q" quit>Exit</option>
 </menu>

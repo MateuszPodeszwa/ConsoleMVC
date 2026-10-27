@@ -83,4 +83,49 @@ public class NavigationResult
     /// <returns>A <see cref="NavigationResult"/> with <see cref="Exit"/> set to <see langword="true"/>.</returns>
     public static NavigationResult Quit()
         => new() { Exit = true };
+
+    /// <summary>
+    /// Gets a value indicating whether this navigation returns to the previous screen (see <see cref="Back"/>).
+    /// </summary>
+    public bool IsBack { get; init; }
+
+    /// <summary>
+    /// Returns to the screen shown before this one: its action runs again, without form data. On the first screen the
+    /// current screen is shown again. A <c>&lt;menu&gt;</c> option marked <c>back</c> does the same.
+    /// </summary>
+    /// <returns>A navigation result that goes back one screen.</returns>
+    /// <example><code>if (key == "b") return NavigationResult.Back();</code></example>
+    public static NavigationResult Back()
+        => new() { IsBack = true };
+
+    /// <summary>
+    /// Gets the values passed to the target action like a query string (see <see cref="Mvc.RouteValues"/>), or
+    /// <see langword="null"/>. Unlike <see cref="FormData"/>, they do not trigger validation.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? RouteValues { get; init; }
+
+    /// <summary>
+    /// Navigates to a target written as in a menu's <c>nav</c> attribute: <c>Controller/Action</c> or <c>Action</c>,
+    /// optionally with route values, <c>Orders/Details?id=42</c>.
+    /// </summary>
+    /// <param name="target">The target.</param>
+    /// <returns>The navigation result.</returns>
+    /// <exception cref="ArgumentException">Thrown when the target is not valid.</exception>
+    /// <example><code>return NavigationResult.To($"Orders/Details?id={order.Id}");</code></example>
+    public static NavigationResult To(string target)
+    {
+        var (controller, action, values) = Mvc.RouteValues.ParseTarget(target);
+        return new NavigationResult { Controller = controller, Action = action, RouteValues = values };
+    }
+
+    /// <summary>
+    /// Navigates to an action with route values from an object such as <c>new { id = 42 }</c>.
+    /// </summary>
+    /// <param name="controller">The controller name.</param>
+    /// <param name="action">The action name.</param>
+    /// <param name="routeValues">The values; see <see cref="Mvc.RouteValues.From"/>.</param>
+    /// <returns>The navigation result.</returns>
+    /// <example><code>return NavigationResult.To("Orders", "Details", new { id = order.Id });</code></example>
+    public static NavigationResult To(string controller, string action, object routeValues)
+        => new() { Controller = controller, Action = action, RouteValues = Mvc.RouteValues.From(routeValues) };
 }

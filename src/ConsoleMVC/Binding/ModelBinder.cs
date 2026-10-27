@@ -55,7 +55,19 @@ internal static class ModelBinder
     /// Thrown when a complex parameter has neither a public parameterless constructor nor a public constructor
     /// whose parameters are all simple types.
     /// </exception>
-    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData, ModelStateDictionary? modelState)
+    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData, ModelStateDictionary? modelState) =>
+        BindParameters(method, formData, routeValues: null, modelState);
+
+    /// <summary>
+    /// Binds the action's parameters from form data and route values; form data wins when both have a key.
+    /// </summary>
+    /// <param name="method">The action method whose parameters should be bound.</param>
+    /// <param name="formData">The posted form data, or <see langword="null"/>.</param>
+    /// <param name="routeValues">The route values (<c>Orders/Details?id=42</c>), or <see langword="null"/>.</param>
+    /// <param name="modelState">Receives conversion errors, or <see langword="null"/> to ignore them.</param>
+    /// <returns>The bound arguments, or <see langword="null"/> when the method has no parameters.</returns>
+    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData,
+        IReadOnlyDictionary<string, string>? routeValues, ModelStateDictionary? modelState)
     {
         var parameters = method.GetParameters();
 
@@ -63,6 +75,16 @@ internal static class ModelBinder
             return null;
 
         var values = ToCaseInsensitive(formData);
+        if (routeValues is not null)
+        {
+            var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, value) in routeValues)
+                merged.TryAdd(key, value);
+            foreach (var (key, value) in values)
+                merged[key] = value; // form data wins
+
+            values = merged;
+        }
         var args = new object?[parameters.Length];
 
         for (var i = 0; i < parameters.Length; i++)
@@ -135,6 +157,67 @@ internal static class ModelBinder
     }
 
     /// <summary>
+    /// Converts a form value to <paramref name="targetType"/>: a simple type with <see cref="TryConvert"/>, or a
+    /// collection of a simple type (see <see cref="IsSimpleCollection"/>) by splitting the value on commas, as
+    /// <c>&lt;select multiple&gt;</c> posts it. Parts are trimmed and empty parts dropped.
+    /// </summary>
+    /// <param name="value">The form value, e.g. <c>"1,3"</c>.</param>
+    /// <param name="targetType">The destination type, e.g. <c>List&lt;int&gt;</c>.</param>
+    /// <param name="result">The converted value when successful.</param>
+    /// <returns><see langword="true"/> when the value (every part, for a collection) was converted.</returns>
+    /// <example><code>ModelBinder.TryConvertField("1, 3", typeof(int[]), out var ids); // new[] { 1, 3 }</code></example>
+    internal static bool TryConvertField(string value, Type targetType, out object? result)
+    {
+        if (!IsSimpleCollection(targetType, out var elementType))
+            return TryConvert(value, targetType, out result);
+
+        result = null;
+        var parts = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var items = Array.CreateInstance(elementType, parts.Length);
+
+        for (var i = 0; i < parts.Length; i++)
+        {
+            if (!TryConvert(parts[i], elementType, out var item))
+                return false;
+
+            items.SetValue(item, i);
+        }
+
+        // Arrays are assigned as they are; List<T> also serves every collection interface it implements
+        result = targetType.IsArray ? items : Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType), items);
+        return true;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> for an array, <see cref="List{T}"/> or a collection interface that
+    /// <see cref="List{T}"/> implements (<see cref="IEnumerable{T}"/>, <see cref="ICollection{T}"/>,
+    /// <see cref="IList{T}"/>, <see cref="IReadOnlyCollection{T}"/>, <see cref="IReadOnlyList{T}"/>) of a simple type.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <param name="elementType">The element type when the result is <see langword="true"/>.</param>
+    /// <example><code>ModelBinder.IsSimpleCollection(typeof(List&lt;string&gt;), out var element); // true, string</code></example>
+    internal static bool IsSimpleCollection(Type type, out Type elementType)
+    {
+        elementType = typeof(object);
+
+        if (type.IsArray)
+        {
+            elementType = type.GetElementType()!;
+            return type.GetArrayRank() == 1 && IsSimpleType(elementType);
+        }
+
+        if (!type.IsGenericType)
+            return false;
+
+        var definition = type.GetGenericTypeDefinition();
+        var supported = definition == typeof(List<>) || definition == typeof(IEnumerable<>) || definition == typeof(ICollection<>)
+                        || definition == typeof(IList<>) || definition == typeof(IReadOnlyCollection<>) || definition == typeof(IReadOnlyList<>);
+
+        elementType = type.GetGenericArguments()[0];
+        return supported && IsSimpleType(elementType);
+    }
+
+    /// <summary>
     /// Returns <see langword="true"/> for defined enum members and, for <see cref="FlagsAttribute"/> enums,
     /// combinations of defined flags.
     /// </summary>
@@ -187,12 +270,13 @@ internal static class ModelBinder
         if (parameterType == typeof(CancellationToken))
             return CancellationToken.None;
 
-        if (!IsSimpleType(parameterType))
+        var isCollection = IsSimpleCollection(parameterType, out _);
+        if (!IsSimpleType(parameterType) && !isCollection)
             return BindComplexType(parameterType, values, modelState);
 
         if (values.TryGetValue(parameter.Name!, out var raw))
         {
-            if (TryConvert(raw, parameterType, out var converted))
+            if (TryConvertField(raw, parameterType, out var converted))
                 return converted;
 
             ReportConversionError(modelState, parameter.Name!, displayName ?? DisplayNameOf(parameter), raw);
@@ -205,10 +289,10 @@ internal static class ModelBinder
     private static object? BindComplexType(Type type, IReadOnlyDictionary<string, string> values, ModelStateDictionary? modelState)
     {
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanWrite && p.GetIndexParameters().Length == 0 && IsSimpleType(p.PropertyType))
+            .Where(p => p.CanWrite && p.GetIndexParameters().Length == 0 && (IsSimpleType(p.PropertyType) || IsSimpleCollection(p.PropertyType, out _)))
             .ToArray();
 
-        // Collections are not bound from form data (one value per key); the parameter receives null
+        // Arrays of complex types cannot be bound from form data (one value per key); the parameter receives null
         if (type.IsArray)
             return null;
 
@@ -219,7 +303,7 @@ internal static class ModelBinder
             if (!values.TryGetValue(property.Name, out var raw))
                 continue;
 
-            if (TryConvert(raw, property.PropertyType, out var converted))
+            if (TryConvertField(raw, property.PropertyType, out var converted))
                 property.SetValue(instance, converted);
             else
                 ReportConversionError(modelState, property.Name, DisplayNameOf(property), raw);
@@ -245,7 +329,7 @@ internal static class ModelBinder
         var constructor = type.IsAbstract
             ? null
             : type.GetConstructors()
-                .Where(c => c.GetParameters().All(p => p.Name is not null && IsSimpleType(p.ParameterType)))
+                .Where(c => c.GetParameters().All(p => p.Name is not null && (IsSimpleType(p.ParameterType) || IsSimpleCollection(p.ParameterType, out _))))
                 .OrderByDescending(c => c.GetParameters().Length)
                 .FirstOrDefault();
 
@@ -253,7 +337,7 @@ internal static class ModelBinder
         {
             throw new InvalidOperationException(
                 $"Cannot bind form data to '{type.FullName}': it needs a public parameterless constructor, or a public " +
-                "constructor whose parameters are all simple types (such as a positional record with simple properties).");
+                "constructor whose parameters are all simple types or lists of them (such as a positional record with simple properties).");
         }
 
         var parameters = constructor.GetParameters();

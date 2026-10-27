@@ -10,9 +10,11 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 
 - [Getting Started](getting-started.md): install the framework and create your first console MVC application.
 - [Controllers and Forms](controllers-and-forms.md): actions, navigation, posting forms and model binding.
-- [C-View Markup](c-view-markup.md): describe screens with `<box>`, `<text>`, `<table>` and `<columns>`, reuse markup with `<partial>`, style it with themes, and collect input with `<input>` and `<menu>`.
+- [C-View Markup](c-view-markup.md): describe screens with `<box>`, `<text>`, `<table>` and `<columns>`, reuse markup with `<partial>`, style it with themes, and collect input with `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>`.
 - [Validation](validation.md): DataAnnotations, `ModelState` and `<errors />`.
 - [Dependency Injection](dependency-injection.md): register services and receive them in controllers and views (`@inject`).
 - [Async Actions and Middleware](async-and-middleware.md): `await` in actions and run code around every action with `app.Use`.
-- [Configuration and Testing](configuration.md): builder options, themes, and driving an application in tests.
+- [Configuration Files and Logging](hosting.md): `appsettings.json`, environment variables, options and `ILogger<T>`.
+- [Configuration and Testing](configuration.md): builder options and themes.
+- [Testing](testing.md): run the application in tests with `ConsoleMVC.Testing`, scripted input and snapshots.
 - [API Reference](../api/): auto-generated reference documentation for all public types.

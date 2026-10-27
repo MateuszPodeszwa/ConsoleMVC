@@ -78,8 +78,10 @@ view   Done  ─┘ → dispose
 
 ## Framework services
 
-The framework registers `IMarkupRenderer` and `ITextInput` unless you do. You can therefore inject them, or replace
-them with your own registration:
+The framework registers `IMarkupRenderer` and `ITextInput` unless you do, and always provides `IConfiguration`,
+`IHostEnvironment`, the options services (`IOptions<T>`) and logging (`ILogger<T>`; see
+[Configuration Files and Logging](hosting.md)). You can therefore inject them, or replace the renderer and input with
+your own registration:
 
 ```csharp
 builder.Services.AddSingleton<IMarkupRenderer>(_ => new MarkupRenderer(new PlainTextRenderTarget(Console.Out), () => 60));

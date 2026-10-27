@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.9: C-View Markup 1.0 with column layouts and themes, on top of partial views (1.7), live reload (1.8), async actions and middleware (1.6), dependency injection (1.5) and form validation (1.4). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.18: the `ConsoleMVC.Testing` package runs your application in tests with scripted input and snapshot files. 1.17 made a `nav` typo a build warning (CVW119), 1.16 added `appsettings.json`, options and `ILogger<T>`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -15,14 +15,17 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, the same patterns from ASP.NET Core MVC
 - **Razor-like view engine**: `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
 - **C-View Markup**: declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
-- **Partial views**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time
+- **Partial views and layouts**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time, and a `_Layout.cvw` that frames every screen
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
-- **Declarative input and navigation**: `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
+- **Declarative input and navigation**: `<input>` collects form values, `<select>`, `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation**: posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
 - **Dependency injection**: register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
+- **Configuration and logging**: `builder.Configuration` reads `appsettings.json`, `appsettings.{Environment}.json`, environment variables and the command line; options bind with `Configure<T>`, and `ILogger<T>` works everywhere, with no logger writing over the screen
 - **Async actions and middleware**: actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
+- **Testing**: the `ConsoleMVC.Testing` package runs the application with scripted lines and keys, records every screen and the routes visited, and compares screens with snapshot files
 - **Live reload**: run `dotnet watch` and edits to views and controllers appear from the next screen, without restarting
 
 ## Getting Started
@@ -168,6 +171,19 @@ return input switch
 | `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional; defaults to `object`. |
 | `@using Namespace` | Adds a `using` statement to the generated class. |
 | `@inject Type Name` | Declares a property filled from the application's services (see [Dependency Injection](#dependency-injection)). |
+| `@layout Name` | Draws the view inside `Views/Shared/Name.cvw`; `@layout none` for no layout. Defaults to `_Layout` when it exists (see [Layouts](#layouts)). |
+
+#### Layouts
+
+`Views/Shared/_Layout.cvw` frames every screen. `<body />` marks where the view goes:
+
+```
+<text class="muted" align="right">My App</text>
+<body />
+<separator class="muted" />
+```
+
+The part before `<body />` is drawn before the view; the part after it is drawn just before the view's first `<input>` or `<menu>` (or at the end if it has neither), so a footer sits between the content and what the user answers. Views choose another layout with `@layout Name` or none with `@layout none`. See [Layouts](docs/guides/docs/c-view-markup.md#layouts-and-body) and the [design](docs/design/layout-views.md).
 
 #### Layout and Themes
 
@@ -247,9 +263,9 @@ The `<menu>` shows the options, re-prompts on an invalid choice and returns the 
 </table>
 ```
 
-Mistakes such as an unknown attribute or a missing closing tag are build errors pointing at the `.cvw` line, and C# errors inside views are mapped back to the `.cvw` file too. The full element and attribute reference is in the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**.
+Mistakes such as an unknown attribute or a missing closing tag are build errors pointing at the `.cvw` line, and C# errors inside views are mapped back to the `.cvw` file too. A `nav` target naming a controller or action that does not exist is a warning (CVW119) listing the ones that do. The full element and attribute reference is in the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**.
 
-**Navigation from views:**
+**Navigation from views** (a menu option marked `back` returns to the previous screen, and `<breadcrumbs />` shows the trail, e.g. `Home › Orders › Details`):
 
 Every view must return a `NavigationResult` to tell the framework what to do next, either from C#, or by ending with a `<menu>`:
 
@@ -259,23 +275,30 @@ Every view must return a `NavigationResult` to tell the framework what to do nex
 | `NavigationResult.To("Controller", "Action", formData)` | Navigate and post form data to the target action |
 | `NavigationResult.ToAction("Action")` | Navigate to a different action on the current controller |
 | `NavigationResult.ToAction("Action", formData)` | Navigate within the current controller and post form data |
+| `NavigationResult.To("Orders/Details?id=42")` | Navigate with route values, which bind to the action's parameters (also `nav="Orders/Details?id=@order.Id"` and `RedirectToAction("Details", new { id })`) |
+| `NavigationResult.Back()` | Return to the previous screen (the same as a menu option marked `back`) |
 | `NavigationResult.Quit()` | Exit the application |
 
 ### Form Data Posting
 
 Views can collect user input and post it to a controller action, just like HTML forms in web MVC. The framework binds the posted values to the target action's method parameters automatically.
 
-**Collecting input with `<input>`**: `Views/Greet/IndexView.cvw`:
+**Collecting input with `<input>`, `<select>` and `<checkbox>`**: `Views/Greet/IndexView.cvw`:
 ```
 @model object
 
 <input name="Name" label="Name: " required />
-<input name="Color" label="Favourite colour: " />
+<select name="Color" label="Favourite colour:" default="blue">
+    <choice value="red">Red</choice>
+    <choice value="green">Green</choice>
+    <choice value="blue">Blue</choice>
+</select>
+<checkbox name="Shout" label="Shout the greeting" />
 
 return NavigationResult.ToAction("Result", Form);
 ```
 
-Each `<input>` stores its value in the view's `Form` dictionary under its `name`. Use `required` to re-prompt until a value is entered, `default` for a fallback value and `masked` for passwords. A menu option marked `post` sends the `Form` too: `<option key="s" nav="Result" post>Submit</option>`.
+Each field stores its value in the view's `Form` dictionary under its `name`. Use `required` to re-prompt until a value is entered, `default` for a fallback value and `masked` for passwords. In a terminal, `<select>` and `<radio>` are answered with the arrow keys and Enter (Space ticks the choices of `<select multiple>`), and `<checkbox>` with Space; with piped input the choices are numbered and typed. `<checkbox>` posts `true` or `false` for a `bool`, and `<select multiple>` posts `red,blue` for a `List<string>` or an array. A menu option marked `post` sends the `Form` too: `<option key="s" nav="Result" post>Submit</option>`. See [choice inputs](docs/guides/docs/c-view-markup.md#select-radio-and-choice) and the [design](docs/design/choice-inputs.md).
 
 **Collecting input in C#**: any `Dictionary<string, string>` can be posted, so plain C# views keep working:
 ```
@@ -688,6 +711,8 @@ builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected aut
 builder.Input = ConsoleTextInput.Instance;              // Default: the console
 builder.Theme.Set("brand", new ThemeStyle { Bold = true }); // Default: Theme.CreateDefault()
 builder.Services.AddSingleton<IClock, SystemClock>();   // Your services
+builder.Services.Configure<ShopOptions>(builder.Configuration.GetSection("Shop")); // Settings
+builder.Logging.AddDebug();                             // Log somewhere other than the screen
 using var app = builder.Build();
 app.Run();
 ```
@@ -699,17 +724,17 @@ app.Run();
 | `Theme` | Named styles used by `class="…"` in markup (see [Layout and Themes](#layout-and-themes)) |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
-| `Input` | Where `<input>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests |
-| `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output. Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
+| `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |
+| `Configuration` | Settings from `appsettings.json`, `appsettings.{Environment}.json`, environment variables (`Shop__Name`) and the command line (`--Shop:Name=Corner`), later ones winning; registered as `IConfiguration` (see [Configuration Files and Logging](docs/guides/docs/hosting.md)) |
+| `Environment` | `EnvironmentName` (`DOTNET_ENVIRONMENT`, default `Production`), `ContentRootPath` and `ApplicationName`; registered as `IHostEnvironment`. Choose them in code with `MvcApplication.CreateBuilder(new MvcApplicationOptions { … })` |
+| `Logging` | Log providers and levels (the `Logging` section of the configuration). None is added by default, because the console is the user interface; the framework logs screens and failures under `ConsoleMVC.Mvc.MvcApplication` |
+| `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output, and redraws the current screen when the terminal is resized (`MarkupRenderer.CreateForConsole(redrawOnResize: false)` turns that off). Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
 
 ## Roadmap
 
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
-- **Layout views** that frame every screen, and **navigation history** with a "back" key and breadcrumbs
-- **Route values** in navigation (`nav="Orders/Details?id=@order.Id"`) and **compile-time route checks**
-- **More inputs** (`<select>`, `<checkbox>`, `<radio>`) with arrow-key selection
-- **Hosting integration** (configuration and logging) and a **`ConsoleMVC.Testing`** package for snapshot tests
+- **Richer inputs** (`<number>`, `<date>`, a searchable `<select filter>`) and **more compile-time checks** for `RedirectToAction` and `View` names
 - **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
 - **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
 
@@ -720,9 +745,10 @@ Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszw
 | Package | Description | Purpose |
 |---------|-------------|---------|
 | [`ConsoleMVC.Framework`](https://www.nuget.org/packages/ConsoleMVC.Framework) | Framework library + source generator | Referenced by your project |
+| [`ConsoleMVC.Testing`](https://www.nuget.org/packages/ConsoleMVC.Testing) | Test host, scripted input and snapshots | Referenced by your test project ([guide](docs/guides/docs/testing.md)) |
 | [`ConsoleMVC.Template`](https://www.nuget.org/packages/ConsoleMVC.Template) | `dotnet new` project template | Used to scaffold new projects |
 
-Both packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
+All three packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
 
 ## License
 
@@ -750,7 +776,9 @@ ConsoleMVC/
       Application/ Controllers/ Results/  #   MVC framework (namespace ConsoleMVC.Mvc)
       Routing/ Binding/ Views/
       Validation/ DependencyInjection/ Middleware/
+      Hosting/                            #   Configuration, environment and logging for the builder
       Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
+    ConsoleMVC.Testing/                   # Test host, scripted input and snapshots (NuGet: ConsoleMVC.Testing)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
       ConsoleMVC.Generators.csproj
       ViewSourceGenerator.cs              #   Pipeline: .cvw → parse → diagnostics → emit ConsoleView<T>
@@ -767,6 +795,7 @@ ConsoleMVC/
       .template.config/template.json      #   Template engine configuration
       ConsoleMVC.App.csproj               #   sourceName replaced with user's project name
       Program.cs
+      appsettings.json                    #   Settings read by builder.Configuration
       Controllers/
       Models/
       Services/
@@ -782,18 +811,19 @@ dotnet test ConsoleMVC.sln
 
 ### Releasing a New Version
 
-**1. Bump version numbers** in both `.csproj` files:
+**1. Bump version numbers** in the three packed `.csproj` files:
 
 - `src/ConsoleMVC/ConsoleMVC.csproj`: update `<Version>`
+- `src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj`: update `<Version>`
 - `ConsoleMVC.Template.csproj`: update `<Version>`
 
 If the template references a new framework version, also update the `<PackageReference>` version in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj`.
 
 **2. Merge to `main`.** The [Publish packages](.github/workflows/publish.yml) workflow notices that the version has no `vX.Y.Z` tag yet and:
 
-- checks that both `<Version>` values and the template's framework reference agree;
+- checks that the three `<Version>` values and the template's framework reference agree;
 - builds with `-warnaserror` and runs every test;
-- packs `ConsoleMVC.Framework` and `ConsoleMVC.Template`;
+- packs `ConsoleMVC.Framework`, `ConsoleMVC.Testing` and `ConsoleMVC.Template`;
 - pushes them to **NuGet.org** with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key: GitHub issues a short-lived token that nuget.org exchanges for a one-hour key) and to **GitHub Packages** with the built-in `GITHUB_TOKEN`;
 - creates the GitHub release `vX.Y.Z` with this version's section of `CHANGELOG.md` and the `.nupkg` files attached.
 
@@ -807,7 +837,7 @@ Publishing a release by hand, or **Actions → Publish packages → Run workflow
 | Repository | `ConsoleMVC` |
 | Workflow File | `publish.yml` |
 | Environment | `release` |
-| Glob patterns and packages | `ConsoleMVC.Framework` and `ConsoleMVC.Template` (one per line), or `ConsoleMVC.*` to cover future packages |
+| Glob patterns and packages | `ConsoleMVC.*` (covers `ConsoleMVC.Framework`, `ConsoleMVC.Testing`, `ConsoleMVC.Template` and future packages) |
 | Scope | Push new versions of existing packages (with `ConsoleMVC.*`, also push new packages) |
 
 The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repository variable `NUGET_USER` to use another account. GitHub creates the `release` environment on the first run; add required reviewers to it under **Settings → Environments** if you want to approve each release.
@@ -816,6 +846,7 @@ The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repositor
 
 ```bash
 dotnet pack src/ConsoleMVC/ConsoleMVC.csproj -c Release -o nupkg
+dotnet pack src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj -c Release -o nupkg
 dotnet pack ConsoleMVC.Template.csproj -c Release -o nupkg
 dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org   # a key from nuget.org/account/apikeys
 dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_GITHUB_TOKEN --source https://nuget.pkg.github.com/MateuszPodeszwa/index.json

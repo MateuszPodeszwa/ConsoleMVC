@@ -105,6 +105,46 @@ public class MarkupV1Tests
         Assert.Throws<ArgumentException>(() => new ColumnsElement().Add(Text("x")));
     }
 
+    [Fact]
+    public void FillColumn_TakesWhatTheOthersLeave()
+    {
+        var right = new TextElement { Align = Alignment.Right };
+        right.AppendText("App");
+        var columns = Columns(1, Column(Length.Fill, Text("Home > Orders")), Column(Length.Auto, right));
+
+        Assert.Equal("Home > Orders              App", Plain(columns.Layout(30)).Single());
+        Assert.Equal(30, columns.MeasureWidth(30));
+        Assert.True(columns.HasRelativeWidth);
+    }
+
+    [Fact]
+    public void FillColumns_ShareTheRemainder()
+    {
+        var columns = Columns(0, Column(Length.Fixed(4), Text("abcd")), Column(Length.Fill, Text("x")), Column(Length.Fill, Text("y")));
+
+        Assert.Equal("abcdx    y", Plain(columns.Layout(13)).Single().TrimEnd());
+    }
+
+    [Fact]
+    public void FillColumns_StillGetSpace_WhenAutoColumnsAreTooWide()
+    {
+        var columns = Columns(1, Column(Length.Auto, Text("a b c d e f g h")), Column(Length.Fill, Text("z")));
+
+        var lines = Plain(columns.Layout(11));
+
+        Assert.Contains(lines, l => l.TrimEnd().EndsWith("z"));
+        Assert.All(columns.Layout(11), l => Assert.True(l.Width <= 11));
+    }
+
+    [Fact]
+    public void FillLength_ParsesAndPrints()
+    {
+        Assert.Equal(Length.Fill, Length.Parse("*"));
+        Assert.Equal("*", Length.Fill.ToString());
+        Assert.Equal(25, Length.Fill.Resolve(25, 3));
+        Assert.True(Length.Fill.IsRelative && Length.Percent(5).IsRelative && !Length.Fixed(5).IsRelative);
+    }
+
     // --- min-width / max-width ---
 
     [Fact]

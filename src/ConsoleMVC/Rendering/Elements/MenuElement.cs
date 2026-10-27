@@ -24,6 +24,12 @@ public sealed class MenuOptionElement : InlineElement
     /// <summary>Gets or sets whether choosing this option quits the application.</summary>
     public bool Quit { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether choosing this option returns to the previous screen (<c>back</c> in markup).
+    /// </summary>
+    /// <example><code>new MenuOptionElement { Key = "b", Back = true };</code></example>
+    public bool Back { get; set; }
+
     /// <summary>Gets or sets whether the form values collected by the view are posted with the navigation.</summary>
     public bool PostForm { get; set; }
 }
@@ -145,6 +151,8 @@ public sealed class MenuElement : Element
             var line = input.ReadLine();
             if (line is null)
                 return null;
+
+            renderer.RecordInput(line);
 
             var choice = line.Trim();
             var option = _options.FirstOrDefault(o => string.Equals(NormalisedKey(o), choice, StringComparison.OrdinalIgnoreCase));

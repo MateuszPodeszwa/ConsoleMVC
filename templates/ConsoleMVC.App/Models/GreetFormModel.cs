@@ -18,4 +18,9 @@ public class GreetFormModel
     /// </summary>
     [StringLength(20, ErrorMessage = "That colour name is too long (20 characters at most).")]
     public string Color { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets whether the greeting is shown in capitals (the &lt;checkbox&gt; in the form).
+    /// </summary>
+    public bool Shout { get; set; }
 }

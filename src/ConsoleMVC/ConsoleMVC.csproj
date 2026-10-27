@@ -11,7 +11,7 @@
         <!-- NuGet Package Metadata -->
         <PackageId>ConsoleMVC.Framework</PackageId>
         <Title>ConsoleMVC - MVC Framework for Console Applications</Title>
-        <Version>1.9.0</Version>
+        <Version>1.18.0</Version>
         <Authors>Mateusz Podeszwa</Authors>
         <Description>An MVC framework for console applications, inspired by ASP.NET Core MVC. Provides Controller-ViewModel pattern with convention-based routing, reflection-based auto-discovery, and Razor-like .cvw view templates powered by a C# source generator. JetBrains Rider users can install the ConsoleMVC CVWSupport plugin for .cvw file support.</Description>
         <Copyright>Copyright (c) 2026 Mateusz Podeszwa</Copyright>
@@ -38,6 +38,20 @@
     <!-- Dependency injection: builder.Services, constructor injection into controllers, @inject in views -->
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    </ItemGroup>
+
+    <!-- Hosting integration: builder.Configuration (appsettings.json, environment variables, command line),
+         options binding and builder.Logging -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
     </ItemGroup>
 
     <ItemGroup>

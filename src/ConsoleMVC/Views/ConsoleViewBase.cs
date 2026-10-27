@@ -20,7 +20,7 @@ public abstract class ConsoleViewBase
     /// Shared console renderer used by views that are created outside the application loop
     /// (for example in unit tests or when rendering a view manually).
     /// </summary>
-    private static readonly Lazy<IMarkupRenderer> DefaultRenderer = new(MarkupRenderer.CreateForConsole);
+    private static readonly Lazy<IMarkupRenderer> DefaultRenderer = new(() => MarkupRenderer.CreateForConsole(redrawOnResize: false));
 
     private IMarkupRenderer? _renderer;
     private ITextInput? _input;
@@ -86,20 +86,38 @@ public abstract class ConsoleViewBase
     public Dictionary<string, string> Form { get; internal set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Reads a value for an <c>&lt;input&gt;</c> element and stores it in <see cref="Form"/>. Generated code calls
-    /// this for every top-level <c>&lt;input&gt;</c>.
+    /// Asks for the value of a form field (<c>&lt;input&gt;</c>, <c>&lt;select&gt;</c>, <c>&lt;radio&gt;</c> or
+    /// <c>&lt;checkbox&gt;</c>) and stores it in <see cref="Form"/> under the field's name. Generated code calls this for
+    /// every top-level field.
     /// </summary>
-    /// <param name="input">The input element to read.</param>
+    /// <param name="field">The field to read.</param>
     /// <returns>The value read; an empty string when the input has ended.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="input"/> is <see langword="null"/>.</exception>
-    protected internal string ReadInput(InputElement input)
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="field"/> is <see langword="null"/>.</exception>
+    /// <example><code>var answer = ReadInput(new CheckboxElement { Name = "Newsletter", Label = "Send news" });</code></example>
+    protected internal string ReadInput(IFormField field)
     {
-        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(field);
 
-        var value = input.Read(Renderer, Input) ?? "";
-        Form[input.Name] = value;
+        BeforeInteraction?.Invoke();
+        var value = field.Read(Renderer, Input) ?? "";
+        Form[field.Name] = value;
         return value;
     }
+
+    /// <summary>
+    /// Gets the screens shown so far, oldest first, ending with this one. A <c>&lt;menu&gt;</c> option marked
+    /// <c>back</c> (or <see cref="NavigationResult.Back"/>) returns to the one before it.
+    /// </summary>
+    /// <example><code>var previous = NavigationHistory.Count > 1 ? NavigationHistory[^2] : null;</code></example>
+    public IReadOnlyList<RouteContext> NavigationHistory { get; internal set; } = [];
+
+    /// <summary>
+    /// Gets a label for each screen in <see cref="NavigationHistory"/>: the controller for an <c>Index</c> action, else the
+    /// action, e.g. <c>Home › Orders › Details</c>. <c>&lt;breadcrumbs /&gt;</c> shows them.
+    /// </summary>
+    /// <example><code>&lt;text&gt;@string.Join(" / ", Breadcrumbs)&lt;/text&gt;</code></example>
+    public IReadOnlyList<string> Breadcrumbs =>
+        NavigationHistory.Select(r => string.Equals(r.Action, "Index", StringComparison.OrdinalIgnoreCase) ? r.Controller : r.Action).ToArray();
 
     /// <summary>Theme used by views created outside the application (for example in unit tests).</summary>
     private static readonly Lazy<Theme> DefaultTheme = new(Theme.CreateDefault);
@@ -147,15 +165,32 @@ public abstract class ConsoleViewBase
     protected internal void PreparePartial(ConsolePartialView partial)
     {
         ArgumentNullException.ThrowIfNull(partial);
+        ShareStateWith(partial);
+    }
 
-        partial.ViewData = ViewData;
-        partial.ModelState = ModelState;
-        partial.Renderer = Renderer;
-        partial.Input = Input;
-        partial.Form = Form;
-        partial.Theme = Theme;
-        partial.Services = Services;
+    /// <summary>
+    /// Called before this view, or a partial it renders, first waits for the user (an <c>&lt;input&gt;</c> or a
+    /// <c>&lt;menu&gt;</c>). A view with a layout uses it to draw the layout's footer.
+    /// </summary>
+    internal Action? BeforeInteraction { get; set; }
 
-        ServiceInjector.InjectProperties(partial, Services ?? NoServices.Value);
+    /// <summary>
+    /// Gives <paramref name="other"/> (a partial or a layout) this view's renderer, input, view data, model state, form,
+    /// theme and services, and fills its <c>@inject</c> properties.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when a service <paramref name="other"/> injects is not registered.</exception>
+    internal void ShareStateWith(ConsoleViewBase other)
+    {
+        other.BeforeInteraction = BeforeInteraction;
+        other.ViewData = ViewData;
+        other.ModelState = ModelState;
+        other.Renderer = Renderer;
+        other.Input = Input;
+        other.Form = Form;
+        other.Theme = Theme;
+        other.NavigationHistory = NavigationHistory;
+        other.Services = Services;
+
+        ServiceInjector.InjectProperties(other, Services ?? NoServices.Value);
     }
 }
