@@ -261,6 +261,8 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW004 | Two views generate the same class (for example `Views/Home` and `Views/home`, or an `Areas/X/Views/Home` copy); the later file is skipped |
 | CVW005 | The project's `RootNamespace` is not a valid C# namespace (set `<RootNamespace>` in the project file) |
 | CVW006 | `@model` is declared more than once; the last one is used (warning) |
+| CVW007 | `@inject` without a type and a property name, or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
+| CVW008 | Two `@inject` directives declare the same property name |
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |

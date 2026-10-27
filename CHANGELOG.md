@@ -2,6 +2,27 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.5.0]
+
+### Added
+
+- **Dependency injection** ([design](docs/design/dependency-injection.md),
+  [guide](docs/guides/docs/dependency-injection.md)) with `Microsoft.Extensions.DependencyInjection`:
+  - `MvcApplicationBuilder.Services` to register services and `MvcApplication.Services` for the root provider.
+  - Controllers receive services through their constructors.
+  - `@inject Type Name` in `.cvw` files declares a view property filled from the services (`InjectAttribute`).
+  - Every navigation cycle (an action and the view it renders) runs in its own scope; controllers and views that
+    implement `IDisposable` are disposed at the end of their cycle.
+  - `IMarkupRenderer` and `ITextInput` are registered as services.
+  - `Router.ResolveController(name, services)` and `Router.ResolveView(controller, action, services)`.
+- Diagnostics CVW007 (invalid `@inject`) and CVW008 (duplicate `@inject` property).
+- The template's greeting example uses an injected `IGreetingService`.
+
+### Changed
+
+- `MvcApplication` implements `IDisposable`; write `using var app = builder.Build();` to dispose singleton services.
+- Service registrations are validated when the application is built (`ValidateOnBuild`, `ValidateScopes`).
+
 ## [1.4.0]
 
 ### Added

@@ -27,12 +27,14 @@ A ready-to-run console application structured with the MVC pattern:
 - **Controllers/** — controller classes that handle actions and return results
 - **Views/** — `.cvw` views using C-View Markup (`<box>`, `<text>`, `<table>`, `<input>`, `<menu>`) and C#, compiled at build time
 - **Models/** — ViewModel DTOs passed from controllers to views
+- **Services/** — an `IGreetingService` registered with `builder.Services` in `Program.cs`
 
 The template includes working examples of:
 
 - **Navigation** — `<menu>` elements moving between controllers and actions (`Home`, `About`)
 - **Tables** — a feature tour page with a `<table>` generated from the model
 - **Form data posting with model binding** — a greeting form that collects input and posts it to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
+- **Dependency injection** — `GreetController` receives `IGreetingService` through its constructor and the result view reads it with `@inject`
 - **Form data posting with simple parameters** — a calculator that posts individual values (`int a`, `int b`, `string op`) directly to action method parameters
 
 ## IDE Support

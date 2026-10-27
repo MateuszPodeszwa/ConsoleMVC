@@ -19,6 +19,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Safe by default** — model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation** — posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
+- **Dependency injection** — register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
 
 ## Getting Started
 
@@ -82,9 +83,11 @@ MyApp/
 
 ```csharp
 using ConsoleMVC.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = MvcApplication.CreateBuilder(args);
-var app = builder.Build();
+builder.Services.AddSingleton<IGreetingService, GreetingService>(); // optional: your services
+using var app = builder.Build();
 app.Run();
 ```
 
@@ -158,6 +161,7 @@ return input switch
 |-----------|---------|
 | `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional — defaults to `object`. |
 | `@using Namespace` | Adds a `using` statement to the generated class. |
+| `@inject Type Name` | Declares a property filled from the application's services (see [Dependency Injection](#dependency-injection)). |
 
 **C-View Markup:**
 
@@ -431,6 +435,43 @@ Validation runs only when form data is posted. A value that can't be converted p
 - **Records:** models without a parameterless constructor, such as `record Review([property: Range(1, 5)] int Stars, string Comment)`, are created through their constructor, whose parameters are bound by name.
 - **Strings as models:** `View("Index")` renders the Index view, as in ASP.NET Core; pass a string model to the current view with `View((object)text)`.
 
+### Dependency Injection
+
+Services registered on `builder.Services` (the standard `Microsoft.Extensions.DependencyInjection` container) are passed to controller constructors and to views that declare `@inject`:
+
+```csharp
+builder.Services.AddSingleton<IGreetingService, GreetingService>();
+builder.Services.AddScoped<IBasket, Basket>();
+```
+
+```csharp
+public class GreetController(IGreetingService greetings) : Controller
+{
+    public ActionResult Result(GreetFormModel model) =>
+        View(new GreetResultModel { Greeting = greetings.Greet(model.Name, model.Color) });
+}
+```
+
+```
+@model MyApp.Models.GreetResultModel
+@inject MyApp.Services.IGreetingService Greetings
+<text dim>Greetings sent so far: @Greetings.Count</text>
+```
+
+| Lifetime | Instance |
+|----------|----------|
+| `AddSingleton` | One for the whole run; disposed with `app` (`using var app = builder.Build();`) |
+| `AddScoped` | One per navigation cycle (an action and the view it renders); disposed when the screen ends |
+| `AddTransient` | A new one every time it is requested |
+
+- Controllers and views that implement `IDisposable` are disposed at the end of their cycle; a redirect starts a new cycle.
+- Scope validation is on, so a singleton depending on a scoped service fails at `Build()` rather than misbehaving later.
+- `IMarkupRenderer` and `ITextInput` are registered for you (`builder.Renderer` / `builder.Input` take precedence) and can be injected.
+- `app.Services` is the root provider, for preparing data before `app.Run()`.
+- An unregistered dependency fails with an `InvalidOperationException` naming the missing type; `@inject` mistakes are build errors CVW007 and CVW008.
+
+See the [Dependency Injection guide](docs/guides/docs/dependency-injection.md) and the [design](docs/design/dependency-injection.md).
+
 ### Conventions
 
 ConsoleMVC uses naming conventions to wire everything together — no manual registration required:
@@ -559,13 +600,15 @@ builder.ClearScreenBetweenViews = false;        // Default: true
 builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
 builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
 builder.Input = ConsoleTextInput.Instance;              // Default: the console
-var app = builder.Build();
+builder.Services.AddSingleton<IClock, SystemClock>();   // Your services
+using var app = builder.Build();
 app.Run();
 ```
 
 | Option | Purpose |
 |--------|---------|
 | `DefaultController` / `DefaultAction` | The first route to run |
+| `Services` | Services for controller constructors and `@inject` (see [Dependency Injection](#dependency-injection)) |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests |
@@ -605,6 +648,7 @@ ConsoleMVC/
       PACKAGE_README.md                   #   README shown on NuGet gallery
       Application/ Controllers/ Results/  #   MVC framework (namespace ConsoleMVC.Mvc)
       Routing/ Binding/ Views/
+      Validation/ DependencyInjection/
       Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
       ConsoleMVC.Generators.csproj
@@ -615,7 +659,8 @@ ConsoleMVC/
     ConsoleMVC.Tests/                     # Framework and rendering unit/integration tests
     ConsoleMVC.Generators.Tests/          # Runs the generator, compiles and executes views
   docs/
-    design/c-view-markup.md               # Design: UML, grammar, pseudocode
+    design/                               # Designs: UML, grammar, pseudocode for each feature
+    guides/                               # MkDocs user guides
   templates/
     ConsoleMVC.App/                       # Template content (what users get from dotnet new)
       .template.config/template.json      #   Template engine configuration
@@ -623,6 +668,7 @@ ConsoleMVC/
       Program.cs
       Controllers/
       Models/
+      Services/
       Views/
 ```
 

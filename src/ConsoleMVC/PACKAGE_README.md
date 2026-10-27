@@ -21,7 +21,8 @@ dotnet run
 **Program.cs** — familiar ASP.NET-style builder:
 ```csharp
 var builder = MvcApplication.CreateBuilder(args);
-var app = builder.Build();
+builder.Services.AddSingleton<IGreetingService, GreetingService>(); // optional
+using var app = builder.Build();
 app.Run();
 ```
 
@@ -73,6 +74,7 @@ public class HomeViewModel
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — all the patterns you know from ASP.NET Core MVC
 - **Navigation** — Views return `NavigationResult` to control app flow (`NavigationResult.To()`, `NavigationResult.Quit()`)
 - **Validation** — posted forms are checked with DataAnnotations (`[Required]`, `[Range]`, `[EmailAddress]`, …) before the action runs; use `ModelState.IsValid`, `View("Form", model)` and `<errors />` as in ASP.NET Core MVC
+- **Dependency injection** — `builder.Services` (Microsoft.Extensions.DependencyInjection); constructor injection into controllers, `@inject Type Name` in views, one scope per screen
 - **Form data posting** — Views collect user input via `Console.ReadLine()` and post it to controller actions using `NavigationResult.To("Controller", "Action", formData)`. The framework automatically binds the data to action method parameters — either as individual simple types (`int`, `string`, etc.) or as a complex model class with matching property names
 
 ## IDE Support

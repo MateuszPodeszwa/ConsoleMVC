@@ -1,4 +1,5 @@
 using ConsoleMVC.App.Models;
+using ConsoleMVC.App.Services;
 using ConsoleMVC.Mvc;
 
 namespace ConsoleMVC.App.Controllers;
@@ -7,9 +8,10 @@ namespace ConsoleMVC.App.Controllers;
 /// Demonstrates form data posting with complex model binding.
 /// The Index action renders a form view that collects user input,
 /// and the Result action receives the posted data as a <see cref="GreetFormModel"/>
-/// automatically bound by the framework.
+/// automatically bound by the framework. The <see cref="IGreetingService"/> is injected through the constructor.
 /// </summary>
-public class GreetController : Controller
+/// <param name="greetings">Builds the greeting text; registered in <c>Program.cs</c>.</param>
+public class GreetController(IGreetingService greetings) : Controller
 {
     /// <summary>
     /// Displays the greeting form where the user enters their name and favourite colour.
@@ -31,11 +33,6 @@ public class GreetController : Controller
         if (!ModelState.IsValid)
             return View("Index", null);
 
-        var greeting = $"Hello, {model.Name}!";
-
-        if (!string.IsNullOrWhiteSpace(model.Color))
-            greeting += $" Great choice — {model.Color} is a wonderful colour.";
-
-        return View(new GreetResultModel { Greeting = greeting });
+        return View(new GreetResultModel { Greeting = greetings.Greet(model.Name, model.Color) });
     }
 }
