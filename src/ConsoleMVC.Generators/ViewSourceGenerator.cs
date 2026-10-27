@@ -8,6 +8,7 @@ using ConsoleMVC.Generators.Parsing;
 using ConsoleMVC.Generators.Schema;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 #nullable enable
@@ -77,9 +78,20 @@ public class ViewSourceGenerator : IIncrementalGenerator
             .Collect()
             .Select(static (entries, _) => new PartialCatalogue(entries.Where(e => e is not null)!));
 
-        context.RegisterSourceOutput(viewFiles.Combine(rootNamespace).Combine(duplicates).Combine(partials), static (ctx, pair) =>
+        // The controllers and their actions, so literal nav targets can be checked (CVW119). Only names feed this step,
+        // so editing the body of an action does not regenerate the views.
+        var routes = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is ClassDeclarationSyntax c && c.Identifier.ValueText.EndsWith("Controller", StringComparison.Ordinal),
+                static (syntax, cancellationToken) => ControllerEntryFor((ClassDeclarationSyntax)syntax.Node, syntax.SemanticModel, cancellationToken))
+            .Where(static entry => entry is not null)
+            .Collect()
+            .Select(static (entries, _) => new RouteCatalogue(entries!));
+
+        var inputs = viewFiles.Combine(rootNamespace).Combine(duplicates).Combine(partials).Combine(routes);
+        context.RegisterSourceOutput(inputs, static (ctx, pair) =>
         {
-            var (((file, rootNs), duplicateOf), catalogue) = pair;
+            var ((((file, rootNs), duplicateOf), catalogue), routeCatalogue) = pair;
 
             if (duplicateOf.TryGetValue(file.Path, out var original))
             {
@@ -91,8 +103,69 @@ public class ViewSourceGenerator : IIncrementalGenerator
 
             var text = file.GetText(ctx.CancellationToken);
             if (text is not null)
-                GenerateView(ctx, file.Path, text, rootNs, catalogue);
+                GenerateView(ctx, file.Path, text, rootNs, catalogue, routeCatalogue);
         });
+    }
+
+    /// <summary>
+    /// Describes a controller the way the runtime router discovers it: a non-abstract, non-generic class deriving from
+    /// <c>ConsoleMVC.Mvc.Controller</c>, whose actions are its public instance methods (declared on it or a base class
+    /// below <c>Controller</c>) that return an <c>ActionResult</c>, <c>Task</c> or <c>ValueTask</c> of one and are not
+    /// marked <c>[NonAction]</c>.
+    /// </summary>
+    /// <returns>The entry, or <see langword="null"/> when the class is not a controller.</returns>
+    private static ControllerEntry? ControllerEntryFor(ClassDeclarationSyntax syntax, SemanticModel model,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        if (model.GetDeclaredSymbol(syntax, cancellationToken) is not INamedTypeSymbol type || type.IsAbstract || type.IsGenericType
+            || !DerivesFrom(type, ControllerType))
+            return null;
+
+        var actions = new List<string>();
+        for (var current = type; current is not null && current.ToDisplayString() != ControllerType; current = current.BaseType)
+        {
+            foreach (var method in current.GetMembers().OfType<IMethodSymbol>())
+            {
+                if (method.MethodKind == MethodKind.Ordinary && method.DeclaredAccessibility == Accessibility.Public && !method.IsStatic
+                    && IsActionReturnType(method.ReturnType)
+                    && !method.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == NonActionAttributeType))
+                    actions.Add(method.Name);
+            }
+        }
+
+        return new ControllerEntry(type.Name.Substring(0, type.Name.Length - "Controller".Length), actions);
+    }
+
+    private const string ControllerType = "ConsoleMVC.Mvc.Controller";
+    private const string ActionResultType = "ConsoleMVC.Mvc.ActionResult";
+    private const string NonActionAttributeType = "ConsoleMVC.Mvc.NonActionAttribute";
+
+    /// <summary>An <c>ActionResult</c>, or a <c>Task</c> or <c>ValueTask</c> of one, as the router accepts.</summary>
+    private static bool IsActionReturnType(ITypeSymbol type)
+    {
+        if (DerivesFrom(type, ActionResultType))
+            return true;
+
+        if (type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } generic)
+        {
+            var definition = generic.OriginalDefinition.ToDisplayString();
+            return definition is "System.Threading.Tasks.Task<TResult>" or "System.Threading.Tasks.ValueTask<TResult>"
+                   && DerivesFrom(generic.TypeArguments[0], ActionResultType);
+        }
+
+        return false;
+    }
+
+    /// <summary>Whether <paramref name="type"/> is, or derives from, the class named <paramref name="baseType"/>.</summary>
+    private static bool DerivesFrom(ITypeSymbol type, string baseType)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (current.ToDisplayString() == baseType)
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -159,7 +232,7 @@ public class ViewSourceGenerator : IIncrementalGenerator
     /// Validates, parses and emits a single view, reporting diagnostics against the <c>.cvw</c> file.
     /// </summary>
     private static void GenerateView(SourceProductionContext context, string path, SourceText text, string rootNamespace,
-        PartialCatalogue partials)
+        PartialCatalogue partials, RouteCatalogue routes)
     {
         if (!ViewInfo.TryCreate(path, rootNamespace, out var info))
         {
@@ -198,7 +271,10 @@ public class ViewSourceGenerator : IIncrementalGenerator
 
         IReadOnlyList<ParseDiagnostic> compositionErrors = document.HasErrors ? [] : PartialChecker.Check(document, info, partials);
 
-        foreach (var diagnostic in document.Diagnostics.Concat(compositionErrors))
+        // Warnings only: the view is still generated
+        IReadOnlyList<ParseDiagnostic> routeWarnings = document.HasErrors ? [] : RouteChecker.Check(document, info, routes);
+
+        foreach (var diagnostic in document.Diagnostics.Concat(compositionErrors).Concat(routeWarnings))
         {
             var span = TextSpan.FromBounds(
                 Math.Min(diagnostic.Span.Start, text.Length),

@@ -340,6 +340,10 @@ Select an option: _
 | | `post` | flag: post the view's `Form` with the navigation | off |
 | | style attributes | as for `<text>` | |
 
+Literal `nav` targets are checked when you build: `nav="Orders/Detials"` gives warning CVW119 naming the actions
+`Orders` has. Targets with an `@` expression are only known at run time and are not checked. Make the warning an error
+with `dotnet_diagnostic.CVW119.severity = error` in `.editorconfig`.
+
 Each option needs exactly one of `nav`, `quit` or `back`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
 
 !!! note "Top level only"
@@ -502,6 +506,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW116 | A partial view renders itself |
 | CVW117 | `<body />` outside a layout in `Views/Shared`, used twice or inside a C# block; or a layout with `@model` or `@layout` |
 | CVW118 | `@layout` names no layout (lists the available ones), or a partial uses `@layout` |
+| CVW119 | **Warning**: a literal `nav` target names a controller or action that does not exist (lists the ones that do) |
 
 ## Resizing the terminal
 

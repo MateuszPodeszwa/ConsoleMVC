@@ -175,6 +175,15 @@ internal static class CvwDiagnostics
         "{0}",
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
+    /// <summary>
+    /// CVW119: a literal <c>nav</c> target names a controller or action that does not exist. A warning, because the
+    /// controllers may be loaded from elsewhere at run time; raise it with <c>dotnet_diagnostic.CVW119.severity = error</c>.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnknownRoute = new(
+        "CVW119", "Unknown navigation target",
+        "{0}",
+        Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
+
     /// <summary>CVW108: malformed tag syntax.</summary>
     public static readonly DiagnosticDescriptor MalformedTag = new(
         "CVW108", "Malformed tag",

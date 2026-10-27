@@ -2,6 +2,15 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.17.0]
+
+### Added
+
+- **Compile-time route checks** ([design](docs/design/route-checks.md)): a literal `nav` target that names a missing
+  controller or action is warning CVW119, listing the controllers or actions that exist. Controllers and actions are
+  found with the same rules as the runtime router; targets with `@` expressions, and compilations without
+  controllers, are not checked. Raise it with `dotnet_diagnostic.CVW119.severity = error`.
+
 ## [1.16.0]
 
 ### Added
