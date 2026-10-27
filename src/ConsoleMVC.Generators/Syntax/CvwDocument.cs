@@ -30,6 +30,30 @@ internal sealed class DirectiveValue
 }
 
 /// <summary>
+/// An <c>@inject Type Name</c> directive: a service the framework assigns to a generated view property.
+/// </summary>
+/// <example><code>@inject IGreetingService Greetings</code></example>
+internal sealed class InjectDirective
+{
+    /// <summary>
+    /// Creates an inject directive.
+    /// </summary>
+    /// <param name="type">The service type, as written.</param>
+    /// <param name="name">The property name.</param>
+    public InjectDirective(DirectiveValue type, DirectiveValue name)
+    {
+        Type = type;
+        Name = name;
+    }
+
+    /// <summary>Gets the service type and its location.</summary>
+    public DirectiveValue Type { get; }
+
+    /// <summary>Gets the property name and its location.</summary>
+    public DirectiveValue Name { get; }
+}
+
+/// <summary>
 /// The result of parsing a <c>.cvw</c> file: its directives, body and any diagnostics.
 /// </summary>
 internal sealed class CvwDocument
@@ -43,14 +67,16 @@ internal sealed class CvwDocument
     /// <param name="text">The full source text.</param>
     /// <param name="model">The <c>@model</c> directive, or <see langword="null"/> if absent.</param>
     /// <param name="usings">The <c>@using</c> directives in order.</param>
+    /// <param name="injects">The valid <c>@inject</c> directives in order.</param>
     /// <param name="body">The parsed body nodes.</param>
     /// <param name="diagnostics">Problems found while parsing.</param>
     public CvwDocument(string text, DirectiveValue? model, IReadOnlyList<DirectiveValue> usings,
-        IReadOnlyList<Node> body, IReadOnlyList<ParseDiagnostic> diagnostics)
+        IReadOnlyList<InjectDirective> injects, IReadOnlyList<Node> body, IReadOnlyList<ParseDiagnostic> diagnostics)
     {
         Text = text;
         Model = model;
         Usings = usings;
+        Injects = injects;
         Body = body;
         Diagnostics = diagnostics;
     }
@@ -66,6 +92,9 @@ internal sealed class CvwDocument
 
     /// <summary>Gets the <c>@using</c> directives in source order.</summary>
     public IReadOnlyList<DirectiveValue> Usings { get; }
+
+    /// <summary>Gets the <c>@inject</c> directives in source order.</summary>
+    public IReadOnlyList<InjectDirective> Injects { get; }
 
     /// <summary>Gets the parsed body.</summary>
     public IReadOnlyList<Node> Body { get; }

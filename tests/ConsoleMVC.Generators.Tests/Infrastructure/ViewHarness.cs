@@ -130,6 +130,32 @@ public static class ViewHarness
     }
 
     /// <summary>
+    /// Generates, compiles and renders a view with <c>@inject</c> properties filled from a service provider, the way
+    /// the application loop does.
+    /// </summary>
+    /// <param name="cvw">The contents of the <c>.cvw</c> file.</param>
+    /// <param name="createServices">Builds the services from the compiled assembly (so they can use its types).</param>
+    /// <param name="extraSource">Additional C#, such as service classes in namespace <c>TestApp</c>.</param>
+    /// <returns>The plain-text output.</returns>
+    public static string RenderWithServices(string cvw, Func<Assembly, IServiceProvider> createServices, string extraSource = "")
+    {
+        var result = Generate(cvw, extraSource: extraSource);
+
+        if (result.Assembly is null || result.Errors.Any())
+            Assert.Fail("View failed to compile:\n" + result.Describe());
+
+        var view = (ConsoleView)Activator.CreateInstance(result.Assembly!.GetType("TestApp.Views.Home.IndexView", throwOnError: true)!)!;
+        ServiceInjector.InjectProperties(view, createServices(result.Assembly));
+
+        var writer = new StringWriter { NewLine = "\n" };
+        view.Renderer = new MarkupRenderer(new PlainTextRenderTarget(writer), () => 40);
+        view.Input = new ScriptedInput([]);
+        view.RenderInternal(null);
+
+        return writer.ToString();
+    }
+
+    /// <summary>
     /// Generates, compiles and renders a view, returning only its plain-text output.
     /// </summary>
     /// <inheritdoc cref="RenderWithNavigation"/>

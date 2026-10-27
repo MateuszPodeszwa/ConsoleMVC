@@ -5,6 +5,8 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
+CVW007 | ConsoleMVC.Views | Error | Invalid @inject directive
+CVW008 | ConsoleMVC.Views | Error | Duplicate @inject property
 CVW109 | ConsoleMVC.Views | Error | Invalid element
 CVW110 | ConsoleMVC.Views | Error | Text not allowed here
 CVW111 | ConsoleMVC.Views | Error | Required attribute missing

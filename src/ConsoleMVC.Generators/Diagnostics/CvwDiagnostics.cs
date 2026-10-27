@@ -49,6 +49,18 @@ internal static class CvwDiagnostics
         "The view declares @model more than once; only '{0}' is used",
         Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
+    /// <summary>CVW007: an <c>@inject</c> directive without a valid type and property name.</summary>
+    public static readonly DiagnosticDescriptor InvalidInject = new(
+        "CVW007", "Invalid @inject directive",
+        "{0}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>CVW008: two <c>@inject</c> directives declare the same property.</summary>
+    public static readonly DiagnosticDescriptor DuplicateInject = new(
+        "CVW008", "Duplicate @inject property",
+        "The view already injects a property named '{0}'",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
     /// <summary>CVW100: unknown attribute on an element.</summary>
     public static readonly DiagnosticDescriptor UnknownAttribute = new(
         "CVW100", "Unknown attribute",
