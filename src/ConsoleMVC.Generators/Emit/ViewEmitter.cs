@@ -55,15 +55,17 @@ internal sealed class ViewEmitter
 
     private readonly CvwDocument _document;
     private readonly ViewInfo _info;
+    private readonly PartialCatalogue _partials;
     private readonly LineMap _lines;
     private readonly string _quotedPath;
     private readonly StringBuilder _output = new();
     private int _variableCounter;
 
-    private ViewEmitter(CvwDocument document, ViewInfo info)
+    private ViewEmitter(CvwDocument document, ViewInfo info, PartialCatalogue partials)
     {
         _document = document;
         _info = info;
+        _partials = partials;
         _lines = new LineMap(document.Text);
         _quotedPath = LinePath(info.FilePath);
     }
@@ -73,8 +75,10 @@ internal sealed class ViewEmitter
     /// </summary>
     /// <param name="document">The parsed view (must be free of errors).</param>
     /// <param name="info">The view's namespace and class name.</param>
+    /// <param name="partials">The project's partial views, for <c>&lt;partial&gt;</c> elements (already checked).</param>
     /// <returns>The complete C# source file.</returns>
-    public static string Emit(CvwDocument document, ViewInfo info) => new ViewEmitter(document, info).EmitView();
+    public static string Emit(CvwDocument document, ViewInfo info, PartialCatalogue? partials = null) =>
+        new ViewEmitter(document, info, partials ?? PartialCatalogue.Empty).EmitView();
 
     private string EmitView()
     {
@@ -101,7 +105,8 @@ internal sealed class ViewEmitter
         Line("");
         Line($"namespace {_info.Namespace}");
         Line("{");
-        Line($"    public partial class {_info.ClassName} : global::ConsoleMVC.Mvc.ConsoleView<{ModelType()}>");
+        var baseClass = _info.IsPartial ? "ConsolePartialView" : "ConsoleView";
+        Line($"    public partial class {_info.ClassName} : global::ConsoleMVC.Mvc.{baseClass}<{ModelType()}>");
         Line("    {");
 
         foreach (var inject in _document.Injects)
@@ -109,7 +114,9 @@ internal sealed class ViewEmitter
 
         // Map the method to the first line so "not all code paths return a value" points at the .cvw file
         Map(_document.Model?.Span.Start ?? 0, includeColumn: false);
-        Line($"        public override global::ConsoleMVC.Mvc.NavigationResult Render({ModelType()} Model)");
+        Line(_info.IsPartial
+            ? $"        public override void Render({ModelType()} Model)"
+            : $"        public override global::ConsoleMVC.Mvc.NavigationResult Render({ModelType()} Model)");
         Hidden();
         Line("        {");
 
@@ -189,6 +196,12 @@ internal sealed class ViewEmitter
 
     private void EmitElement(ElementNode element, string? parentVariable)
     {
+        if (element.Schema.Tag == MarkupSchema.PartialTag)
+        {
+            EmitPartial(element);
+            return;
+        }
+
         var variable = NewVariable();
 
         Line("{");
@@ -214,6 +227,23 @@ internal sealed class ViewEmitter
         Line(parentVariable is null
             ? string.Format(CultureInfo.InvariantCulture, element.Schema.TopLevelStatement, variable)
             : $"{parentVariable}.Add({variable});");
+        Line("}");
+    }
+
+    /// <summary>
+    /// Emits a <c>&lt;partial&gt;</c> as a direct, type-checked call: create the partial, let it share this view's
+    /// state, then call its <c>Render</c> with the model (or <c>default!</c> when none is given).
+    /// </summary>
+    private void EmitPartial(ElementNode element)
+    {
+        _partials.TryGet(PartialChecker.LiteralName(element)!, out var partial);
+        var model = element.Attributes.FirstOrDefault(a => a.Schema.Property == "Model");
+        var variable = NewVariable();
+
+        Line("{");
+        Line($"var {variable} = new global::{partial.FullClassName}();");
+        Line($"this.PreparePartial({variable});");
+        _output.Append(variable).Append(".Render(").Append(model is null ? "default!" : AttributeValue(model)).Append(");\n");
         Line("}");
     }
 

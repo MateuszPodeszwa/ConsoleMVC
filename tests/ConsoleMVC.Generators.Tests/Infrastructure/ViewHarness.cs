@@ -130,6 +130,33 @@ public static class ViewHarness
     }
 
     /// <summary>
+    /// Generates and compiles several <c>.cvw</c> files (for example a view and the partials it uses), then renders
+    /// the view at <see cref="DefaultPath"/>.
+    /// </summary>
+    /// <param name="files">The files as (path, contents) pairs; one must be at <see cref="DefaultPath"/>.</param>
+    /// <param name="modelExpression">A C# expression creating the view's model.</param>
+    /// <param name="extraSource">Additional C#, such as model classes in namespace <c>TestApp</c>.</param>
+    /// <param name="input">Lines of user input.</param>
+    /// <returns>The plain-text output.</returns>
+    public static string RenderFiles(IEnumerable<(string Path, string Text)> files, string modelExpression = "null",
+        string extraSource = "", params string[] input)
+    {
+        var factory = "namespace TestApp { public static class ModelFactory { public static object? Create() => " + modelExpression + "; } }";
+        var result = GenerateFiles(files, extraSource + "\n" + factory);
+
+        if (result.Assembly is null || result.Errors.Any())
+            Assert.Fail("Views failed to compile:\n" + result.Describe());
+
+        var view = (ConsoleView)Activator.CreateInstance(result.Assembly!.GetType("TestApp.Views.Home.IndexView", throwOnError: true)!)!;
+        var writer = new StringWriter { NewLine = "\n" };
+        view.Renderer = new MarkupRenderer(new PlainTextRenderTarget(writer), () => 40);
+        view.Input = new ScriptedInput(input);
+
+        view.RenderInternal(result.Assembly.GetType("TestApp.ModelFactory")!.GetMethod("Create")!.Invoke(null, null));
+        return writer.ToString();
+    }
+
+    /// <summary>
     /// Generates, compiles and renders a view with <c>@inject</c> properties filled from a service provider, the way
     /// the application loop does.
     /// </summary>

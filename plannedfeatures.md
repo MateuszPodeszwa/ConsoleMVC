@@ -85,7 +85,7 @@ Right now, `.cvw` files are plain C# code. You write `Console.WriteLine()` calls
 ### Long-term
 - [ ] C-View Markup v1.0 — full markup language with layout system, theming, and responsive terminal sizing
 - [ ] IDE plugin support for markup — syntax highlighting, completion, and preview for C-View Markup in Rider and VS Code (the Rider plugin currently treats markup as plain text)
-- [ ] Component system — reusable markup components (`<partial name="Header" />`)
+- [x] Component system — reusable markup components (`<partial name="Header" />`) — **shipped in 1.7.0** as partial views in `Views/Shared`, see the [design](docs/design/partial-views.md)
 - [ ] Live reload — detect `.cvw` changes and hot-reload the running console app during development
 
 ---

@@ -2,6 +2,25 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.7.0]
+
+### Added
+
+- **Partial views** ([design](docs/design/partial-views.md), [guide](docs/guides/docs/c-view-markup.md)):
+  `.cvw` files in `Views/Shared` compile to `ConsolePartialView<TModel>` and are rendered with
+  `<partial name="…" model="@…" />`. The name and model type are checked at build time; a partial shares the view's
+  `Form`, `ModelState`, `ViewData`, renderer and input, and receives its `@inject` services.
+- `ConsoleViewBase` (shared by views and partials) and `ConsoleViewBase.PreparePartial`.
+- Diagnostics CVW114 (unknown partial), CVW115 (partial needs a model) and CVW116 (partial renders itself);
+  CVW103 now also reports a `<menu>` in a partial view.
+- The template's home and about pages share a `PageHeader` partial; the feature tour lists `<errors>` and `<partial>`.
+
+### Changed
+
+- `.cvw` files in `Views/Shared` are partial views rather than routable views, and need no `View` suffix.
+- `ConsoleView`'s view data, model state, renderer, input and form members moved to the new base class
+  `ConsoleViewBase` (source compatible).
+
 ## [1.6.0]
 
 ### Added

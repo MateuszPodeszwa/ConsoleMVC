@@ -83,6 +83,26 @@ public class DependencyInjectionTests
     }
 
     [Fact]
+    public void Run_PartialViewsReceiveInjectedServices()
+    {
+        using var app = CreateBuilder("WithPartial").Build();
+
+        app.Run();
+
+        Assert.Equal(["partial:Hello, Ada"], DiScript.Log);
+    }
+
+    [Fact]
+    public void PartialRenderedOutsideTheApplication_FailsClearlyWhenItNeedsServices()
+    {
+        var view = new DiApp.Views.Greeting.WithPartialView();
+
+        var error = Assert.Throws<InvalidOperationException>(() => view.Render(new object()));
+
+        Assert.Contains(nameof(IGreeter), error.Message);
+    }
+
+    [Fact]
     public void Run_ViewInjectingAnUnregisteredService_ThrowsWithAClearMessage()
     {
         using var app = CreateBuilder("Missing").Build();

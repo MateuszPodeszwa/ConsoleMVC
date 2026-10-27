@@ -33,6 +33,15 @@ internal sealed class ViewInfo
     /// <summary>Gets the generated class name (the file name without extension).</summary>
     public string ClassName { get; }
 
+    /// <summary>The folder whose views are partials (<c>Views/Shared</c>).</summary>
+    public const string SharedFolder = "Shared";
+
+    /// <summary>
+    /// Gets a value indicating whether this file is a partial view (<c>Views/Shared/{Name}.cvw</c>), compiled to a
+    /// <c>ConsolePartialView&lt;TModel&gt;</c> rendered with <c>&lt;partial name="{Name}" /&gt;</c>.
+    /// </summary>
+    public bool IsPartial => ControllerName == SharedFolder;
+
     /// <summary>Gets the namespace of the generated class: <c>{RootNamespace}.Views.{Controller}</c>.</summary>
     public string Namespace { get; }
 

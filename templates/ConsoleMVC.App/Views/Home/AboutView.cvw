@@ -1,9 +1,6 @@
 @model ConsoleMVC.App.Models.HomeViewModel
 
-<box title="@Model.Title" border="rounded" color="cyan" padding="2">
-    <text>@Model.Message</text>
-</box>
-<br />
+<partial name="PageHeader" model="@Model" />
 
 <menu key-color="cyan">
     <option key="1" nav="Index">Back to Home</option>

@@ -75,6 +75,8 @@ namespace ConsoleMVC.Tests.Mvc.DiApp.Controllers
 
         public ActionResult Missing() => View();
 
+        public ActionResult WithPartial() => View();
+
         public ActionResult Bounce() => RedirectToAction("Index");
 
         public void Dispose() => DiScript.Disposed.Add(nameof(GreetingController));
@@ -102,6 +104,18 @@ namespace ConsoleMVC.Tests.Mvc.DiApp.Views.Greeting
         }
     }
 
+    /// <summary>A view that renders <see cref="DiApp.Views.Shared.Signature"/> the way <c>&lt;partial&gt;</c> generates it.</summary>
+    public sealed class WithPartialView : ConsoleView<object>
+    {
+        public override NavigationResult Render(object Model)
+        {
+            var partial = new DiApp.Views.Shared.Signature();
+            PreparePartial(partial);
+            partial.Render("Ada");
+            return NavigationResult.Quit();
+        }
+    }
+
     /// <summary>A view injecting a service nobody registered.</summary>
     public sealed class MissingView : ConsoleView<object>
     {
@@ -109,5 +123,19 @@ namespace ConsoleMVC.Tests.Mvc.DiApp.Views.Greeting
         public IMissingService Service { get; private set; } = default!;
 
         public override NavigationResult Render(object Model) => NavigationResult.Quit();
+    }
+}
+
+namespace ConsoleMVC.Tests.Mvc.DiApp.Views.Shared
+{
+    using ConsoleMVC.Tests.Mvc.DiApp;
+
+    /// <summary>A partial view with an injected service, as <c>@inject</c> generates it.</summary>
+    public sealed class Signature : ConsolePartialView<string>
+    {
+        [Inject]
+        public IGreeter Greeter { get; private set; } = default!;
+
+        public override void Render(string Model) => DiScript.Log.Add("partial:" + Greeter.Greet(Model));
     }
 }

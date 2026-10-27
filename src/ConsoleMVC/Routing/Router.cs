@@ -164,6 +164,7 @@ public class Router
         ArgumentNullException.ThrowIfNull(services);
 
         var view = (ConsoleView)ActivatorUtilities.CreateInstance(services, ViewType(controllerName, actionName));
+        view.Services = services; // for the @inject properties of partials it renders
         ServiceInjector.InjectProperties(view, services);
         return view;
     }

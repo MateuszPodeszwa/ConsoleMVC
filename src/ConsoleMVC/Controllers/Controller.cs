@@ -30,7 +30,7 @@ public abstract class Controller
 
     /// <summary>
     /// Gets the <see cref="ViewDataDictionary"/> used to pass supplementary key-value
-    /// data to views. Data placed here is available in the view via <see cref="ConsoleView.ViewData"/>.
+    /// data to views. Data placed here is available in the view via <see cref="ConsoleViewBase.ViewData"/>.
     /// </summary>
     /// <value>A dictionary of loosely-typed data items accessible from the rendered view.</value>
     public ViewDataDictionary ViewData { get; } = new();
