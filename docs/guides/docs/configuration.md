@@ -14,7 +14,7 @@ builder.Input = ConsoleTextInput.Instance;                       // default: the
 builder.Theme.Set("brand", new ThemeStyle { Bold = true });      // default: Theme.CreateDefault()
 builder.Services.AddSingleton<IClock, SystemClock>();            // your services
 builder.Services.Configure<ShopOptions>(builder.Configuration.GetSection("Shop"));
-builder.Logging.AddDebug();                                       // logs, not on the screen
+builder.Logging.AddFile("logs/app.log");                          // logs, not on the screen
 
 using var app = builder.Build();
 app.Use(async (context, next) => await next(context));           // middleware

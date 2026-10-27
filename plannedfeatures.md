@@ -24,7 +24,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 - [Choice inputs](docs/design/choice-inputs.md): `<select>` (also `multiple`), `<radio>` and `<checkbox>`, answered with the arrow keys in a terminal and typed otherwise; [number and date fields and filtered lists](docs/design/richer-inputs.md)
 - [Form validation](docs/design/form-validation.md) with DataAnnotations and `ModelState`
 - [Dependency injection](docs/guides/docs/dependency-injection.md) with `builder.Services` and `@inject`
-- [Configuration and logging](docs/guides/docs/hosting.md): `appsettings.json`, environment variables, the command line, options and `ILogger<T>`
+- [Configuration and logging](docs/guides/docs/hosting.md): `appsettings.json`, environment variables, the command line, options and `ILogger<T>`, with a [rolling file logger](docs/design/file-logging.md)
 - [Async actions and middleware](docs/guides/docs/async-and-middleware.md)
 - [Live reload](docs/guides/docs/getting-started.md#live-reload) with `dotnet watch`
 - [Testing](docs/guides/docs/testing.md): the `ConsoleMVC.Testing` package with a test host, scripted lines and keys, and snapshots; `dotnet new consolemvc --tests` starts with a test project
@@ -40,7 +40,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 ### Medium-term
 
-- [ ] **File logging**: a built-in rolling file logger (`builder.Logging.AddFile("logs/app.log")`), since the console cannot show logs
 
 - [ ] **Full-screen mode**: use the alternate screen buffer, redraw when the terminal is resized, and scroll long content (`<scroll>`, a pager for long lists)
 - [ ] **Live elements**: `<progress>` and `<spinner>` that update while an async action runs, and views that refresh on a timer

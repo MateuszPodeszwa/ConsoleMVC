@@ -2,6 +2,17 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.22.0]
+
+### Added
+
+- **File logging** ([design](docs/design/file-logging.md), [guide](docs/guides/docs/hosting.md#logging)):
+  `builder.Logging.AddFile("logs/app.log")` (or `AddFile(options => …)`, or the `Logging:File` section) writes
+  entries on a background task, rolls the file over by size, keeps `RetainedFileCount` old files, indents
+  continuation lines and drops control characters so logged values cannot forge entries, and never blocks a screen.
+  `FileLoggerProvider` (alias `File`) and `FileLoggerOptions`.
+- The template's `Program.cs` logs to `logs/app.log`.
+
 ## [1.21.0]
 
 ### Added
