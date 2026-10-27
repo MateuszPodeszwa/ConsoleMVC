@@ -1,4 +1,4 @@
-# Design: ConsoleMVC 1.7 — Partial views
+# Design: ConsoleMVC 1.7: Partial views
 
 | | |
 |---|---|
@@ -10,7 +10,7 @@
 
 ## 1. Goals
 
-1. Reuse markup across views — headers, footers, cards, form fields — written once as a `.cvw` file.
+1. Reuse markup across views (headers, footers, cards, form fields) written once as a `.cvw` file.
 2. Check every use **at build time**: the partial exists, it gets a model when it needs one, and the model has the
    right type (the C# compiler checks a direct call, so a wrong type is an error in the view that passes it).
 3. A partial shares the including view's renderer, input, view data, model state and form, so `<input>` inside a

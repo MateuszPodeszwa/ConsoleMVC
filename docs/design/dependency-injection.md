@@ -1,4 +1,4 @@
-# Design: ConsoleMVC 1.5 — Dependency injection
+# Design: ConsoleMVC 1.5: Dependency injection
 
 | | |
 |---|---|
@@ -10,7 +10,7 @@
 
 ## 1. Goals
 
-1. Register services with the standard `Microsoft.Extensions.DependencyInjection` container — the same
+1. Register services with the standard `Microsoft.Extensions.DependencyInjection` container, with the same
    `IServiceCollection` API as ASP.NET Core (`AddSingleton`, `AddScoped`, `AddTransient`).
 2. Inject services into **controllers** through their constructors.
 3. Inject services into **views** with an `@inject Type Name` directive, as in Razor.
@@ -38,7 +38,7 @@ public class HomeController(IGreetingService greetings) : Controller
 ```
 @model string
 @inject IGreetingService Greetings
-<text>@Model — @Greetings.Tagline</text>
+<text>@Model - @Greetings.Tagline</text>
 ```
 
 ---

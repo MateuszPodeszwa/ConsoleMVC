@@ -1,6 +1,6 @@
 # C-View Markup
 
-C-View Markup is a small markup language for describing console screens inside `.cvw` views — text, boxes, tables, form inputs and menus. It compiles to plain C# at build time — there is no runtime template parsing — and it mixes freely with ordinary C# code.
+C-View Markup is a small markup language for describing console screens inside `.cvw` views: text, boxes, tables, form inputs and menus. It compiles to plain C# at build time, so there is no runtime template parsing, and it mixes freely with ordinary C# code.
 
 ```
 @model MyApp.Models.DashboardViewModel
@@ -32,7 +32,7 @@ Press Enter to continue...
 ```
 
 !!! note "Backwards compatible"
-    Views written in plain C# keep working unchanged. Markup is only recognised where a C# statement could begin — at the start of the body or after `;`, `{`, `}` or `:` — when `<` is directly followed by a known tag name. C# can never start a statement with `<`, so comparisons and generics such as `a < b` or `List<string>` are never mistaken for markup.
+    Views written in plain C# keep working unchanged. Markup is only recognised where a C# statement could begin, at the start of the body or after `;`, `{`, `}` or `:`, when `<` is directly followed by a known tag name. C# can never start a statement with `<`, so comparisons and generics such as `a < b` or `List<string>` are never mistaken for markup.
 
 ## How markup and code interact
 
@@ -207,7 +207,7 @@ return NavigationResult.ToAction("Result", Form);
 
 | Attribute | Values | Default |
 |---|---|---|
-| `name` | **required** — the key in `Form` (matched case-insensitively when binding) | |
+| `name` | **required**: the key in `Form` (matched case-insensitively when binding) | |
 | `label` | the prompt written before reading | none |
 | `default` | used when the user enters nothing | empty |
 | `required` | flag: ask again until a value is entered | off |
@@ -218,7 +218,7 @@ Values are trimmed. `Form` is also available to ordinary C# in the view, for exa
 
 ### `<menu>` and `<option>`
 
-Shows keyed choices, reads the user's choice, repeats until it is valid, and navigates. A menu replaces the usual "write the options, `Console.ReadLine()`, `switch`" code, so it **ends the view** — no `return` is needed.
+Shows keyed choices, reads the user's choice, repeats until it is valid, and navigates. A menu replaces the usual "write the options, `Console.ReadLine()`, `switch`" code, so it **ends the view**: no `return` is needed.
 
 ```
 <menu key-color="cyan">
@@ -240,7 +240,7 @@ Select an option: _
 | `<menu>` | `prompt` | the prompt text | `Select an option: ` |
 | | `error` | message after an invalid choice | `Invalid choice, please try again.` |
 | | `key-color` / `key-colour` | colour of the `[key]` labels | terminal default |
-| `<option>` | `key` | **required** — what the user types (case-insensitive) | |
+| `<option>` | `key` | **required**: what the user types (case-insensitive) | |
 | | `nav` | `Controller/Action`, or `Action` on the current controller | |
 | | `quit` | flag: quit the application | |
 | | `post` | flag: post the view's `Form` with the navigation | off |
@@ -249,7 +249,7 @@ Select an option: _
 Each option needs exactly one of `nav` or `quit`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
 
 !!! note "Top level only"
-    `<input>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view — they may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
+    `<input>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
 
 ### `<errors />`
 
@@ -387,7 +387,7 @@ box.Add(text);
 MarkupRenderer.CreateForConsole().Render(box);
 ```
 
-To change how an application renders — for example to write plain text at a fixed width in tests — set `MvcApplicationBuilder.Renderer`. To drive it with scripted input, set `MvcApplicationBuilder.Input` to your own `ITextInput`:
+To change how an application renders (for example to write plain text at a fixed width in tests) set `MvcApplicationBuilder.Renderer`. To drive it with scripted input, set `MvcApplicationBuilder.Input` to your own `ITextInput`:
 
 ```csharp
 builder.Renderer = new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60);

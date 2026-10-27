@@ -29,7 +29,7 @@ Thank you for your interest in contributing to ConsoleMVC! This guide will help 
 
 #### PR Guidelines
 
-- Keep changes focused and atomic — one feature or fix per PR
+- Keep changes focused and atomic, one feature or fix per PR
 - Follow existing code style and conventions
 - Include XML documentation for any public APIs
 - Update the README if your change affects user-facing behavior
@@ -48,11 +48,11 @@ Thank you for your interest in contributing to ConsoleMVC! This guide will help 
 
 ## Project Structure
 
-- `src/ConsoleMVC/` — Framework library (NuGet package), including the `Rendering/` engine
-- `src/ConsoleMVC.Generators/` — Source generator that compiles `.cvw` views and C-View Markup
-- `tests/` — `ConsoleMVC.Tests` (framework and rendering) and `ConsoleMVC.Generators.Tests` (generator end-to-end)
-- `templates/ConsoleMVC.App/` — Project template (NuGet template package)
-- `docs/design/` — Design documents with UML diagrams and pseudocode
+- `src/ConsoleMVC/`: Framework library (NuGet package), including the `Rendering/` engine
+- `src/ConsoleMVC.Generators/`: Source generator that compiles `.cvw` views and C-View Markup
+- `tests/`: `ConsoleMVC.Tests` (framework and rendering) and `ConsoleMVC.Generators.Tests` (generator end-to-end)
+- `templates/ConsoleMVC.App/`: Project template (NuGet template package)
+- `docs/design/`: Design documents with UML diagrams and pseudocode
 
 ## Code of Conduct
 

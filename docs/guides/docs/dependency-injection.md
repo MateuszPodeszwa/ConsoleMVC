@@ -60,7 +60,7 @@ A misspelt type is reported by the compiler at the directive's line and column.
 
 ## Scopes and lifetimes
 
-Each navigation cycle — one action and the view it renders — runs in its own scope:
+Each navigation cycle (one action and the view it renders) runs in its own scope:
 
 ```
 action Index ─┐            scope 1: controller and view share scoped services

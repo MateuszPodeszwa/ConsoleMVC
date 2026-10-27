@@ -1,4 +1,4 @@
-# Design: ConsoleMVC 1.4 — Form validation
+# Design: ConsoleMVC 1.4: Form validation
 
 | | |
 |---|---|
@@ -12,7 +12,7 @@
 
 1. Validate posted form data **before the action runs**, using the standard
    `System.ComponentModel.DataAnnotations` attributes (`[Required]`, `[StringLength]`, `[Range]`, `[EmailAddress]`,
-   `[RegularExpression]`, …) — the same attributes and the same `ModelState.IsValid` pattern as ASP.NET Core MVC.
+   `[RegularExpression]`, …), the same attributes and the same `ModelState.IsValid` pattern as ASP.NET Core MVC.
 2. Report values that cannot be converted (e.g. `"abc"` for an `int`) instead of silently using the default.
 3. Let views show the errors with one markup element: `<errors />` (all) or `<errors for="Name" />` (one field).
 4. Stay backwards compatible: actions that never look at `ModelState` behave exactly as before.
@@ -92,7 +92,7 @@ classDiagram
 ```
 
 `ValidationErrorsElement` lives in `ConsoleMVC.Rendering` and depends only on
-`IReadOnlyDictionary<string, IReadOnlyList<string>>`, which `ModelStateDictionary` implements — the rendering
+`IReadOnlyDictionary<string, IReadOnlyList<string>>`, which `ModelStateDictionary` implements, so the rendering
 engine stays independent of MVC.
 
 ---
@@ -113,7 +113,7 @@ sequenceDiagram
         A->>M: Validate(action, arguments, modelState)
         M-->>A: attribute errors in modelState
     end
-    A->>C: invoke(arguments) — ModelState available
+    A->>C: invoke(arguments) - ModelState available
     C-->>A: View("Index", model) when !ModelState.IsValid
     A->>A: view.ModelState = result.ModelState
 ```
@@ -128,7 +128,7 @@ BindParameters(method, formData, state):
         simple type:  raw present and not convertible → state.Add(p.Name, "The value 'raw' is not valid for p.Name.")
                       value ← converted, or declared default
         complex type: create instance (parameterless constructor, else the public constructor with only
-                      simple parameters — positional records — bound by name; neither → throw)
+                      simple parameters - positional records - bound by name; neither → throw)
                       for each other simple property with a key present:
                       not convertible → state.Add(property.Name, "… not valid for {DisplayName}."); keep the initialiser
 

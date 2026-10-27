@@ -4,7 +4,7 @@
 
 The goal of ConsoleMVC is to make writing console applications **easy, simple, and fun**.
 
-Console applications deserve the same architectural respect as web applications. A console window isn't that different from a web page — think of it as a **2D version of a 3D web page**. On a web page, you can jump between sections, click links, scroll freely. In a console, everything flows top to bottom, one line after another. But the core principle is the same: **each screen has one responsibility** — collect input and render output.
+Console applications deserve the same architectural respect as web applications. A console window isn't that different from a web page, think of it as a **2D version of a 3D web page**. On a web page, you can jump between sections, click links, scroll freely. In a console, everything flows top to bottom, one line after another. But the core principle is the same: **each screen has one responsibility**: collect input and render output.
 
 That's a SOLID foundation (pun intended). The Single Responsibility Principle applies beautifully here: a console "page" should do one thing well. Collect what it needs, show what it needs, and hand control to the next page. That's exactly what ConsoleMVC already does with Controllers, Views, and Models.
 
@@ -12,81 +12,50 @@ But we can take this much further.
 
 ---
 
-## The Big Idea: C-View Markup (Console View Markup)
+## Where ConsoleMVC Is Today
 
-Right now, `.cvw` files are plain C# code. You write `Console.WriteLine()` calls, manually format text, and handle all the layout yourself. It works, but it's not *fun*. Imagine instead:
+The original big idea, **C-View Markup**, is real: `.cvw` views describe screens with `<box>`, `<text>`, `<table>`, `<columns>`, `<input>` and `<menu>`, compile to plain C# at build time, and are checked by the compiler. Around it, ConsoleMVC now has:
 
-```
-@model MyApp.Models.DashboardViewModel
+- [C-View Markup 1.0](docs/guides/docs/c-view-markup.md): text, boxes, tables, column layouts that stack on narrow terminals, themes with `class="…"`, inputs, menus and validation messages
+- [Partial views](docs/design/partial-views.md): reusable markup in `Views/Shared`, checked at build time
+- [Form validation](docs/design/form-validation.md) with DataAnnotations and `ModelState`
+- [Dependency injection](docs/guides/docs/dependency-injection.md) with `builder.Services` and `@inject`
+- [Async actions and middleware](docs/guides/docs/async-and-middleware.md)
+- [Live reload](docs/guides/docs/getting-started.md#live-reload) with `dotnet watch`
 
-<box title="Dashboard" width="60" border="double">
-    <text align="center" color="cyan">Welcome, @Model.UserName!</text>
-    <separator />
-    <table>
-        <row>
-            <cell width="30">Notifications</cell>
-            <cell>@Model.NotificationCount</cell>
-        </row>
-        <row>
-            <cell width="30">Last login</cell>
-            <cell>@Model.LastLogin.ToString("g")</cell>
-        </row>
-    </table>
-</box>
-
-<br />
-
-<menu prompt="Select an option:">
-    <option key="1" nav="Home/Index">Home</option>
-    <option key="2" nav="Settings/Index">Settings</option>
-    <option key="q" quit="true">Exit</option>
-</menu>
-```
-
-**C-View Markup** would be a markup language purpose-built for console UIs. Not HTML — something new, designed specifically for the constraints and strengths of terminal output.
-
-### Key ideas:
-
-- **HTML-like syntax** with tags like `<box>`, `<table>`, `<text>`, `<menu>`, `<input>` — but semantically meaningful for consoles, not browsers
-- **`@` expressions** borrowed from Razor — `@Model.Name`, `@if`, `@foreach` — for embedding C# logic directly in the markup
-- **Style attributes** like `width`, `color`, `align`, `border` — controlling how elements render in the terminal
-- **Built-in form elements** — `<input>`, `<select>`, `<menu>` — that handle user input collection and automatically generate form data for posting to controllers
-- **Layout primitives** — boxes, separators, tables, grids — making it trivial to create structured console output that would normally require dozens of `Console.WriteLine()` calls
-
-### What it is NOT:
-
-- It is **not HTML**. Browsers won't render it. It's a domain-specific markup for terminals only.
-- It is **not a wrapper around an existing library**. While libraries like Spectre.Console do impressive work, I want to build something from the ground up that's tightly integrated with the MVC framework and the source generator pipeline. Something that feels native, not bolted on.
-- It is **not a templating engine**. It compiles down to real C# code at build time, just like current `.cvw` files. The source generator would parse the markup and emit optimised rendering code.
-
-### How it would work:
-
-1. You write `.cvw` files using the new markup syntax (plain C# would still be supported for backwards compatibility)
-2. The source generator parses the markup at build time
-3. It emits a `ConsoleView<TModel>` subclass with a `Render()` method that contains the compiled rendering logic
-4. At runtime, the rendering engine draws boxes, tables, and text using ANSI escape sequences or platform-specific console APIs
+The ideas below are what comes next. They are proposals, not promises: if one matters to you, say so in an issue.
 
 ---
 
 ## Roadmap (Rough Order)
 
 ### Near-term
-- [x] Dependency injection support — register and resolve services in controllers — **shipped in 1.5.0**, with `@inject` in views and one scope per screen, see the [guide](docs/guides/docs/dependency-injection.md) and [design](docs/design/dependency-injection.md)
-- [x] Middleware pipeline — before/after action hooks for cross-cutting concerns — **shipped in 1.6.0**, see the [guide](docs/guides/docs/async-and-middleware.md)
-- [x] Async action support — `Task<ActionResult>` return types — **shipped in 1.6.0**, with `RunAsync` and `CancellationToken` parameters
-- [x] Form validation framework — attributes like `[Required]`, `[MaxLength]` on form models, with automatic validation before the action executes — **shipped in 1.4.0**, see the [design](docs/design/form-validation.md)
+
+- [ ] **Layout views**: a shared frame for every screen (`@layout MainLayout` with a `<body />` placeholder), like `_Layout.cshtml` in ASP.NET Core
+- [ ] **Navigation history**: `NavigationResult.Back()` and an automatic "back" key, plus breadcrumbs (`<breadcrumbs />`) built from the history
+- [ ] **Route values in navigation**: `nav="Orders/Details?id=@order.Id"` binds `id` to the action, without a form
+- [ ] **More inputs**: `<select>`, `<checkbox>` and `<radio>`, with arrow-key selection where the terminal supports it
+- [ ] **Hosting integration**: `builder.Configuration` (appsettings.json, environment variables) and `builder.Logging` from the .NET generic host
+- [ ] **Testing package**: `ConsoleMVC.Testing` with a test host that drives an application with scripted input and asserts on the rendered screens (snapshot testing)
+- [ ] **Compile-time route checks**: report a `nav="Orders/Detials"` typo as a build error, with a code fix that creates a missing view
 
 ### Medium-term
-- [x] C-View Markup v0.1 — basic tags (`<text>`, `<box>`, `<separator>`, `<br>`) — **shipped in 1.2.0**, see the [guide](docs/guides/docs/c-view-markup.md) and [design](docs/design/c-view-markup.md)
-- [x] Console rendering engine — ANSI-based rendering with colour, alignment, and borders — **shipped in 1.2.0**
-- [x] `<table>` support — data-driven tables with column widths and alignment — **shipped in 1.3.0**
-- [x] `<menu>` and `<input>` tags — declarative input collection that auto-generates form data — **shipped in 1.3.0**, see the [design](docs/design/c-view-markup-0.2.md)
+
+- [ ] **Full-screen mode**: use the alternate screen buffer, redraw when the terminal is resized, and scroll long content (`<scroll>`, a pager for long lists)
+- [ ] **Live elements**: `<progress>` and `<spinner>` that update while an async action runs, and views that refresh on a timer
+- [ ] **Charts**: `<bar-chart>` and `<sparkline>` for dashboards
+- [ ] **`<markdown>`**: render Markdown (headings, lists, emphasis, code) inside a view
+- [ ] **Keyboard shortcuts**: application-wide keys such as F1 for help or Esc for back (`app.MapKey(...)`)
+- [ ] **Localisation**: resource-based strings in views and validation messages, with culture-aware formatting where wanted
+- [ ] **Accessibility**: a screen-reader friendly mode without box drawing, and a high-contrast theme
 
 ### Long-term
-- [x] C-View Markup v1.0 — full markup language with layout system, theming, and responsive terminal sizing — **shipped in 1.9.0**, see the [design](docs/design/c-view-markup-1.0.md)
-- [ ] IDE plugin support for markup — syntax highlighting, completion, and preview for C-View Markup in Rider and VS Code (the Rider plugin currently treats markup as plain text)
-- [x] Component system — reusable markup components (`<partial name="Header" />`) — **shipped in 1.7.0** as partial views in `Views/Shared`, see the [design](docs/design/partial-views.md)
-- [x] Live reload — detect `.cvw` changes and hot-reload the running console app during development — **shipped in 1.8.0** with `dotnet watch`
+
+- [ ] **IDE support for markup**: syntax highlighting, completion and a live preview for C-View Markup in Rider and VS Code (the Rider plugin currently treats markup as plain text)
+- [ ] **Native AOT and trimming**: a generated route table instead of reflection, for instant start-up and single-file tools
+- [ ] **Remote sessions**: serve a ConsoleMVC application over SSH or a web terminal, one session per user
+- [ ] **Areas and modules**: group large applications into areas, and load feature modules from other assemblies
+- [ ] **Mouse support**: click menu options and buttons in terminals that report mouse events
 
 ---
 
@@ -96,9 +65,9 @@ I'm a student building this project because I believe console apps deserve bette
 
 **Here's how you can help:**
 
-- **Open an issue** on [GitHub](https://github.com/MateuszPodeszwa/ConsoleMVC/issues) — share ideas, point out things I'm missing, suggest a better approach. I read every issue.
-- **Reach out by email** — if you have thoughts that don't fit in an issue, or just want to chat about the project direction, feel free to email me.
-- **Join the Patreon** (free tier) — even as a free member, you get a voice in which features get prioritised. This isn't about money, it's about building a community around the project.
-- **Contribute** — PRs are welcome. Check out [CONTRIBUTING.md](.github/CONTRIBUTING.md) for guidelines.
+- **Open an issue** on [GitHub](https://github.com/MateuszPodeszwa/ConsoleMVC/issues), share ideas, point out things I'm missing, suggest a better approach. I read every issue.
+- **Reach out by email**: if you have thoughts that don't fit in an issue, or just want to chat about the project direction, feel free to email me.
+- **Join the Patreon** (free tier), even as a free member, you get a voice in which features get prioritised. This isn't about money, it's about building a community around the project.
+- **Contribute**: PRs are welcome. Check out [CONTRIBUTING.md](.github/CONTRIBUTING.md) for guidelines.
 
-Whether you're a seasoned framework author or another student who thinks this is cool — I want to hear from you. The best ideas come from collaboration, and I'd rather build something great with the community than something mediocre alone.
+Whether you're a seasoned framework author or another student who thinks this is cool, I want to hear from you. The best ideas come from collaboration, and I'd rather build something great with the community than something mediocre alone.

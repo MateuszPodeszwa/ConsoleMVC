@@ -1,4 +1,4 @@
-# Design: ConsoleMVC 1.6 — Async actions and middleware
+# Design: ConsoleMVC 1.6: Async actions and middleware
 
 | | |
 |---|---|
@@ -14,7 +14,7 @@
    is an `ActionResult` (e.g. `Task<ViewResult>`).
 2. `app.RunAsync(cancellationToken)`; `app.Run()` keeps working and simply waits for `RunAsync`.
 3. Pass the run's `CancellationToken` to actions that declare one.
-4. Cross-cutting concerns — logging, timing, authorisation, error screens — as **middleware** around every action,
+4. Cross-cutting concerns (logging, timing, authorisation, error screens) as **middleware** around every action,
    with the same shape as ASP.NET Core: `app.Use(async (context, next) => { …; await next(context); … })`.
 
 ```csharp
@@ -144,4 +144,4 @@ RunAsync(token):
 ```
 
 `Router` treats a method as an action when it returns `ActionResult`, or `Task<T>`/`ValueTask<T>` of an
-`ActionResult` type. A plain `Task` (no result) is not an action — there would be nothing to render.
+`ActionResult` type. A plain `Task` (no result) is not an action: there would be nothing to render.

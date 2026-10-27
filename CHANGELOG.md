@@ -51,7 +51,7 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   `ActionResult` type; `CancellationToken` parameters receive the run's token.
 - `MvcApplication.RunAsync(CancellationToken)`; `Run()` waits for it.
 - **Middleware**: `MvcApplication.Use(...)` and `UseMiddleware<T>()` with `ActionContext`, `ActionDelegate` and
-  `IActionMiddleware` — wrap, replace or short-circuit actions and handle their exceptions.
+  `IActionMiddleware`: wrap, replace or short-circuit actions and handle their exceptions.
 - `RouteContext.ToString()` returns `Controller/Action`.
 - The template's `Program.cs` uses `RunAsync` and a middleware that shows the current page in the terminal title.
 
@@ -81,7 +81,7 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 ### Added
 
 - **Form validation** ([design](docs/design/form-validation.md)): posted form data is validated with the standard
-  DataAnnotations attributes before the action runs — on model properties (including `IValidatableObject`) and on
+  DataAnnotations attributes before the action runs, on model properties (including `IValidatableObject`) and on
   simple action parameters.
 - `ModelStateDictionary` (`Controller.ModelState`, `ConsoleView.ModelState`) with `IsValid`, `AddModelError`,
   `ErrorsFor` and `Clear`.
@@ -114,11 +114,11 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 ### Added
 
 - **C-View Markup v0.2** ([design](docs/design/c-view-markup-0.2.md), [guide](docs/guides/docs/c-view-markup.md)):
-  - `<table>`, `<row>` and `<cell>` — columns sized to the content; the widest columns shrink and wrap when the
+  - `<table>`, `<row>` and `<cell>`: columns sized to the content; the widest columns shrink and wrap when the
     terminal is narrow; header rows in bold with a separator.
-  - `<input>` — reads a value into the view's new `Form` dictionary, with `label`, `default`, `required` and
+  - `<input>`: reads a value into the view's new `Form` dictionary, with `label`, `default`, `required` and
     `masked` (password) options.
-  - `<menu>` and `<option>` — shows keyed choices, re-prompts on invalid input and navigates (`nav`, `quit`, `post`).
+  - `<menu>` and `<option>`: shows keyed choices, re-prompts on invalid input and navigates (`nav`, `quit`, `post`).
     A menu ends the view, so no `return` is needed; at end of input it quits instead of waiting forever.
 - `ConsoleView.Form`, `ConsoleView.Input`, `ReadInput()` and `RunMenu()`.
 - `ITextInput` and `ConsoleTextInput` (masked reading never echoes input); `MvcApplicationBuilder.Input` for
@@ -139,13 +139,13 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 
 ### Added
 
-- **C-View Markup v0.1** — `<text>`, `<box>`, `<separator>` and `<br>` elements in `.cvw` views, with `@expressions`,
+- **C-View Markup v0.1**: `<text>`, `<box>`, `<separator>` and `<br>` elements in `.cvw` views, with `@expressions`,
   `@(explicit expressions)`, `@{ code blocks }`, `@if`/`@foreach`/`@for`/`@while`/`@switch`/`@do`/`@try`, comments and
   character entities. Plain-C# views are unaffected. See [the guide](docs/guides/docs/c-view-markup.md).
-- **Rendering engine** (`ConsoleMVC.Rendering`) — independent of the MVC layer: colours (16 console colours, hex true
+- **Rendering engine** (`ConsoleMVC.Rendering`), independent of the MVC layer: colours (16 console colours, hex true
   colour), borders, alignment, word wrapping, Unicode-aware widths, ANSI / plain-text / legacy Windows console targets,
   and automatic detection of `NO_COLOR`, `COLORTERM`, redirected output and terminal width.
-- **Output sanitisation** — values written through markup cannot inject escape sequences or bidirectional overrides.
+- **Output sanitisation**: values written through markup cannot inject escape sequences or bidirectional overrides.
 - **Compile-time diagnostics** CVW001–CVW108 for markup and view placement mistakes, reported in the `.cvw` file.
 - `#line` mapping: C# errors inside views point at the `.cvw` line and column.
 - `MvcApplicationBuilder.ApplicationAssembly`, `Renderer` and `ClearScreenBetweenViews`.
