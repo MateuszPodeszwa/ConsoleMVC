@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **New in 1.2 — C-View Markup v0.1:** describe console screens with `<box>`, `<text>`, `<separator>` and `<br>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**. Tables, menus and inputs are next — read the vision and roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.3: tables, form inputs and menus. See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -14,7 +14,8 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Convention over configuration** — Controllers and Views are auto-discovered at startup via reflection
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — the same patterns from ASP.NET Core MVC
 - **Razor-like view engine** — `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
-- **C-View Markup** — declarative `<box>`, `<text>` and `<separator>` elements with colours, borders, alignment and word wrapping, checked at compile time
+- **C-View Markup** — declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
+- **Declarative input and navigation** — `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default** — model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 
@@ -55,18 +56,20 @@ MyApp/
     CalcController.cs           # Form posting with simple parameter binding
   Models/
     HomeViewModel.cs
+    FeaturesViewModel.cs        # Rows for the <table> on the feature tour page
     GreetFormModel.cs           # Bound from form data (complex model)
     GreetResultModel.cs
     CalcResultModel.cs
   Views/
     Home/
-      IndexView.cvw
+      IndexView.cvw             # <menu> navigation
       AboutView.cvw
+      FeaturesView.cvw          # <table> generated from the model
     Greet/
-      IndexView.cvw             # Collects input, posts form data
+      IndexView.cvw             # <input> fields, posts the Form
       ResultView.cvw
     Calc/
-      IndexView.cvw             # Collects input, posts form data
+      IndexView.cvw             # <input> fields, posts the Form
       ResultView.cvw
 ```
 
@@ -157,40 +160,49 @@ return input switch
 
 **C-View Markup:**
 
-Instead of formatting output by hand, views can describe it with markup. Markup and C# mix freely — top-level elements render in source order, and `@` switches back to C# inside an element:
+Instead of formatting output and reading input by hand, views can describe the screen with markup. Markup and C# mix freely — top-level elements run in source order, and `@` switches back to C# inside an element:
 
 ```
 @model MyApp.Models.HomeViewModel
 
 <box title="@Model.Title" border="rounded" color="cyan" padding="2">
     <text>@Model.Message</text>
-    <br />
-    @for (var i = 0; i < Model.MenuOptions.Count; i++)
-    {
-        <text>[@(i + 1)] @Model.MenuOptions[i]</text>
-    }
 </box>
 
-Console.Write("Select an option: ");
-var input = Console.ReadLine()?.Trim();
-return input == "1" ? NavigationResult.To("Home", "About") : NavigationResult.Quit();
+<menu key-color="cyan">
+    <option key="1" nav="Home/About">About</option>
+    <option key="2" nav="Users/Index">Users</option>
+    <option key="q" quit>Exit</option>
+</menu>
 ```
 
 ```
 ╭─ Welcome to ConsoleMVC ────────────────────────────────╮
 │  A structured MVC framework for console applications.  │
-│                                                        │
-│  [1] About                                             │
-│  [2] Exit                                              │
 ╰────────────────────────────────────────────────────────╯
+[1] About
+[2] Users
+[q] Exit
 Select an option:
+```
+
+The `<menu>` shows the options, re-prompts on an invalid choice and returns the navigation, so the view needs no `return`. Tables are just as short:
+
+```
+<table border="rounded">
+    <row header><cell>Name</cell><cell align="right">Age</cell></row>
+    @foreach (var user in Model.Users)
+    {
+        <row><cell>@user.Name</cell><cell align="right">@user.Age</cell></row>
+    }
+</table>
 ```
 
 Mistakes such as an unknown attribute or a missing closing tag are build errors pointing at the `.cvw` line, and C# errors inside views are mapped back to the `.cvw` file too. The full element and attribute reference is in the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**.
 
 **Navigation from views:**
 
-Every view must return a `NavigationResult` to tell the framework what to do next:
+Every view must return a `NavigationResult` to tell the framework what to do next — either from C#, or by ending with a `<menu>`:
 
 | Method | Description |
 |--------|-------------|
@@ -202,9 +214,21 @@ Every view must return a `NavigationResult` to tell the framework what to do nex
 
 ### Form Data Posting
 
-Views can collect user input and post it to a controller action — just like HTML forms in web MVC. The view builds a `Dictionary<string, string>` of form data and passes it via `NavigationResult`. The framework then binds the values to the target action's method parameters automatically.
+Views can collect user input and post it to a controller action — just like HTML forms in web MVC. The framework binds the posted values to the target action's method parameters automatically.
 
-**Collecting input in a view** — `Views/Greet/IndexView.cvw`:
+**Collecting input with `<input>`** — `Views/Greet/IndexView.cvw`:
+```
+@model object
+
+<input name="Name" label="Name: " required />
+<input name="Color" label="Favourite colour: " />
+
+return NavigationResult.ToAction("Result", Form);
+```
+
+Each `<input>` stores its value in the view's `Form` dictionary under its `name`. Use `required` to re-prompt until a value is entered, `default` for a fallback value and `masked` for passwords. A menu option marked `post` sends the `Form` too: `<option key="s" nav="Result" post>Submit</option>`.
+
+**Collecting input in C#** — any `Dictionary<string, string>` can be posted, so plain C# views keep working:
 ```
 @model object
 
@@ -454,6 +478,7 @@ builder.DefaultAction = "Overview";             // Default: "Index"
 builder.ClearScreenBetweenViews = false;        // Default: true
 builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
 builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
+builder.Input = ConsoleTextInput.Instance;              // Default: the console
 var app = builder.Build();
 app.Run();
 ```
@@ -463,6 +488,7 @@ app.Run();
 | `DefaultController` / `DefaultAction` | The first route to run |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
+| `Input` | Where `<input>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests |
 | `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output. Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
 
 ## Package Information

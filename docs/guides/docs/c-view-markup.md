@@ -1,6 +1,6 @@
 # C-View Markup
 
-C-View Markup is a small markup language for describing console screens inside `.cvw` views. It compiles to plain C# at build time — there is no runtime template parsing — and it mixes freely with ordinary C# code.
+C-View Markup is a small markup language for describing console screens inside `.cvw` views — text, boxes, tables, form inputs and menus. It compiles to plain C# at build time — there is no runtime template parsing — and it mixes freely with ordinary C# code.
 
 ```
 @model MyApp.Models.DashboardViewModel
@@ -113,6 +113,104 @@ One or more empty lines between blocks, or a line break inside `<text>`.
 |---|---|---|
 | `count` | number of line breaks (0–100) | `1` |
 
+### `<table>`, `<row>` and `<cell>`
+
+A grid whose columns size themselves to the content. When the table is wider than the terminal, the widest columns shrink and their cells wrap. Rows are usually generated with `@foreach`.
+
+```
+<table border="rounded">
+    <row header>
+        <cell>Name</cell>
+        <cell align="right">Age</cell>
+    </row>
+    @foreach (var user in Model.Users)
+    {
+        <row>
+            <cell>@user.Name</cell>
+            <cell align="right">@user.Age</cell>
+        </row>
+    }
+</table>
+```
+
+```
+╭───────┬─────╮
+│ Name  │ Age │
+├───────┼─────┤
+│ Ada   │  36 │
+│ Linus │  54 │
+╰───────┴─────╯
+```
+
+| Element | Attribute | Values | Default |
+|---|---|---|---|
+| `<table>` | `border` | `single`, `double`, `rounded`, `heavy`, `ascii`, `none` | `single` |
+| | `padding` | blank columns on each side of every cell (0–20) | `1` |
+| | `width` | `auto`, a column count, or a percentage; a larger width widens the last column | `auto` |
+| | `color` / `colour` | grid colour | terminal default |
+| `<row>` | `header` | flag: bold cells followed by a separator line | off |
+| `<cell>` | same as `<text>` | `align`, `color`, `background`, `bold`, `dim`, `italic`, `underline`, `wrap` | |
+
+A `<table>` may only contain `<row>` elements, and a `<row>` only `<cell>` elements; loops and conditions around them are fine. Rows with fewer cells are padded with empty cells.
+
+### `<input>`
+
+Prompts for a value and stores it in the view's `Form` dictionary under its `name`. Post the form to a controller action, where it is bound to parameters or a model just like before:
+
+```
+<input name="Name" label="Name: " required />
+<input name="Password" label="Password: " masked />
+<input name="Colour" label="Favourite colour: " default="blue" />
+
+return NavigationResult.ToAction("Result", Form);
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `name` | **required** — the key in `Form` (matched case-insensitively when binding) | |
+| `label` | the prompt written before reading | none |
+| `default` | used when the user enters nothing | empty |
+| `required` | flag: ask again until a value is entered | off |
+| `masked` | flag: hide typed characters (shows `*`); for passwords and other secrets | off |
+| `color` / `colour` | label colour | terminal default |
+
+Values are trimmed. `Form` is also available to ordinary C# in the view, for example `int.Parse(Form["Age"])`.
+
+### `<menu>` and `<option>`
+
+Shows keyed choices, reads the user's choice, repeats until it is valid, and navigates. A menu replaces the usual "write the options, `Console.ReadLine()`, `switch`" code, so it **ends the view** — no `return` is needed.
+
+```
+<menu key-color="cyan">
+    <option key="1" nav="Home/About">About</option>
+    <option key="2" nav="Search" post>Search with the form above</option>
+    <option key="q" quit>Exit</option>
+</menu>
+```
+
+```
+[1] About
+[2] Search with the form above
+[q] Exit
+Select an option: _
+```
+
+| Element | Attribute | Values | Default |
+|---|---|---|---|
+| `<menu>` | `prompt` | the prompt text | `Select an option: ` |
+| | `error` | message after an invalid choice | `Invalid choice, please try again.` |
+| | `key-color` / `key-colour` | colour of the `[key]` labels | terminal default |
+| `<option>` | `key` | **required** — what the user types (case-insensitive) | |
+| | `nav` | `Controller/Action`, or `Action` on the current controller | |
+| | `quit` | flag: quit the application | |
+| | `post` | flag: post the view's `Form` with the navigation | off |
+| | style attributes | as for `<text>` | |
+
+Each option needs exactly one of `nav` or `quit`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
+
+!!! note "Top level only"
+    `<input>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view — they may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
+
 ## Attribute values
 
 * **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute.
@@ -136,12 +234,15 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |
-| CVW103 | Element not allowed here (e.g. `<box>` inside `<text>`) |
+| CVW103 | Element not allowed here (e.g. `<box>` inside `<text>`, `<row>` outside `<table>`, `<menu>` inside `<box>`) |
 | CVW104 | Unterminated expression, string, comment or block |
 | CVW105 | Unknown element (write `&lt;` for a literal `<`) |
 | CVW106 | Control flow or a code block inside `<text>` |
 | CVW107 | Attribute specified twice |
 | CVW108 | Malformed tag |
+| CVW109 | Element rule broken (an `<option>` needs exactly one of `nav` or `quit`) |
+| CVW110 | Text or an expression directly inside `<table>`, `<row>` or `<menu>` |
+| CVW111 | Required attribute missing (`<option key>`, `<input name>`) |
 
 ## Rendering outside views
 
@@ -158,8 +259,16 @@ box.Add(text);
 MarkupRenderer.CreateForConsole().Render(box);
 ```
 
-To change how an application renders — for example to write plain text at a fixed width in tests — set `MvcApplicationBuilder.Renderer`:
+To change how an application renders — for example to write plain text at a fixed width in tests — set `MvcApplicationBuilder.Renderer`. To drive it with scripted input, set `MvcApplicationBuilder.Input` to your own `ITextInput`:
 
 ```csharp
 builder.Renderer = new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60);
+builder.Input = new ScriptedInput("1", "Ada", "q"); // your ITextInput implementation
+```
+
+Interactive elements work outside views too:
+
+```csharp
+var name = new InputElement { Name = "Name", Label = "Name: ", Required = true };
+string? value = name.Read(renderer, ConsoleTextInput.Instance);
 ```

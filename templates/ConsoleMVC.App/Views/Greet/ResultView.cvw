@@ -2,18 +2,11 @@
 
 <box title="Greeting" border="rounded" color="green" padding="2">
     <text bold>@Model.Greeting</text>
-    <separator color="darkgrey" />
-    <text>[1] Submit another greeting</text>
-    <text>[2] Back to Home</text>
-    <text>[3] Exit</text>
 </box>
+<br />
 
-Console.Write("Select an option: ");
-var input = Console.ReadLine()?.Trim();
-
-return input switch
-{
-    "1" => NavigationResult.ToAction("Index"),
-    "2" => NavigationResult.To("Home", "Index"),
-    _ => NavigationResult.Quit()
-};
+<menu key-color="green">
+    <option key="1" nav="Index">Submit another greeting</option>
+    <option key="2" nav="Home/Index">Back to Home</option>
+    <option key="q" quit>Exit</option>
+</menu>

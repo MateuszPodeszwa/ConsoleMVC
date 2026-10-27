@@ -2,18 +2,11 @@
 
 <box title="Calculator" border="rounded" color="yellow" padding="2">
     <text bold>@Model.Expression = @Model.Result</text>
-    <separator color="darkgrey" />
-    <text>[1] Calculate again</text>
-    <text>[2] Back to Home</text>
-    <text>[3] Exit</text>
 </box>
+<br />
 
-Console.Write("Select an option: ");
-var input = Console.ReadLine()?.Trim();
-
-return input switch
-{
-    "1" => NavigationResult.ToAction("Index"),
-    "2" => NavigationResult.To("Home", "Index"),
-    _ => NavigationResult.Quit()
-};
+<menu key-color="yellow">
+    <option key="1" nav="Index">Calculate again</option>
+    <option key="2" nav="Home/Index">Back to Home</option>
+    <option key="q" quit>Exit</option>
+</menu>

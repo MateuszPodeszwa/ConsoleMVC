@@ -2,6 +2,32 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.0]
+
+### Added
+
+- **C-View Markup v0.2** ([design](docs/design/c-view-markup-0.2.md), [guide](docs/guides/docs/c-view-markup.md)):
+  - `<table>`, `<row>` and `<cell>` — columns sized to the content; the widest columns shrink and wrap when the
+    terminal is narrow; header rows in bold with a separator.
+  - `<input>` — reads a value into the view's new `Form` dictionary, with `label`, `default`, `required` and
+    `masked` (password) options.
+  - `<menu>` and `<option>` — shows keyed choices, re-prompts on invalid input and navigates (`nav`, `quit`, `post`).
+    A menu ends the view, so no `return` is needed; at end of input it quits instead of waiting forever.
+- `ConsoleView.Form`, `ConsoleView.Input`, `ReadInput()` and `RunMenu()`.
+- `ITextInput` and `ConsoleTextInput` (masked reading never echoes input); `MvcApplicationBuilder.Input` for
+  scripted input in tests.
+- `IMarkupRenderer.WritePrompt` and `IRenderTarget.WriteInline` for prompts.
+- `InlineElement` base class shared by `TextElement`, `TableCellElement` and `MenuOptionElement`.
+- `BorderStyle` table junction characters (`TeeDown`, `TeeUp`, `TeeRight`, `TeeLeft`, `Cross`).
+- Diagnostics CVW109 (element rule), CVW110 (text in an element-only container) and CVW111 (missing attribute).
+
+### Changed
+
+- CVW103 now also reports placement rules (`<row>` outside `<table>`, `<menu>` inside `<box>`, …) with a message
+  explaining the rule. Placement is checked inside `@foreach`/`@if` as well.
+- The template uses `<menu>` and `<input>`, and adds a feature tour page with a `<table>`.
+  `HomeViewModel.MenuOptions` was removed from the template.
+
 ## [1.2.0]
 
 ### Added

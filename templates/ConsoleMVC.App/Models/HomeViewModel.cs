@@ -14,9 +14,4 @@ public class HomeViewModel
     /// Gets or sets the descriptive message shown to the user.
     /// </summary>
     public string Message { get; set; } = "";
-
-    /// <summary>
-    /// Gets or sets the list of menu option labels presented to the user for navigation.
-    /// </summary>
-    public List<string> MenuOptions { get; set; } = [];
 }

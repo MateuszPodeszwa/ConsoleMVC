@@ -1,0 +1,26 @@
+@model ConsoleMVC.App.Models.FeaturesViewModel
+
+<box title="C-View Markup elements" border="rounded" color="cyan">
+    <text>Tables size their columns to the content and wrap when the terminal is narrow.</text>
+</box>
+<br />
+
+<table border="rounded" color="darkgrey">
+    <row header>
+        <cell>Element</cell>
+        <cell>Purpose</cell>
+    </row>
+    @foreach (var feature in Model.Features)
+    {
+        <row>
+            <cell color="cyan">@feature.Element</cell>
+            <cell>@feature.Purpose</cell>
+        </row>
+    }
+</table>
+<br />
+
+<menu key-color="cyan">
+    <option key="1" nav="Index">Back to Home</option>
+    <option key="q" quit>Exit</option>
+</menu>

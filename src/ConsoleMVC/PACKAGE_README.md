@@ -42,11 +42,15 @@ public class HomeController : Controller
 @model MyApp.Models.HomeViewModel
 
 <box title="@Model.Title" border="rounded" color="cyan">
-    <text>Press any key to continue...</text>
+    <text>@Model.Message</text>
 </box>
 
-Console.ReadKey();
-return NavigationResult.To("Home", "Index");
+<input name="Name" label="Your name: " required />
+
+<menu>
+    <option key="1" nav="Greet/Result" post>Greet me</option>
+    <option key="q" quit>Exit</option>
+</menu>
 ```
 
 **Models** — simple DTOs:
@@ -62,7 +66,8 @@ public class HomeViewModel
 - **Convention-based routing** — Controllers and Views are auto-discovered via reflection and namespace conventions
 - **Razor-like view engine** — `.cvw` files are compiled into `ConsoleView<TModel>` classes at build time by a source generator
 - **No boilerplate** — Views are plain C# code with an `@model` directive, no class inheritance required
-- **C-View Markup** — `<box>`, `<text>`, `<separator>` and `<br>` elements with colours, borders, alignment and word wrapping, plus `@` expressions and `@if`/`@foreach`; validated at compile time with errors pointing at the `.cvw` file
+- **C-View Markup** — `<box>`, `<text>`, `<separator>`, `<br>` and `<table>` elements with colours, borders, alignment and word wrapping, plus `@` expressions and `@if`/`@foreach`; validated at compile time with errors pointing at the `.cvw` file
+- **Declarative input and navigation** — `<input>` fields (required, default, masked) collect a `Form`, and `<menu>` reads the choice and navigates
 - **Secure output** — model values are sanitised so they cannot inject terminal escape sequences
 - **Reusable rendering engine** — the `ConsoleMVC.Rendering` namespace can draw elements in any console app
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — all the patterns you know from ASP.NET Core MVC

@@ -1,24 +1,16 @@
 @model ConsoleMVC.App.Models.HomeViewModel
 
-@* C-View Markup: elements such as <box> and <text> describe the screen;
-   plain C# (below) handles input and navigation. *@
+@* C-View Markup: <box> and <text> describe the screen, and <menu> shows the options,
+   reads the choice and navigates — no Console.ReadLine() or switch statement needed. *@
 <box title="@Model.Title" border="rounded" color="cyan" padding="2">
     <text>@Model.Message</text>
-    <br />
-    @for (var i = 0; i < Model.MenuOptions.Count; i++)
-    {
-        <text>[@(i + 1)] @Model.MenuOptions[i]</text>
-    }
 </box>
+<br />
 
-Console.Write("Select an option: ");
-var input = Console.ReadLine()?.Trim();
-
-return input switch
-{
-    "1" => NavigationResult.To("Home", "About"),
-    "2" => NavigationResult.To("Greet", "Index"),
-    "3" => NavigationResult.To("Calc", "Index"),
-    "4" => NavigationResult.Quit(),
-    _ => NavigationResult.To("Home", "Index")
-};
+<menu key-color="cyan">
+    <option key="1" nav="Home/About">About</option>
+    <option key="2" nav="Greet/Index">Greeting form</option>
+    <option key="3" nav="Calc/Index">Calculator</option>
+    <option key="4" nav="Home/Features">Feature tour (tables)</option>
+    <option key="q" quit>Exit</option>
+</menu>
