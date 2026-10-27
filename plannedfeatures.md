@@ -18,6 +18,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 
 - [C-View Markup 1.0](docs/guides/docs/c-view-markup.md): text, boxes, tables, column layouts that stack on narrow terminals, themes with `class="…"`, inputs, menus and validation messages
 - [Partial views](docs/design/partial-views.md) and [layouts](docs/design/layout-views.md): reusable markup in `Views/Shared`, checked at build time
+- [Charts](docs/design/charts.md): `<bar-chart>` and `<sparkline>` for dashboards
 - [Live screens](docs/design/live-elements.md): `<progress>` and `<spinner>` that update while an async action works, and views that refresh on a timer with `@refresh 5s`
 - [Keyboard shortcuts](docs/design/shortcuts.md): `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` on every screen, listed by `<shortcuts />`
 - [Navigation history](docs/design/navigation-history.md): Back options and `<breadcrumbs />`; [route values](docs/design/route-values.md) such as `nav="Orders/Details?id=@order.Id"`
@@ -44,7 +45,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 
 - [ ] **Full-screen mode**: use the alternate screen buffer, redraw when the terminal is resized, and scroll long content (`<scroll>`, a pager for long lists)
-- [ ] **Charts**: `<bar-chart>` and `<sparkline>` for dashboards
 - [ ] **`<markdown>`**: render Markdown (headings, lists, emphasis, code) inside a view
 - [ ] **Localisation**: resource-based strings in views and validation messages, with culture-aware formatting where wanted
 - [ ] **Accessibility**: a screen-reader friendly mode without box drawing, and a high-contrast theme

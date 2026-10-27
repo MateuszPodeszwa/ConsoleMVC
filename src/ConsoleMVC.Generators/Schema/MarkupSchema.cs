@@ -133,6 +133,13 @@ internal sealed class MarkupSchema
             ["ascii"] = Rendering + "ProgressStyle.Ascii"
         });
 
+        var barStyle = new ChoiceAttributeType(new Dictionary<string, string>
+        {
+            ["block"] = Rendering + "BarChartStyle.Block",
+            ["shade"] = Rendering + "BarChartStyle.Shade",
+            ["ascii"] = Rendering + "BarChartStyle.Ascii"
+        });
+
         var spinnerStyle = new ChoiceAttributeType(new Dictionary<string, string>
         {
             ["dots"] = Rendering + "SpinnerStyle.Dots",
@@ -336,6 +343,41 @@ internal sealed class MarkupSchema
                 new AttributeSchema("frame", "Frame", new IntegerAttributeType(0, int.MaxValue)),
                 new AttributeSchema("done", "Done", boolean),
                 new AttributeSchema("done-symbol", "DoneSymbol", text),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("label-color", "LabelColour", colour),
+                new AttributeSchema("label-colour", "LabelColour", colour)
+            ]),
+
+            // ---- 1.25: charts
+            new ElementSchema("bar-chart", Rendering + "BarChartElement", ContentModel.Elements,
+            [
+                ThemeClass(),
+                new AttributeSchema("max", "Max", amount),
+                new AttributeSchema("values", "ShowValues", boolean),
+                new AttributeSchema("format", "Format", text),
+                new AttributeSchema("style", "Style", barStyle),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("label-color", "LabelColour", colour),
+                new AttributeSchema("label-colour", "LabelColour", colour)
+            ], allowedChildren: ["bar"]),
+            new ElementSchema("bar", Rendering + "BarElement", ContentModel.Void,
+            [
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("value", "Value", amount, required: true),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour)
+            ], requiredParent: "bar-chart"),
+            new ElementSchema("sparkline", Rendering + "SparklineElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("values", "Values", new NumberListAttributeType(), required: true),
+                new AttributeSchema("min", "Min", amount),
+                new AttributeSchema("max", "Max", amount),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("show-last", "ShowLast", boolean),
+                new AttributeSchema("format", "Format", text),
                 new AttributeSchema("color", "Colour", colour),
                 new AttributeSchema("colour", "Colour", colour),
                 new AttributeSchema("label-color", "LabelColour", colour),

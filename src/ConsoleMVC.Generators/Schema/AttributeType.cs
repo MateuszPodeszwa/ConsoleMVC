@@ -138,6 +138,41 @@ internal sealed class DecimalAttributeType : AttributeType
 }
 
 /// <summary>
+/// The values of a chart: a literal list of numbers separated by commas or spaces (<c>3, 5, 2</c>), or an expression
+/// for a sequence of any number type, which is passed through <c>ChartValues.From</c>.
+/// </summary>
+internal sealed class NumberListAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "numbers separated by commas or spaces, e.g. '3, 5, 2', or an expression such as @Model.Values";
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        code = "";
+        error = "expected " + Description;
+        var parts = (literal ?? "").Split(new[] { ',', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+        var numbers = new List<string>(parts.Length);
+
+        foreach (var part in parts)
+        {
+            if (!double.TryParse(part, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture,
+                    out var value))
+                return false;
+
+            numbers.Add(value.ToString("R", CultureInfo.InvariantCulture) + "d");
+        }
+
+        code = "new double[] { " + string.Join(", ", numbers) + " }";
+        return true;
+    }
+
+    /// <inheritdoc />
+    public override string WrapExpression(string expressionCode) =>
+        "global::ConsoleMVC.Rendering.ChartValues.From(" + expressionCode + ")";
+}
+
+/// <summary>
 /// A date for <c>&lt;date&gt;</c>: <c>yyyy-MM-dd</c>, <c>today</c>, <c>today+N</c> or <c>today-N</c>; checked at build
 /// time and emitted as a string, which the element resolves when it is shown.
 /// </summary>

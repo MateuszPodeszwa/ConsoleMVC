@@ -460,6 +460,67 @@ shows the frame you give it.
 | `label-color` / `label-colour` | label colour | terminal default |
 | `class` | theme style | none |
 
+### `<bar-chart>` and `<bar />`
+
+A horizontal bar chart: one bar per line, with its label and value. Bars are scaled to `max` (or the largest value) and
+fill the width; with the `block` style, a bar ends in eighths of a cell, so small differences still show.
+
+```
+<bar-chart format="N0" color="cyan">
+    @foreach (var day in Model.Days)
+    {
+        <bar label="@day.Name" value="@day.Sales" />
+    }
+</bar-chart>
+```
+
+```
+Mon ██████████████████████████████████▌            1,240
+Tue ████████████████████▊                            750
+Wed ██████████████████████████████████████████████ 1,810
+```
+
+| `<bar-chart>` attribute | Values | Default |
+|---|---|---|
+| `max` | the value of a full bar | the largest value |
+| `values` | `false` hides the values after the bars | shown |
+| `format` | a .NET number format such as `N0` or `0.0` | `0.##` |
+| `style` | `block` (with eighths), `shade` (`▓▓▓`), `ascii` (`###`) | `block` |
+| `color` / `colour` | bar colour | terminal default |
+| `label-color` / `label-colour` | label and value colour | terminal default |
+| `class` | theme style (its colour colours the bars) | none |
+
+| `<bar />` attribute | Values | Default |
+|---|---|---|
+| `value` | **required**: a number or an expression; below 0 draws an empty bar | |
+| `label` | text before the bar; labels take at most a third of the width | none |
+| `color` / `colour` | this bar's colour | the chart's |
+
+`<bar>` only goes inside `<bar-chart>`, and a chart holds only bars (and C# such as `@foreach` around them).
+
+### `<sparkline />`
+
+A series of values on one line, one cell each: `▁▂▄▆█▆▄▂`. When there are more values than fit, the most recent ones
+are shown.
+
+```
+<sparkline label="Queue " values="@Model.QueueHistory" show-last />     Queue ▁▂▂▃▅▇█▆▄▃▂▁ 3
+<sparkline values="3, 5, 2, 8" />                                       ▃▄▁█
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `values` | **required**: numbers separated by commas or spaces, or an expression for a sequence of `int`, `long`, `float`, `double` or `decimal` | |
+| `min` / `max` | the values of the lowest and highest level | the smallest and largest value shown |
+| `label` | text before the chart | none |
+| `show-last` | show the latest value after the chart | off |
+| `format` | a .NET number format for the latest value | `0.##` |
+| `color` / `colour` | chart colour | terminal default |
+| `label-color` / `label-colour` | label and value colour | terminal default |
+| `class` | theme style | none |
+
+Values that are not finite numbers (`double.NaN`) leave a gap.
+
 ### `<errors />`
 
 Shows validation messages from the view's `ModelState` (see [Validation](https://github.com/MateuszPodeszwa/ConsoleMVC#validation)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.

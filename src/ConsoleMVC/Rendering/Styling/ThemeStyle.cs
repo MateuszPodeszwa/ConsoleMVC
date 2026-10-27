@@ -124,6 +124,14 @@ public sealed record ThemeStyle
             case SpinnerElement spinner:
                 if (Foreground is { } spinnerColour) spinner.Colour = spinnerColour;
                 break;
+
+            case BarChartElement chart:
+                if (Foreground is { } chartColour) chart.Colour = chartColour;
+                break;
+
+            case SparklineElement sparkline:
+                if (Foreground is { } sparklineColour) sparkline.Colour = sparklineColour;
+                break;
         }
     }
 }

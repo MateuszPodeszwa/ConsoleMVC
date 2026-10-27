@@ -70,6 +70,8 @@ public class HomeController(ILiveDisplay live) : Controller
                 new("<columns>", "Places columns side by side, stacking them on narrow terminals"),
                 new("<progress>", "A progress bar, kept up to date while an action works"),
                 new("<spinner>", "Turns while an action works, then shows a tick"),
+                new("<bar-chart>", "Compares values as horizontal bars"),
+                new("<sparkline>", "Draws a series of values on one line"),
                 new("class=\"…\"", "Applies a named style from the theme")
             ]
         };
@@ -103,7 +105,25 @@ public class HomeController(ILiveDisplay live) : Controller
     /// </summary>
     public ActionResult Status()
     {
-        var model = new StatusViewModel { Time = DateTime.Now, Healthy = ServiceCount, Total = ServiceCount };
+        var now = DateTime.Now;
+
+        // Made-up numbers that change with the clock, so each refresh draws something new
+        var model = new StatusViewModel
+        {
+            Time = now,
+            Healthy = ServiceCount,
+            Total = ServiceCount,
+            Load = Enumerable.Range(0, 30).Select(i => (int)(50 + 40 * Math.Sin((now.Second + i) / 4.0))).ToList(),
+            Timings =
+            [
+                new("Catalogue", 40 + now.Second % 7 * 5),
+                new("Orders", 90 + now.Second % 5 * 12),
+                new("Payments", 150 + now.Second % 3 * 20),
+                new("Search", 25 + now.Second % 4 * 8),
+                new("Mail", 60 + now.Second % 6 * 9)
+            ]
+        };
+
         return View(model);
     }
 }

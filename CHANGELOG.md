@@ -2,6 +2,18 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.25.0]
+
+### Added
+
+- **Charts** ([design](docs/design/charts.md), [guide](docs/guides/docs/c-view-markup.md#bar-chart-and-bar)):
+  `<bar-chart>` with `<bar label value colour />` (`BarChartElement`, `BarElement`, `BarChartStyle`: `block` with
+  eighths of a cell, `shade`, `ascii`; `max`, `format`, `values="false"`), and `<sparkline values min max show-last />`
+  (`SparklineElement`) showing the most recent values that fit.
+- `ChartValues.From` turns sequences of `int`, `long`, `float`, `double` or `decimal` into chart values;
+  `values="3, 5, 2"` literals are checked at build time.
+- The template's status page draws a sparkline of the load and a bar chart of response times.
+
 ## [1.24.0]
 
 ### Added

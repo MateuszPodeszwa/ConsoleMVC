@@ -6,7 +6,17 @@
     <spinner label="Refreshing every second until you type" frame="@Model.Time.Second" class="success" />
     <text>Time: @Model.Time.ToString("HH:mm:ss")</text>
     <progress label="Services up " value="@Model.Healthy" max="@Model.Total" bar-width="20" class="success" />
+    <sparkline label="Load        " values="@Model.Load" min="0" max="100" show-last class="info" />
 </box>
+<br />
+
+<text class="title">Response times (ms)</text>
+<bar-chart class="info">
+    @foreach (var timing in Model.Timings)
+    {
+        <bar label="@timing.Name" value="@timing.Milliseconds" />
+    }
+</bar-chart>
 <br />
 
 <menu key-color="cyan">

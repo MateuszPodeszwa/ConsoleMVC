@@ -64,5 +64,6 @@ public class AppTests
         Assert.Equal(["Home/Index", "Home/Features", "Home/Check", "Home/Status", "Home/Status", "Home/Features"], run.Routes);
         Assert.Contains("Checking services ████", run.Output);
         Assert.Contains("Services up ████████████████████ 100%", run.Output);
+        Assert.Contains("Payments", run.Screens[3]);                // the bar chart of response times
     }
 }
