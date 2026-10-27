@@ -22,6 +22,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Validation** — posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
 - **Dependency injection** — register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
 - **Async actions and middleware** — actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
+- **Live reload** — run `dotnet watch` and edits to views and controllers appear from the next screen, without restarting
 
 ## Getting Started
 
@@ -532,6 +533,10 @@ await app.RunAsync();
 | `context.Result` / `context.RedirectTo(…)` | Replace the action's result, or skip the action by setting it without calling `next` |
 
 Views render after the pipeline. See the [guide](docs/guides/docs/async-and-middleware.md) and the [design](docs/design/async-and-middleware.md).
+
+### Live Reload
+
+Run `dotnet watch` in the project folder. Edits to `.cvw` views, controllers and models are applied to the running application and show from the next screen; newly added controllers and views are discovered after each update, so they are routable without a restart. See [Live reload](docs/guides/docs/getting-started.md#live-reload).
 
 ### Conventions
 

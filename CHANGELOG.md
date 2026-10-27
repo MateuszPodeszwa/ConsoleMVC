@@ -2,6 +2,14 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.8.0]
+
+### Added
+
+- **Live reload** ([guide](docs/guides/docs/getting-started.md#live-reload)): `.cvw` files are watched by
+  `dotnet watch`, and after each hot reload update the application rediscovers controllers and views before the next
+  screen, so new pages are routable without a restart.
+
 ## [1.7.0]
 
 ### Added

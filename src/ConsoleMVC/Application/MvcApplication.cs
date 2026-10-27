@@ -40,7 +40,8 @@ public class MvcApplication : IDisposable
     /// </summary>
     public const int MaxConsecutiveRedirects = 32;
 
-    private readonly Router _router = new();
+    private Router _router = new();
+    private int _reloadRequested;
     private readonly Assembly? _applicationAssembly;
     private readonly ServiceProvider _services;
     private readonly List<Func<ActionDelegate, ActionDelegate>> _middleware = [];
@@ -80,6 +81,12 @@ public class MvcApplication : IDisposable
     /// </code>
     /// </example>
     public IServiceProvider Services => _services;
+
+    /// <summary>
+    /// Gets how many times controllers and views have been discovered: once when the application starts, and again
+    /// after each hot reload update (<c>dotnet watch</c>).
+    /// </summary>
+    internal int DiscoveryCount { get; private set; }
 
     /// <summary>
     /// Creates a new <see cref="MvcApplicationBuilder"/> for configuring and building
@@ -179,17 +186,52 @@ public class MvcApplication : IDisposable
         if (_pipeline is not null)
             throw new InvalidOperationException("The application is already running.");
 
-        _pipeline = ActionPipeline.Build(_middleware, InvokeActionAsync);
+        var pipeline = _pipeline = ActionPipeline.Build(_middleware, InvokeActionAsync);
         cancellationToken.ThrowIfCancellationRequested();
 
-        _router.DiscoverAll(ResolveApplicationAssembly());
+        var assembly = ResolveApplicationAssembly();
+        Discover(assembly);
         var renderer = _services.GetRequiredService<IMarkupRenderer>();
         var input = _services.GetRequiredService<ITextInput>();
+
+        HotReloadHandler.Updated += OnHotReload;
+        try
+        {
+            await RunLoopAsync(pipeline, assembly, renderer, input, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            HotReloadHandler.Updated -= OnHotReload;
+        }
+    }
+
+    /// <summary>Marks the router for rediscovery; called on a hot reload thread.</summary>
+    private void OnHotReload() => Interlocked.Exchange(ref _reloadRequested, 1);
+
+    /// <summary>Discovers controllers and views into a fresh router, so stale cached actions are dropped.</summary>
+    private void Discover(Assembly assembly)
+    {
+        var router = new Router();
+        router.DiscoverAll(assembly);
+        _router = router;
+        DiscoveryCount++;
+    }
+
+    /// <summary>
+    /// Runs navigation cycles until a view quits: the pipeline, then rendering the view or following the redirect.
+    /// </summary>
+    private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, IMarkupRenderer renderer, ITextInput input,
+        CancellationToken cancellationToken)
+    {
         var consecutiveRedirects = 0;
 
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // dotnet watch applied an edit: pick up new or changed controllers and views from this screen on
+            if (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
+                Discover(assembly);
 
             // One scope per navigation cycle: the action and the view it renders share scoped services
             await using var scope = _services.CreateAsyncScope();
@@ -198,7 +240,7 @@ public class MvcApplication : IDisposable
             var context = new ActionContext(_currentRoute, scope.ServiceProvider, cancellationToken);
             try
             {
-                await _pipeline(context).ConfigureAwait(false);
+                await pipeline(context).ConfigureAwait(false);
             }
             finally
             {
