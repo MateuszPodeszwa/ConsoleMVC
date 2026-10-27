@@ -31,6 +31,22 @@ public class HomeController(IGreetingService greetings) : Controller
 
 To pass a `string` as the model of the current view, cast it: `View((object)text)`, because `View("text")` names a view.
 
+## Checked when you build
+
+Names written as constants (string literals, `const` fields or `nameof`) are checked against your controllers, actions
+and views:
+
+```csharp
+return RedirectToAction("Detials");          // warning CVW120: 'Orders' has no action 'Detials'. Actions: Details, Index, …
+return View("Sumary", model);                // warning CVW121: there is no view 'Orders/Sumary'
+public ActionResult Report() => View();      // warning CVW121 when Views/Orders/ReportView.cvw does not exist
+```
+
+The same goes for `NavigationResult.To(...)` and `ToAction(...)` in views, and for `nav` attributes (CVW119). For
+CVW121 the IDE offers a fix that creates the view, with `@model` set to the type of the model you pass. Names built at
+run time are not checked. To make these warnings errors, add `dotnet_diagnostic.CVW120.severity = error` (and the
+same for CVW119 and CVW121) to `.editorconfig`.
+
 ## Navigation from views
 
 A view ends by returning a `NavigationResult`, or with a `<menu>`, which returns one for you:

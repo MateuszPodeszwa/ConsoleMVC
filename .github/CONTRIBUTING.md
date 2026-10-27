@@ -51,7 +51,8 @@ Thank you for your interest in contributing to ConsoleMVC! This guide will help 
 ## Project Structure
 
 - `src/ConsoleMVC/`: Framework library (NuGet: ConsoleMVC.Framework), including the `Rendering/` engine and `Hosting/` (configuration and logging)
-- `src/ConsoleMVC.Generators/`: Source generator that compiles `.cvw` views and C-View Markup (bundled in the framework package)
+- `src/ConsoleMVC.Generators/`: Source generator that compiles `.cvw` views and C-View Markup, and the navigation analyzer (bundled in the framework package)
+- `src/ConsoleMVC.CodeFixes/`: IDE code fixes for the ConsoleMVC diagnostics (bundled in the framework package)
 - `src/ConsoleMVC.Testing/`: Test host, scripted input and snapshots (NuGet: ConsoleMVC.Testing)
 - `tests/`: `ConsoleMVC.Tests` (framework, rendering and the testing package) and `ConsoleMVC.Generators.Tests` (generator end-to-end)
 - `docs/guides/`: MkDocs user guides, published with the API reference to GitHub Pages

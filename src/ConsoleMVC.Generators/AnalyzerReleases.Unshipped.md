@@ -17,3 +17,5 @@ CVW116 | ConsoleMVC.Views | Error | Partial view includes itself
 CVW117 | ConsoleMVC.Views | Error | Invalid layout
 CVW118 | ConsoleMVC.Views | Error | Unknown layout
 CVW119 | ConsoleMVC.Views | Warning | Unknown navigation target
+CVW120 | ConsoleMVC.Views | Warning | Unknown navigation target in C#
+CVW121 | ConsoleMVC.Views | Warning | View not found

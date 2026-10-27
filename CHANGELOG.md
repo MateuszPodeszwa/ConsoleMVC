@@ -2,6 +2,17 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.21.0]
+
+### Added
+
+- **Navigation checks in C#** ([design](docs/design/route-checks.md#5-navigation-in-c-121)): `NavigationAnalyzer`
+  reports `RedirectToAction`, `NavigationResult.To` and `NavigationResult.ToAction` with a constant controller or
+  action that does not exist (CVW120), and `View("Name")` or `View()` in an action without a view (CVW121). Code in
+  `.cvw` views is checked and reported at the view's line. Both are warnings.
+- **Create view** code fix for CVW121 (`ConsoleMVC.CodeFixes`, bundled in the framework package): writes
+  `Views/{Controller}/{Name}View.cvw` with the model's type as `@model`.
+
 ## [1.20.0]
 
 ### Added

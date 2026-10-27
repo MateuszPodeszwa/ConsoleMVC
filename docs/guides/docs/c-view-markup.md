@@ -543,6 +543,8 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW117 | `<body />` outside a layout in `Views/Shared`, used twice or inside a C# block; or a layout with `@model` or `@layout` |
 | CVW118 | `@layout` names no layout (lists the available ones), or a partial uses `@layout` |
 | CVW119 | **Warning**: a literal `nav` target names a controller or action that does not exist (lists the ones that do) |
+| CVW120 | **Warning**: `RedirectToAction`, `NavigationResult.To` or `NavigationResult.ToAction` in C# names a controller or action that does not exist |
+| CVW121 | **Warning**: `View("Name")`, or `View()` in an action, has no view; the IDE offers **Create view Views/{Controller}/{Name}View.cvw** |
 
 ## Resizing the terminal
 
