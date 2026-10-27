@@ -71,7 +71,7 @@ Right now, `.cvw` files are plain C# code. You write `Console.WriteLine()` calls
 ## Roadmap (Rough Order)
 
 ### Near-term
-- [ ] Dependency injection support — register and resolve services in controllers
+- [x] Dependency injection support — register and resolve services in controllers — **shipped in 1.5.0**, with `@inject` in views and one scope per screen, see the [guide](docs/guides/docs/dependency-injection.md) and [design](docs/design/dependency-injection.md)
 - [ ] Middleware pipeline — before/after action hooks for cross-cutting concerns
 - [ ] Async action support — `Task<ActionResult>` return types
 - [x] Form validation framework — attributes like `[Required]`, `[MaxLength]` on form models, with automatic validation before the action executes — **shipped in 1.4.0**, see the [design](docs/design/form-validation.md)

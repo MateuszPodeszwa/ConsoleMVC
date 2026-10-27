@@ -2,14 +2,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ConsoleMVC.Generators.Diagnostics;
 using ConsoleMVC.Generators.Schema;
 using ConsoleMVC.Generators.Syntax;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace ConsoleMVC.Generators.Parsing;
 
 /// <summary>
-/// Parses a complete <c>.cvw</c> file: the directive preamble (<c>@model</c>, <c>@using</c>) followed by
+/// Parses a complete <c>.cvw</c> file: the directive preamble (<c>@model</c>, <c>@using</c>, <c>@inject</c>) followed by
 /// the body (C# with embedded markup).
 /// </summary>
 /// <remarks>
@@ -26,6 +28,19 @@ internal static class CvwDocumentParser
 {
     private const string ModelDirective = "@model";
     private const string UsingDirective = "@using";
+    private const string InjectDirectiveName = "@inject";
+
+    /// <summary>
+    /// Names an <c>@inject</c> property may not use: the <c>Render</c> parameter and the members of
+    /// <c>ConsoleView</c>, which the property would hide.
+    /// </summary>
+    private static readonly string[] ReservedInjectNames =
+    [
+        "Model", "ViewData", "ModelState", "Renderer", "Input", "Form", "Render", "RenderInternal", "ReadInput", "RunMenu"
+    ];
+
+    /// <summary>Identifiers starting with this prefix are reserved for generated code.</summary>
+    private const string ReservedPrefix = "__cvw_";
     private const string CommentStart = "@*";
     private const string CommentEnd = "*@";
 
@@ -39,6 +54,7 @@ internal static class CvwDocumentParser
     {
         var diagnostics = new List<ParseDiagnostic>();
         var usings = new List<DirectiveValue>();
+        var injects = new List<InjectDirective>();
         DirectiveValue? model = null;
         var position = 0;
 
@@ -95,6 +111,13 @@ internal static class CvwDocumentParser
                 continue;
             }
 
+            if (IsDirective(trimmed, InjectDirectiveName) || trimmed == InjectDirectiveName)
+            {
+                ReadInject(text, position, line, injects, diagnostics);
+                position = lineEnd + 1;
+                continue;
+            }
+
             break; // first body line
         }
 
@@ -102,7 +125,7 @@ internal static class CvwDocumentParser
             position = text.Length;
 
         var body = new MarkupParser(text, position, schema, diagnostics).ParseBody();
-        return new CvwDocument(text, model, usings, body, diagnostics);
+        return new CvwDocument(text, model, usings, injects, body, diagnostics);
     }
 
     /// <summary>
@@ -130,5 +153,71 @@ internal static class CvwDocumentParser
             end--;
 
         return new DirectiveValue(text.Substring(start, end - start), SourceSpan.FromBounds(start, end));
+    }
+
+    /// <summary>
+    /// Reads an <c>@inject Type Name</c> line. The property name is the last word; everything before it is the type,
+    /// so generic types such as <c>IOptions&lt;Dictionary&lt;string, int&gt;&gt;</c> work.
+    /// </summary>
+    private static void ReadInject(string text, int lineStart, string line, List<InjectDirective> injects,
+        List<ParseDiagnostic> diagnostics)
+    {
+        var argument = line.Trim() == InjectDirectiveName
+            ? new DirectiveValue("", SourceSpan.FromBounds(lineStart + line.IndexOf(InjectDirectiveName, StringComparison.Ordinal),
+                lineStart + line.IndexOf(InjectDirectiveName, StringComparison.Ordinal) + InjectDirectiveName.Length))
+            : ReadArgument(text, lineStart, line, InjectDirectiveName);
+
+        var value = argument.Value;
+        var split = value.Length - 1;
+        while (split >= 0 && !char.IsWhiteSpace(value[split]))
+            split--;
+
+        if (split < 0)
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidInject, argument.Span,
+                "@inject needs a service type and a property name, e.g. '@inject IGreetingService Greetings'"));
+            return;
+        }
+
+        var typeEnd = split;
+        while (typeEnd > 0 && char.IsWhiteSpace(value[typeEnd - 1]))
+            typeEnd--;
+
+        var start = argument.Span.Start;
+        var type = new DirectiveValue(value.Substring(0, typeEnd), SourceSpan.FromBounds(start, start + typeEnd));
+        var name = new DirectiveValue(value.Substring(split + 1), SourceSpan.FromBounds(start + split + 1, start + value.Length));
+
+        var problem = InjectNameProblem(name.Value);
+        if (problem is not null)
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidInject, name.Span, problem));
+            return;
+        }
+
+        if (injects.Any(i => i.Name.Value == name.Value))
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.DuplicateInject, name.Span, name.Value));
+            return;
+        }
+
+        injects.Add(new InjectDirective(type, name));
+    }
+
+    /// <summary>
+    /// Returns why <paramref name="name"/> cannot be used as an <c>@inject</c> property, or <see langword="null"/>
+    /// when it can.
+    /// </summary>
+    private static string? InjectNameProblem(string name)
+    {
+        if (!SyntaxFacts.IsValidIdentifier(name) || SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None)
+            return $"'{name}' is not a valid C# property name";
+
+        if (ReservedInjectNames.Contains(name))
+            return $"'{name}' is already a member of the view; choose another property name";
+
+        if (name.StartsWith(ReservedPrefix, StringComparison.Ordinal))
+            return $"Names starting with '{ReservedPrefix}' are reserved for generated code";
+
+        return null;
     }
 }

@@ -35,4 +35,5 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - C-View Markup: c-view-markup.md
+  - Dependency Injection: dependency-injection.md
   - API Reference: ../api/

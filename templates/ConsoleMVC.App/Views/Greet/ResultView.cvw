@@ -1,8 +1,10 @@
 @model ConsoleMVC.App.Models.GreetResultModel
+@inject ConsoleMVC.App.Services.IGreetingService Greetings
 
 <box title="Greeting" border="rounded" color="green" padding="2">
     <text bold>@Model.Greeting</text>
 </box>
+<text dim>Greetings sent so far: @Greetings.Count</text>
 <br />
 
 <menu key-color="green">

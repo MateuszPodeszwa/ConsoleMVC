@@ -1,5 +1,7 @@
 using System.Reflection;
 using ConsoleMVC.Rendering;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ConsoleMVC.Mvc;
 
@@ -18,7 +20,9 @@ namespace ConsoleMVC.Mvc;
 /// var builder = MvcApplication.CreateBuilder(args);
 /// builder.DefaultController = "Dashboard";
 /// builder.ClearScreenBetweenViews = false;
-/// builder.Build().Run();
+/// builder.Services.AddSingleton&lt;IGreetingService, GreetingService&gt;();
+/// using var app = builder.Build();
+/// app.Run();
 /// </code>
 /// </example>
 public class MvcApplicationBuilder
@@ -73,6 +77,22 @@ public class MvcApplicationBuilder
     public ITextInput? Input { get; set; }
 
     /// <summary>
+    /// Gets the services available to controllers (through their constructors) and views (through <c>@inject</c>).
+    /// </summary>
+    /// <remarks>
+    /// Each navigation cycle — one action and the view it renders — runs in its own scope, so services registered
+    /// with <c>AddScoped</c> are shared by that controller and view and disposed when the next screen starts.
+    /// The framework also registers <see cref="IMarkupRenderer"/> and <see cref="ITextInput"/> unless you do.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddSingleton&lt;IGreetingService, GreetingService&gt;();
+    /// builder.Services.AddScoped&lt;IBasket, Basket&gt;();
+    /// </code>
+    /// </example>
+    public IServiceCollection Services { get; } = new ServiceCollection();
+
+    /// <summary>
     /// Gets or sets whether the screen is cleared before each view renders.
     /// </summary>
     /// <value>Defaults to <see langword="true"/>.</value>
@@ -83,8 +103,36 @@ public class MvcApplicationBuilder
     /// ready to be started with <see cref="MvcApplication.Run"/>.
     /// </summary>
     /// <returns>A new <see cref="MvcApplication"/> instance configured with the current builder settings.</returns>
+    /// <remarks>
+    /// <see cref="Services"/> is copied, so changing it afterwards does not affect the built application.
+    /// <see cref="Renderer"/> and <see cref="Input"/>, when set, take precedence over services of the same type.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">Thrown when the service registrations are invalid.</exception>
     public MvcApplication Build()
     {
-        return new MvcApplication(this);
+        return new MvcApplication(this, BuildServiceProvider());
+    }
+
+    /// <summary>
+    /// Builds the root service provider from a copy of <see cref="Services"/> plus the framework's own services.
+    /// Scope validation is on, so a scoped service resolved outside a navigation cycle fails immediately.
+    /// </summary>
+    private ServiceProvider BuildServiceProvider()
+    {
+        var services = new ServiceCollection();
+        foreach (var descriptor in Services)
+            services.Add(descriptor);
+
+        if (Renderer is not null)
+            services.AddSingleton(Renderer); // the last registration wins
+        else
+            services.TryAddSingleton<IMarkupRenderer>(_ => MarkupRenderer.CreateForConsole());
+
+        if (Input is not null)
+            services.AddSingleton(Input);
+        else
+            services.TryAddSingleton<ITextInput>(ConsoleTextInput.Instance);
+
+        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }
 }

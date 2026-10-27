@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using ConsoleMVC.Rendering;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ConsoleMVC.Mvc;
 
@@ -12,7 +13,7 @@ namespace ConsoleMVC.Mvc;
 /// <para>
 /// The application loop follows a continuous cycle of:
 /// <list type="number">
-///   <item><description>Resolve the controller and action for the current route.</description></item>
+///   <item><description>Create a service scope and resolve the controller and action for the current route.</description></item>
 ///   <item><description>Invoke the action method to obtain an <see cref="ActionResult"/>.</description></item>
 ///   <item><description>Process the result — either render a view or redirect to another action.</description></item>
 ///   <item><description>Repeat until a view returns <see cref="NavigationResult.Quit"/>.</description></item>
@@ -27,11 +28,12 @@ namespace ConsoleMVC.Mvc;
 /// <example>
 /// <code>
 /// var builder = MvcApplication.CreateBuilder(args);
-/// var app = builder.Build();
+/// builder.Services.AddSingleton&lt;IGreetingService, GreetingService&gt;();
+/// using var app = builder.Build();
 /// app.Run();
 /// </code>
 /// </example>
-public class MvcApplication
+public class MvcApplication : IDisposable
 {
     /// <summary>
     /// The maximum number of consecutive redirects (without rendering a view) before the
@@ -41,8 +43,7 @@ public class MvcApplication
 
     private readonly Router _router = new();
     private readonly Assembly? _applicationAssembly;
-    private readonly IMarkupRenderer? _configuredRenderer;
-    private readonly ITextInput _input;
+    private readonly ServiceProvider _services;
     private readonly bool _clearScreenBetweenViews;
     private RouteContext _currentRoute;
 
@@ -51,7 +52,8 @@ public class MvcApplication
     /// the configuration specified in the given builder.
     /// </summary>
     /// <param name="builder">The builder containing the application configuration.</param>
-    internal MvcApplication(MvcApplicationBuilder builder)
+    /// <param name="services">The root service provider built from <see cref="MvcApplicationBuilder.Services"/>.</param>
+    internal MvcApplication(MvcApplicationBuilder builder, ServiceProvider services)
     {
         _currentRoute = new RouteContext
         {
@@ -59,10 +61,24 @@ public class MvcApplication
             Action = builder.DefaultAction
         };
         _applicationAssembly = builder.ApplicationAssembly;
-        _configuredRenderer = builder.Renderer;
-        _input = builder.Input ?? ConsoleTextInput.Instance;
+        _services = services;
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
     }
+
+    /// <summary>
+    /// Gets the application's root service provider, built from <see cref="MvcApplicationBuilder.Services"/>.
+    /// </summary>
+    /// <remarks>
+    /// Resolve singletons here, for example to seed data before <see cref="Run"/>. Scoped services can only be
+    /// resolved inside a scope: <c>using var scope = app.Services.CreateScope();</c>.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// app.Services.GetRequiredService&lt;IProductCatalogue&gt;().Load("products.json");
+    /// app.Run();
+    /// </code>
+    /// </example>
+    public IServiceProvider Services => _services;
 
     /// <summary>
     /// Creates a new <see cref="MvcApplicationBuilder"/> for configuring and building
@@ -95,19 +111,24 @@ public class MvcApplication
     public void Run()
     {
         _router.DiscoverAll(ResolveApplicationAssembly());
-        var renderer = _configuredRenderer ?? MarkupRenderer.CreateForConsole();
+        var renderer = _services.GetRequiredService<IMarkupRenderer>();
+        var input = _services.GetRequiredService<ITextInput>();
         var consecutiveRedirects = 0;
 
         while (true)
         {
-            var result = InvokeCurrentAction();
+            // One scope per navigation cycle: the action and the view it renders share scoped services
+            using var scope = _services.CreateScope();
+            using var cycle = new CycleInstances();
+
+            var result = InvokeCurrentAction(scope.ServiceProvider, cycle);
 
             switch (result)
             {
                 case ViewResult viewResult:
                     consecutiveRedirects = 0;
 
-                    var navigation = RenderView(viewResult, renderer);
+                    var navigation = RenderView(viewResult, renderer, input, scope.ServiceProvider, cycle);
                     if (navigation.Exit)
                         return;
 
@@ -157,9 +178,9 @@ public class MvcApplication
     /// <summary>
     /// Resolves the controller and action for the current route, binds form data and invokes the action.
     /// </summary>
-    private ActionResult? InvokeCurrentAction()
+    private ActionResult? InvokeCurrentAction(IServiceProvider services, CycleInstances cycle)
     {
-        var controller = _router.ResolveController(_currentRoute.Controller);
+        var controller = cycle.Track(_router.ResolveController(_currentRoute.Controller, services));
         var actionMethod = _router.ResolveAction(controller.GetType(), _currentRoute.Action);
 
         // Normalise the route to the declared action name so View() resolves the right view
@@ -194,13 +215,14 @@ public class MvcApplication
     /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.
     /// </summary>
-    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer)
+    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input,
+        IServiceProvider services, CycleInstances cycle)
     {
-        var view = _router.ResolveView(viewResult.ControllerName, viewResult.ViewName);
+        var view = cycle.Track(_router.ResolveView(viewResult.ControllerName, viewResult.ViewName, services));
         view.ViewData = viewResult.ViewData;
         view.ModelState = viewResult.ModelState;
         view.Renderer = renderer;
-        view.Input = _input;
+        view.Input = input;
 
         if (_clearScreenBetweenViews)
             renderer.Clear();
@@ -208,5 +230,40 @@ public class MvcApplication
         return view.RenderInternal(viewResult.Model)
                ?? throw new InvalidOperationException(
                    $"View '{view.GetType().Name}' returned null. Views must return a NavigationResult.");
+    }
+
+    /// <summary>
+    /// Disposes the root service provider and every singleton service it created.
+    /// </summary>
+    /// <example><code>using var app = builder.Build();</code></example>
+    public void Dispose()
+    {
+        _services.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// The controller and view created in one navigation cycle. They are created with
+    /// <see cref="ActivatorUtilities"/>, so the scope does not own them; this disposes them at the end of the cycle.
+    /// </summary>
+    private sealed class CycleInstances : IDisposable
+    {
+        private readonly List<IDisposable> _disposables = [];
+
+        /// <summary>Remembers <paramref name="instance"/> for disposal when it is <see cref="IDisposable"/>.</summary>
+        public T Track<T>(T instance)
+        {
+            if (instance is IDisposable disposable)
+                _disposables.Add(disposable);
+
+            return instance;
+        }
+
+        /// <summary>Disposes the tracked instances, most recent first.</summary>
+        public void Dispose()
+        {
+            for (var i = _disposables.Count - 1; i >= 0; i--)
+                _disposables[i].Dispose();
+        }
     }
 }

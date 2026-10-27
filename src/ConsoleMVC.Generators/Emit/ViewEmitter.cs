@@ -45,6 +45,8 @@ internal sealed class ViewEmitter
 
     private const string UsingKeyword = "using ";
 
+    private const string PublicKeyword = "public ";
+
     /// <summary>
     /// Prefix of generated local variables. Identifiers starting with <c>__cvw_</c> are reserved in views
     /// (documented in the C-View Markup guide).
@@ -102,6 +104,9 @@ internal sealed class ViewEmitter
         Line($"    public partial class {_info.ClassName} : global::ConsoleMVC.Mvc.ConsoleView<{ModelType()}>");
         Line("    {");
 
+        foreach (var inject in _document.Injects)
+            EmitInject(inject);
+
         // Map the method to the first line so "not all code paths return a value" points at the .cvw file
         Map(_document.Model?.Span.Start ?? 0, includeColumn: false);
         Line($"        public override global::ConsoleMVC.Mvc.NavigationResult Render({ModelType()} Model)");
@@ -116,6 +121,23 @@ internal sealed class ViewEmitter
         Line("}");
 
         return _output.ToString();
+    }
+
+    /// <summary>
+    /// Emits the property for an <c>@inject</c> directive, indented so that its type lands on the type's column in
+    /// the <c>.cvw</c> file (it always follows <c>"@inject "</c>, which is longer than <c>"public "</c>).
+    /// </summary>
+    private void EmitInject(InjectDirective inject)
+    {
+        Line("        [global::ConsoleMVC.Mvc.InjectAttribute]");
+
+        var (line, column) = _lines.GetPosition(inject.Type.Span.Start);
+        EnsureNewLine();
+        _output.Append("#line ").Append((line + 1).ToString(CultureInfo.InvariantCulture)).Append(' ').Append(_quotedPath).Append('\n');
+        _output.Append(' ', Math.Max(column - PublicKeyword.Length, 0)).Append(PublicKeyword)
+            .Append(inject.Type.Value).Append(' ').Append(inject.Name.Value)
+            .Append(" { get; private set; } = default!;\n");
+        Hidden();
     }
 
     // ------------------------------------------------------------------ nodes
