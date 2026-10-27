@@ -384,6 +384,22 @@ internal sealed class MarkupSchema
                 new AttributeSchema("label-colour", "LabelColour", colour)
             ]),
 
+            // ---- 1.26: Markdown
+            new ElementSchema("markdown", Rendering + "MarkdownElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("text", "Text", text, required: true),
+                new AttributeSchema("links", "ShowLinkUrls", boolean),
+                new AttributeSchema("heading-color", "HeadingColour", colour),
+                new AttributeSchema("heading-colour", "HeadingColour", colour),
+                new AttributeSchema("code-color", "CodeColour", colour),
+                new AttributeSchema("code-colour", "CodeColour", colour),
+                new AttributeSchema("link-color", "LinkColour", colour),
+                new AttributeSchema("link-colour", "LinkColour", colour),
+                new AttributeSchema("quote-color", "QuoteColour", colour),
+                new AttributeSchema("quote-colour", "QuoteColour", colour)
+            ]),
+
             // ---- 1.0: layout
             new ElementSchema("columns", Rendering + "ColumnsElement", ContentModel.Elements,
             [

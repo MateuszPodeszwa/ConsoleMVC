@@ -10,7 +10,7 @@
         <!-- NuGet Package Metadata -->
         <PackageId>ConsoleMVC.Testing</PackageId>
         <Title>ConsoleMVC.Testing - test host and snapshots for ConsoleMVC applications</Title>
-        <Version>1.25.0</Version>
+        <Version>1.26.0</Version>
         <Authors>Mateusz Podeszwa</Authors>
         <Description>Test ConsoleMVC applications end to end: run them with scripted lines and keys, capture every screen as plain text, assert on the routes visited, and compare screens with snapshot files. Works with xUnit, NUnit and MSTest.</Description>
         <Copyright>Copyright (c) 2026 Mateusz Podeszwa</Copyright>

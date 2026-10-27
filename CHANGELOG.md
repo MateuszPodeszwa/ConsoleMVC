@@ -2,6 +2,16 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.26.0]
+
+### Added
+
+- **`<markdown text="…" />`** ([design](docs/design/markdown.md), [guide](docs/guides/docs/c-view-markup.md#markdown)):
+  `MarkdownElement` draws headings, paragraphs (with hard line breaks), bulleted and numbered lists (nested), block
+  quotes, fenced code (clipped, not wrapped), rules, `**bold**`, `*italic*`, `` `code` ``, links (`ShowLinkUrls`) and
+  escapes. Output is sanitised, and parsing is bounded so unusual input cannot slow a screen down.
+- The template's about page is written in Markdown.
+
 ## [1.25.0]
 
 ### Added

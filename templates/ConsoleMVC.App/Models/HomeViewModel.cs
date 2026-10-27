@@ -14,4 +14,9 @@ public class HomeViewModel
     /// Gets or sets the descriptive message shown to the user.
     /// </summary>
     public string Message { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets more about the page, written in Markdown and drawn with <c>&lt;markdown&gt;</c>.
+    /// </summary>
+    public string Details { get; set; } = "";
 }

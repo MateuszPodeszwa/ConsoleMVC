@@ -35,16 +35,20 @@ public class HomeController(ILiveDisplay live) : Controller
         var model = new HomeViewModel
         {
             Title = "About ConsoleMVC",
-            Message = "ConsoleMVC brings ASP.NET Core MVC patterns to console applications.\n"
-                    + "Each page has its own Controller, View, and Model, just like web MVC.\n"
-                    + "\n"
-                    + "This template demonstrates:\n"
-                    + "  - Navigation with <menu>, and a shared header rendered with <partial>\n"
-                    + "  - Forms with <input>, validated with DataAnnotations and shown with <errors>\n"
-                    + "  - Dependency injection: GreetController receives IGreetingService\n"
-                    + "  - Middleware in Program.cs, and tables, columns and themes in the feature tour\n"
-                    + "\n"
-                    + "Run it with 'dotnet watch' and edit a .cvw file to see live reload."
+            Message = "ConsoleMVC brings ASP.NET Core MVC patterns to console applications.",
+            Details = """
+                Each page has its own **Controller**, **View** and **Model**, just like web MVC.
+
+                This template demonstrates:
+
+                - Navigation with `<menu>`, and a shared header rendered with `<partial>`
+                - Forms with `<input>`, validated with DataAnnotations and shown with `<errors>`
+                - Dependency injection: `GreetController` receives `IGreetingService`
+                - Middleware in `Program.cs`, and tables, charts and live elements in the feature tour
+
+                Run it with `dotnet watch` and edit a `.cvw` file to see *live reload*.
+                This text is Markdown, drawn by `<markdown>`.
+                """
         };
 
         return View(model);
@@ -72,6 +76,7 @@ public class HomeController(ILiveDisplay live) : Controller
                 new("<spinner>", "Turns while an action works, then shows a tick"),
                 new("<bar-chart>", "Compares values as horizontal bars"),
                 new("<sparkline>", "Draws a series of values on one line"),
+                new("<markdown>", "Draws Markdown: headings, lists, emphasis, code and links"),
                 new("class=\"…\"", "Applies a named style from the theme")
             ]
         };

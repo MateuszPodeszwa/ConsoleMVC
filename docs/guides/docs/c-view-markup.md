@@ -521,6 +521,39 @@ are shown.
 
 Values that are not finite numbers (`double.NaN`) leave a gap.
 
+### `<markdown />`
+
+Draws Markdown for the terminal: help pages, release notes, descriptions from a database.
+
+```
+<markdown text="@Model.ReleaseNotes" />
+<markdown text="@File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "help.md"))" />
+```
+
+| Markdown | Drawn as |
+|---|---|
+| `# Heading` to `###### Heading` | bold (the first level also underlined) |
+| paragraphs | wrapped to the width; two trailing spaces or `\` at the end of a line break it |
+| `- item`, `* item`, `1. item` | `•` or the number with a hanging indent; indent by two spaces to nest |
+| `> quote` | `│ ` before each line |
+| fenced code (```` ``` ````) | the lines as written, indented, clipped rather than wrapped |
+| `---` | a rule across the width |
+| `**bold**`, `*italic*`, `` `code` `` | styled, without the markers; `\*` is a literal star |
+| `[text](https://…)`, `<https://…>` | the text, underlined, followed by the address |
+
+| Attribute | Values | Default |
+|---|---|---|
+| `text` | **required**: the Markdown, usually an expression | |
+| `links` | `false` hides link addresses | shown |
+| `heading-color` / `heading-colour` | heading colour | terminal default |
+| `code-color` / `code-colour` | code colour | yellow |
+| `link-color` / `link-colour` | link colour | terminal default |
+| `quote-color` / `quote-colour` | quote and rule colour | dark grey |
+| `class` | theme style (its colour colours the headings) | none |
+
+Everything is sanitised, so Markdown from users cannot send terminal escape sequences, and unusual input cannot slow
+the screen down. HTML, tables and images are shown as text.
+
 ### `<errors />`
 
 Shows validation messages from the view's `ModelState` (see [Validation](https://github.com/MateuszPodeszwa/ConsoleMVC#validation)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.

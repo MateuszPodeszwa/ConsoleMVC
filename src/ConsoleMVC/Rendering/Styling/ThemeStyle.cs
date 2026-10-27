@@ -129,6 +129,10 @@ public sealed record ThemeStyle
                 if (Foreground is { } chartColour) chart.Colour = chartColour;
                 break;
 
+            case MarkdownElement markdown:
+                if (Foreground is { } headingColour) markdown.HeadingColour = headingColour;
+                break;
+
             case SparklineElement sparkline:
                 if (Foreground is { } sparklineColour) sparkline.Colour = sparklineColour;
                 break;

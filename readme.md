@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.25: charts for dashboards, `<bar-chart>` and `<sparkline>`. 1.24 added `<progress>` and `<spinner>` that update while an action works (`ILiveDisplay`) and views that refresh on a timer (`@refresh 5s`), 1.23 keyboard shortcuts on every screen (`app.MapKey`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.26: `<markdown text="@Model.Notes" />` draws Markdown (headings, lists, emphasis, code, links). 1.25 added charts (`<bar-chart>`, `<sparkline>`), 1.24 `<progress>` and `<spinner>` that update while an action works and views that refresh on a timer (`@refresh 5s`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -19,6 +19,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
 - **Keyboard shortcuts**: `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` works on every screen, in menus and fields alike, and `<shortcuts />` lists them
+- **Markdown**: `<markdown text="@Model.Notes" />` draws headings, lists, quotes, code, `**bold**`, `*italic*` and links, wrapped to the terminal and sanitised
 - **Charts**: `<bar-chart>` with `<bar label value />` (bars ending in eighths of a cell) and `<sparkline values="@Model.History" />` for dashboards
 - **Live screens**: `<progress>` and `<spinner>` redraw in place while an async action works (`ILiveDisplay`), and `@refresh 5s` redraws a dashboard with fresh data until the user starts typing
 - **Declarative input and navigation**: `<input>`, `<number>` and `<date>` collect form values, `<select>` (with type-to-filter), `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
@@ -84,7 +85,7 @@ MyApp/
   Views/
     Home/
       IndexView.cvw             # <menu> navigation
-      AboutView.cvw
+      AboutView.cvw             # <markdown> from the model
       FeaturesView.cvw          # <table> generated from the model
       StatusView.cvw            # @refresh 1s, <spinner>, <progress>, <sparkline> and <bar-chart>
     Greet/
@@ -644,6 +645,8 @@ Dashboards can draw their numbers as charts:
 ```
 
 See [charts](docs/guides/docs/c-view-markup.md#bar-chart-and-bar) and the [design](docs/design/charts.md).
+
+Text written in Markdown (help pages, release notes) is drawn with `<markdown text="@Model.Notes" />`: headings, lists, quotes, fenced code, `**bold**`, `*italic*`, `` `code` `` and links, wrapped to the terminal. See [`<markdown />`](docs/guides/docs/c-view-markup.md#markdown) and the [design](docs/design/markdown.md).
 
 See the [Live Screens guide](docs/guides/docs/live-screens.md) and the [design](docs/design/live-elements.md).
 

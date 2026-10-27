@@ -66,4 +66,13 @@ public class AppTests
         Assert.Contains("Services up ████████████████████ 100%", run.Output);
         Assert.Contains("Payments", run.Screens[3]);                // the bar chart of response times
     }
+
+    [Fact]
+    public void AboutPage_DrawsItsMarkdown()
+    {
+        var run = Host().Run("1", "q");
+
+        Assert.Contains("Each page has its own Controller, View and Model", run.Screens[1]); // **bold** without the stars
+        Assert.Contains("• Navigation with <menu>", run.Screens[1]);
+    }
 }
