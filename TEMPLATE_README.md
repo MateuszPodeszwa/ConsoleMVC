@@ -25,16 +25,18 @@ A ready-to-run console application structured with the MVC pattern:
 
 - **Program.cs**: entry point using the familiar `CreateBuilder()`, `Build()`, `RunAsync()` pattern, with a middleware that shows the current page in the terminal title
 - **Controllers/**: controller classes that handle actions and return results
-- **Views/**: `.cvw` views using C-View Markup (`<box>`, `<text>`, `<table>`, `<input>`, `<menu>`) and C#, compiled at build time
+- **Views/**: `.cvw` views using C-View Markup (`<box>`, `<text>`, `<table>`, `<columns>`, `<input>`, `<select>`, `<checkbox>`, `<menu>`) and C#, compiled at build time; `Views/Shared` holds the layout and a partial view
 - **Models/**: ViewModel DTOs passed from controllers to views
-- **Services/**: an `IGreetingService` registered with `builder.Services` in `Program.cs`
+- **Services/**: an `IGreetingService` registered with `builder.Services` in `Program.cs`, configured by `GreetingOptions`
+- **appsettings.json**: settings read by `builder.Configuration` (environment variables and command-line arguments override them)
 
 The template includes working examples of:
 
 - **Navigation**: `<menu>` elements moving between controllers and actions (`Home`, `About`), Back options, and breadcrumbs in the layout
 - **Tables, columns and themes**: a feature tour page with a `<table>` generated from the model, `<columns>` that stack on narrow terminals, and theme classes (`class="panel"`)
-- **Partial views and layouts**: the home and about pages share `Views/Shared/PageHeader.cvw` through `<partial>`, and `Views/Shared/_Layout.cvw` adds an app bar and a separator above every menu
-- **Form data posting with model binding**: a greeting form that collects input and posts it to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
+- **Partial views and layouts**: the home and about pages share `Views/Shared/PageHeader.cvw` through `<partial>`, and `Views/Shared/_Layout.cvw` adds an app bar (breadcrumbs on the left, the app name on the right) and a separator above every menu
+- **Form data posting with model binding**: a greeting form with a text `<input>`, a colour `<select>` (arrow keys in a terminal) and a `<checkbox>`, posted to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
+- **Configuration**: the greeting's salutation comes from the `Greeting` section of `appsettings.json` through `IOptions<GreetingOptions>`; try `dotnet run -- --Greeting:Salutation=Hi`
 - **Dependency injection**: `GreetController` receives `IGreetingService` through its constructor and the result view reads it with `@inject`
 - **Form data posting with simple parameters**: a calculator that posts individual values (`int a`, `int b`, `string op`) directly to action method parameters
 
@@ -48,4 +50,6 @@ For `.cvw` file recognition, syntax highlighting, and icon support in JetBrains 
 ## Learn More
 
 - [ConsoleMVC.Framework NuGet Package](https://www.nuget.org/packages/ConsoleMVC.Framework)
+- [ConsoleMVC.Testing NuGet Package](https://www.nuget.org/packages/ConsoleMVC.Testing): test the application with scripted input and snapshots
+- [Guides](https://mateuszpodeszwa.github.io/ConsoleMVC/guides/)
 - [GitHub Repository](https://github.com/MateuszPodeszwa/ConsoleMVC)

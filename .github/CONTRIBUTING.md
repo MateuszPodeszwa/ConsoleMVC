@@ -20,10 +20,10 @@ Thank you for your interest in contributing to ConsoleMVC! This guide will help 
 1. Fork the repository
 2. Create a feature branch from `main`
 3. Make your changes
-4. Ensure your code builds without warnings and all tests pass:
+4. Ensure your code builds without warnings and all tests pass, as CI checks on Linux, macOS and Windows:
    ```bash
-   dotnet build
-   dotnet test
+   dotnet build ConsoleMVC.sln -c Release -warnaserror
+   dotnet test ConsoleMVC.sln -c Release --no-build
    ```
 5. Submit a pull request targeting `main`
 
@@ -31,8 +31,10 @@ Thank you for your interest in contributing to ConsoleMVC! This guide will help 
 
 - Keep changes focused and atomic, one feature or fix per PR
 - Follow existing code style and conventions
-- Include XML documentation for any public APIs
-- Update the README if your change affects user-facing behavior
+- Write the tests first, and include XML documentation with an example for every public member
+- Update the documentation in the same pull request when a change affects users: `readme.md`, the package readmes (`src/ConsoleMVC/PACKAGE_README.md`, `src/ConsoleMVC.Testing/PACKAGE_README.md`), the guides in `docs/guides/docs` (new guides go in `docs/guides/mkdocs.yml`), `CHANGELOG.md` and, when a roadmap item moves, `plannedfeatures.md`
+- Larger features start with a design document in `docs/design` (UML and pseudocode)
+- Use British English in code comments and documentation
 
 ## Development Setup
 
@@ -48,9 +50,11 @@ Thank you for your interest in contributing to ConsoleMVC! This guide will help 
 
 ## Project Structure
 
-- `src/ConsoleMVC/`: Framework library (NuGet package), including the `Rendering/` engine
-- `src/ConsoleMVC.Generators/`: Source generator that compiles `.cvw` views and C-View Markup
-- `tests/`: `ConsoleMVC.Tests` (framework and rendering) and `ConsoleMVC.Generators.Tests` (generator end-to-end)
+- `src/ConsoleMVC/`: Framework library (NuGet: ConsoleMVC.Framework), including the `Rendering/` engine and `Hosting/` (configuration and logging)
+- `src/ConsoleMVC.Generators/`: Source generator that compiles `.cvw` views and C-View Markup (bundled in the framework package)
+- `src/ConsoleMVC.Testing/`: Test host, scripted input and snapshots (NuGet: ConsoleMVC.Testing)
+- `tests/`: `ConsoleMVC.Tests` (framework, rendering and the testing package) and `ConsoleMVC.Generators.Tests` (generator end-to-end)
+- `docs/guides/`: MkDocs user guides, published with the API reference to GitHub Pages
 - `templates/ConsoleMVC.App/`: Project template (NuGet template package)
 - `docs/design/`: Design documents with UML diagrams and pseudocode
 

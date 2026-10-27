@@ -425,7 +425,7 @@ A layout frames every screen. It is a `.cvw` file in `Views/Shared` with a `<bod
 ```
 
 * `Views/Shared/_Layout.cvw` is used by every view. A view picks another with `@layout Plain`, or none with `@layout none`.
-* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>` or `<menu>`), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
+* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
 * A layout shares the view's `ViewData`, `ModelState`, `Form`, theme and services, and may use C# and `@inject`. It runs before the view's own code, so it sees `ViewData` set by the controller. It has no `@model`.
 * `<body />` appears once, at the top level of the layout, not inside an element or a C# block. Partials have no layout, and layouts cannot nest.
 
@@ -515,6 +515,7 @@ Elements are laid out to the terminal's width when they are drawn. When the wind
 - This works on macOS, Linux and Windows terminals, a moment after the window stops changing size.
 - A screen that also writes with `Console.WriteLine` is not redrawn, because that output cannot be laid out again; it stays as the terminal shows it.
 - Characters typed at a prompt but not yet confirmed with Enter are kept, but appear again only after Enter.
+- A `<select>`, `<radio>` or `<checkbox>` being answered with the arrow keys is redrawn with its current highlight and ticks.
 - To turn it off: `builder.Renderer = MarkupRenderer.CreateForConsole(redrawOnResize: false);`
 
 ## Rendering outside views

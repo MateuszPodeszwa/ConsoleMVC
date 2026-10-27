@@ -28,7 +28,7 @@ be cleared at once. So:
 
 - the **header** (markup before `<body />`) is drawn before the view;
 - the **footer** (markup after `<body />`) is drawn just before the view first waits for the user (its first
-  `<input>` or `<menu>`, also inside partials), or when the view returns if it never waits.
+  `<input>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`, also inside partials), or when the view returns if it never waits.
 
 ```mermaid
 sequenceDiagram

@@ -2,6 +2,18 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Documentation
+
+- Brought every guide and readme up to date with 1.10 to 1.18: Getting Started shows the current template (layout,
+  partial, `appsettings.json`) and next steps; the readme's project tree, entry point, application flow and "Adding
+  New Pages" example (now markup with a Back option) match the template; the template readme lists the choice inputs
+  and configuration; CONTRIBUTING lists the testing package and the documentation rules; the layout footer is
+  described as drawn before any field, not only `<input>` and `<menu>`.
+- The API reference includes the `ConsoleMVC.Testing` namespace, and the documentation workflow builds with .NET 10.
+- The "Configuration and Testing" guide is now "Builder Options"; testing has its own guide.
+
 ## [1.18.0]
 
 ### Added

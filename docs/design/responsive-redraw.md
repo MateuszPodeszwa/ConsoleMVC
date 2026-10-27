@@ -47,7 +47,8 @@ ForeignOutputTracker (Console.Out)
 
 - **Only screens the renderer owns are redrawn.** Before the first clear the screen holds what was there before the
   application started; after `Console.WriteLine` from a view, that output cannot be laid out again. Both are left alone.
-- **Typed answers survive** because `<input>` and `<menu>` record them (masked input as mask characters).
+- **Typed answers survive** because `<input>` and `<menu>` record them (masked input as mask characters); fields
+  answered with the arrow keys (`<select>`, `<radio>`, `<checkbox>`) are elements, so they are redrawn in their current state.
 - **Thread safety:** rendering and redrawing take the same lock, so a resize during rendering waits for it.
 - A view waiting for input keeps the characters typed so far in the runtime's line buffer; a redraw does not show
   them again until the user presses Enter (they are not lost).

@@ -33,8 +33,8 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 ### Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
-- JetBrain's Rider (personally recommended for the [plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport/edit) support), VS plugin is planned
-- If using VS code or other, [add IDE support for cvw filles](#IDESupport)
+- JetBrains Rider is recommended, for the [ConsoleMVC CVWSupport plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport); a Visual Studio extension is planned
+- With VS Code or another editor, [add basic support for `.cvw` files](#IDESupport)
 
 ### Installation
 
@@ -59,6 +59,7 @@ This scaffolds a ready-to-run application with the following structure:
 MyApp/
   MyApp.csproj
   Program.cs
+  appsettings.json              # Settings read by builder.Configuration
   Controllers/
     HomeController.cs
     GreetController.cs          # Form posting with model binding
@@ -69,17 +70,24 @@ MyApp/
     GreetFormModel.cs           # Bound from form data (complex model)
     GreetResultModel.cs
     CalcResultModel.cs
+  Services/
+    IGreetingService.cs         # Registered in Program.cs, injected into GreetController and a view
+    GreetingService.cs
+    GreetingOptions.cs          # Bound from the Greeting section of appsettings.json
   Views/
     Home/
       IndexView.cvw             # <menu> navigation
       AboutView.cvw
       FeaturesView.cvw          # <table> generated from the model
     Greet/
-      IndexView.cvw             # <input> fields, posts the Form
+      IndexView.cvw             # <input>, <select> and <checkbox>, posts the Form
       ResultView.cvw
     Calc/
       IndexView.cvw             # <input> fields, posts the Form
       ResultView.cvw
+    Shared/
+      _Layout.cvw               # Frames every view: breadcrumbs, app name, separator
+      PageHeader.cvw            # A partial view, used with <partial>
 ```
 
 ## How It Works
@@ -94,6 +102,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 var builder = MvcApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IGreetingService, GreetingService>(); // optional: your services
+builder.Services.Configure<GreetingOptions>(builder.Configuration.GetSection("Greeting")); // optional: settings
 using var app = builder.Build();
 await app.RunAsync();                                               // or app.Run()
 ```
@@ -183,7 +192,7 @@ return input switch
 <separator class="muted" />
 ```
 
-The part before `<body />` is drawn before the view; the part after it is drawn just before the view's first `<input>` or `<menu>` (or at the end if it has neither), so a footer sits between the content and what the user answers. Views choose another layout with `@layout Name` or none with `@layout none`. See [Layouts](docs/guides/docs/c-view-markup.md#layouts-and-body) and the [design](docs/design/layout-views.md).
+The part before `<body />` is drawn before the view; the part after it is drawn just before the view first waits for the user (its first `<input>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`, or at the end if it has none), so a footer sits between the content and what the user answers. Views choose another layout with `@layout Name` or none with `@layout none`. See [Layouts](docs/guides/docs/c-view-markup.md#layouts-and-body) and the [design](docs/design/layout-views.md).
 
 #### Layout and Themes
 
@@ -622,11 +631,11 @@ Start → Home/Index (default route)
           ↓
     Console is cleared, view renders, waits for input
           ↓
-    View returns NavigationResult.To("Home", "About")
+    View returns NavigationResult.To("Home", "About") (a <menu> option with nav="Home/About")
           ↓
     Controller.About() returns View(model)
           ↓
-    ... continues until NavigationResult.Quit()
+    ... continues until NavigationResult.Quit(); NavigationResult.Back() returns to the previous screen
 ```
 
 **Form data posting** (view collects input → controller receives it):
@@ -688,14 +697,19 @@ public ActionResult Contact()
 ```
 @model MyApp.Models.ContactViewModel
 
-Console.WriteLine($"Contact us at: {Model.Email}");
-Console.Write("Press any key to go back...");
-Console.ReadKey();
+<box title="Contact" border="rounded">
+    <text>Contact us at: @Model.Email</text>
+</box>
 
-return NavigationResult.To("Home", "Index");
+<menu>
+    <option key="b" back>Back</option>
+    <option key="q" quit>Exit</option>
+</menu>
 ```
 
-Build and run: the new page is automatically discovered and routable.
+**4. Link to it** from another view: `<option key="5" nav="Home/Contact">Contact</option>`.
+
+Build and run: the new page is discovered automatically, framed by the layout, and a typo in `nav` is reported by the build (CVW119).
 
 ## Configuration
 

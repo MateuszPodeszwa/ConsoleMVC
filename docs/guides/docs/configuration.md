@@ -1,4 +1,4 @@
-# Configuration and Testing
+# Builder Options
 
 ## The builder
 
