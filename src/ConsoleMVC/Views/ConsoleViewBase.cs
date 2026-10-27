@@ -102,6 +102,21 @@ public abstract class ConsoleViewBase
         return value;
     }
 
+    /// <summary>
+    /// Gets the screens shown so far, oldest first, ending with this one. A <c>&lt;menu&gt;</c> option marked
+    /// <c>back</c> (or <see cref="NavigationResult.Back"/>) returns to the one before it.
+    /// </summary>
+    /// <example><code>var previous = NavigationHistory.Count > 1 ? NavigationHistory[^2] : null;</code></example>
+    public IReadOnlyList<RouteContext> NavigationHistory { get; internal set; } = [];
+
+    /// <summary>
+    /// Gets a label for each screen in <see cref="NavigationHistory"/>: the controller for an <c>Index</c> action, else the
+    /// action, e.g. <c>Home › Orders › Details</c>. <c>&lt;breadcrumbs /&gt;</c> shows them.
+    /// </summary>
+    /// <example><code>&lt;text&gt;@string.Join(" / ", Breadcrumbs)&lt;/text&gt;</code></example>
+    public IReadOnlyList<string> Breadcrumbs =>
+        NavigationHistory.Select(r => string.Equals(r.Action, "Index", StringComparison.OrdinalIgnoreCase) ? r.Controller : r.Action).ToArray();
+
     /// <summary>Theme used by views created outside the application (for example in unit tests).</summary>
     private static readonly Lazy<Theme> DefaultTheme = new(Theme.CreateDefault);
 
@@ -171,6 +186,7 @@ public abstract class ConsoleViewBase
         other.Input = Input;
         other.Form = Form;
         other.Theme = Theme;
+        other.NavigationHistory = NavigationHistory;
         other.Services = Services;
 
         ServiceInjector.InjectProperties(other, Services ?? NoServices.Value);

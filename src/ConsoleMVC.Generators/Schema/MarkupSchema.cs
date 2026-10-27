@@ -185,6 +185,7 @@ internal sealed class MarkupSchema
                 new AttributeSchema("key", "Key", text, required: true),
                 new AttributeSchema("nav", "Target", new RouteAttributeType()),
                 new AttributeSchema("quit", "Quit", boolean),
+                new AttributeSchema("back", "Back", boolean),
                 new AttributeSchema("post", "PostForm", boolean)
             ], requiredParent: "menu", validator: ValidateOption),
             new ElementSchema("input", Rendering + "InputElement", ContentModel.Void,
@@ -206,6 +207,15 @@ internal sealed class MarkupSchema
                 new AttributeSchema("color", "Colour", colour),
                 new AttributeSchema("colour", "Colour", colour)
             ], initialisers: ["Source = this.ModelState"]),
+
+            // ---- navigation
+            new ElementSchema("breadcrumbs", Rendering + "BreadcrumbsElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("separator", "Separator", text),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour)
+            ], initialisers: ["Items = this.Breadcrumbs"]),
 
             // ---- 1.0: layout
             new ElementSchema("columns", Rendering + "ColumnsElement", ContentModel.Elements,
@@ -232,11 +242,12 @@ internal sealed class MarkupSchema
     private static string? ValidateOption(IReadOnlyList<Syntax.AttributeNode> attributes)
     {
         var navigates = attributes.Any(a => a.Schema.Property == "Target");
-        // quit="false" is the same as leaving quit out
+        // quit="false" is the same as leaving quit out, and so is back="false"
         var quits = attributes.Any(a => a.Schema.Property == "Quit" && a.LiteralCode != "false");
+        var goesBack = attributes.Any(a => a.Schema.Property == "Back" && a.LiteralCode != "false");
 
-        if (navigates == quits)
-            return "<option> needs exactly one of 'nav' (e.g. nav=\"Home/Index\") or 'quit'";
+        if ((navigates ? 1 : 0) + (quits ? 1 : 0) + (goesBack ? 1 : 0) != 1)
+            return "<option> needs exactly one of 'nav' (e.g. nav=\"Home/Index\"), 'quit' or 'back'";
 
         return null;
     }

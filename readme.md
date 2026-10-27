@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.11: layouts frame every screen. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.12: a Back option and breadcrumbs from the navigation history. 1.11 added layouts that frame every screen. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -263,7 +263,7 @@ The `<menu>` shows the options, re-prompts on an invalid choice and returns the 
 
 Mistakes such as an unknown attribute or a missing closing tag are build errors pointing at the `.cvw` line, and C# errors inside views are mapped back to the `.cvw` file too. The full element and attribute reference is in the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**.
 
-**Navigation from views:**
+**Navigation from views** (a menu option marked `back` returns to the previous screen, and `<breadcrumbs />` shows the trail, e.g. `Home › Orders › Details`):
 
 Every view must return a `NavigationResult` to tell the framework what to do next, either from C#, or by ending with a `<menu>`:
 
@@ -273,6 +273,7 @@ Every view must return a `NavigationResult` to tell the framework what to do nex
 | `NavigationResult.To("Controller", "Action", formData)` | Navigate and post form data to the target action |
 | `NavigationResult.ToAction("Action")` | Navigate to a different action on the current controller |
 | `NavigationResult.ToAction("Action", formData)` | Navigate within the current controller and post form data |
+| `NavigationResult.Back()` | Return to the previous screen (the same as a menu option marked `back`) |
 | `NavigationResult.Quit()` | Exit the application |
 
 ### Form Data Posting
@@ -720,7 +721,6 @@ app.Run();
 
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
-- **Navigation history** with a "back" key and breadcrumbs
 - **Route values** in navigation (`nav="Orders/Details?id=@order.Id"`) and **compile-time route checks**
 - **More inputs** (`<select>`, `<checkbox>`, `<radio>`) with arrow-key selection
 - **Hosting integration** (configuration and logging) and a **`ConsoleMVC.Testing`** package for snapshot tests

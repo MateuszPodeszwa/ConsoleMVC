@@ -108,6 +108,10 @@ public sealed record ThemeStyle
             case ValidationErrorsElement errors:
                 if (Foreground is { } errorsColour) errors.Colour = errorsColour;
                 break;
+
+            case BreadcrumbsElement breadcrumbs:
+                if (Foreground is { } breadcrumbsColour) breadcrumbs.Colour = breadcrumbsColour;
+                break;
         }
     }
 }

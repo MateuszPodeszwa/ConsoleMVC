@@ -40,6 +40,12 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// </summary>
     public const int MaxConsecutiveRedirects = 32;
 
+    /// <summary>
+    /// The most screens kept in the navigation history (<see cref="ConsoleViewBase.NavigationHistory"/>); older ones are
+    /// forgotten.
+    /// </summary>
+    public const int MaxHistory = 50;
+
     private Router _router = new();
     private int _reloadRequested;
     private readonly Assembly? _applicationAssembly;
@@ -49,6 +55,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     private int _running;
     private readonly bool _clearScreenBetweenViews;
     private RouteContext _currentRoute;
+
+    /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
+    private readonly List<RouteContext> _history = [];
 
     /// <summary>
     /// Initialises a new instance of the <see cref="MvcApplication"/> class using
@@ -267,17 +276,20 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                 {
                     case ViewResult viewResult:
                         consecutiveRedirects = 0;
+                        RecordScreen(context);
 
                         var navigation = RenderView(viewResult, renderer, input, theme, context);
                         if (navigation.Exit)
                             return;
 
-                        _currentRoute = new RouteContext
-                        {
-                            Controller = navigation.Controller ?? context.Route.Controller,
-                            Action = navigation.Action ?? context.Route.Action,
-                            FormData = navigation.FormData
-                        };
+                        _currentRoute = navigation.IsBack
+                            ? PreviousScreen()
+                            : new RouteContext
+                            {
+                                Controller = navigation.Controller ?? context.Route.Controller,
+                                Action = navigation.Action ?? context.Route.Action,
+                                FormData = navigation.FormData
+                            };
                         break;
 
                     case RedirectToActionResult redirect:
@@ -374,6 +386,42 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Adds the screen about to be shown to the history. Showing the same screen again (a form after validation failed,
+    /// or the screen reached with Back) replaces the last entry instead.
+    /// </summary>
+    private void RecordScreen(ActionContext context)
+    {
+        // The controller's route has the action's declared name, whatever casing navigation used
+        var route = context.Controller?.RouteContext ?? context.Route;
+        var screen = new RouteContext { Controller = route.Controller, Action = route.Action };
+
+        if (_history.Count > 0 && SameScreen(_history[^1], screen))
+            _history[^1] = screen;
+        else
+            _history.Add(screen);
+
+        if (_history.Count > MaxHistory)
+            _history.RemoveAt(0);
+    }
+
+    /// <summary>
+    /// Leaves the current screen for the one before it, which stays in the history as the current screen. On the first
+    /// screen, the current screen is shown again.
+    /// </summary>
+    private RouteContext PreviousScreen()
+    {
+        if (_history.Count > 1)
+            _history.RemoveAt(_history.Count - 1);
+
+        var previous = _history[^1];
+        return new RouteContext { Controller = previous.Controller, Action = previous.Action };
+    }
+
+    private static bool SameScreen(RouteContext a, RouteContext b) =>
+        string.Equals(a.Controller, b.Controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(a.Action, b.Action, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.
     /// </summary>
     private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input, Theme theme,
@@ -385,6 +433,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         view.Renderer = renderer;
         view.Input = input;
         view.Theme = theme;
+        view.NavigationHistory = _history.ToArray();
 
         if (_clearScreenBetweenViews)
             renderer.Clear();

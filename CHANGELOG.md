@@ -2,6 +2,16 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.12.0]
+
+### Added
+
+- **Navigation history** ([design](docs/design/navigation-history.md)): the screens shown are remembered (up to
+  `MvcApplication.MaxHistory`, 50). `NavigationResult.Back()` and `<option back>` return to the previous screen.
+- `ConsoleViewBase.NavigationHistory` and `Breadcrumbs`, and the `<breadcrumbs />` element (`BreadcrumbsElement`)
+  showing `Home › Orders › Details`, shortened from the start when it does not fit.
+- The template's layout shows breadcrumbs, and the About and feature tour pages have a Back option.
+
 ## [1.11.0]
 
 ### Added

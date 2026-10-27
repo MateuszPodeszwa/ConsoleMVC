@@ -39,7 +39,10 @@ A view ends by returning a `NavigationResult`, or with a `<menu>`, which returns
 | `NavigationResult.To("Controller", "Action")` | Go to an action |
 | `NavigationResult.To("Controller", "Action", formData)` | Go to an action and post form data |
 | `NavigationResult.ToAction("Action")` / `ToAction("Action", formData)` | The same, on the current controller |
+| `NavigationResult.Back()` | Return to the previous screen (the same as a menu option marked `back`) |
 | `NavigationResult.Quit()` | Exit the application |
+
+The framework remembers the screens shown (up to 50). `Back()` and `<option key="b" back>Back</option>` return to the previous one, running its action again without form data; showing the same screen twice in a row (a form after validation fails) counts once. Views read the trail from `NavigationHistory` and show it with `<breadcrumbs />`. See the [design](https://github.com/MateuszPodeszwa/ConsoleMVC/blob/main/docs/design/navigation-history.md).
 
 ## Posting forms
 

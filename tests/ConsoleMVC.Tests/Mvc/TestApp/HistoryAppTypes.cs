@@ -1,0 +1,64 @@
+using ConsoleMVC.Mvc;
+
+// Controllers and views for NavigationHistoryTests.
+
+namespace ConsoleMVC.Tests.Mvc.HistoryApp
+{
+    /// <summary>What the history tests observe.</summary>
+    public static class HistoryScript
+    {
+        /// <summary>The navigation each successive screen returns.</summary>
+        public static Queue<NavigationResult> Steps { get; } = new();
+
+        /// <summary>The screens shown, with the breadcrumbs each one saw.</summary>
+        public static List<string> Log { get; } = [];
+
+        public static void Reset(params NavigationResult[] steps)
+        {
+            Steps.Clear();
+            Log.Clear();
+            foreach (var step in steps)
+                Steps.Enqueue(step);
+        }
+
+        public static NavigationResult Next(ConsoleView view, string name)
+        {
+            Log.Add($"{name} [{string.Join(" > ", view.Breadcrumbs)}]");
+            return Steps.Count > 0 ? Steps.Dequeue() : NavigationResult.Quit();
+        }
+    }
+}
+
+namespace ConsoleMVC.Tests.Mvc.HistoryApp.Controllers
+{
+    public sealed class TrailController : Controller
+    {
+        public ActionResult Index() => View();
+
+        public ActionResult List() => View();
+
+        public ActionResult Details(int id) => View((object)id.ToString());
+
+        public ActionResult Jump() => RedirectToAction("Details");
+    }
+}
+
+namespace ConsoleMVC.Tests.Mvc.HistoryApp.Views.Trail
+{
+    using ConsoleMVC.Tests.Mvc.HistoryApp;
+
+    public sealed class IndexView : ConsoleView<object>
+    {
+        public override NavigationResult Render(object Model) => HistoryScript.Next(this, "Index");
+    }
+
+    public sealed class ListView : ConsoleView<object>
+    {
+        public override NavigationResult Render(object Model) => HistoryScript.Next(this, "List");
+    }
+
+    public sealed class DetailsView : ConsoleView<object>
+    {
+        public override NavigationResult Render(object Model) => HistoryScript.Next(this, $"Details({Model})");
+    }
+}

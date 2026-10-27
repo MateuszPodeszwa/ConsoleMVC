@@ -243,13 +243,31 @@ Select an option: _
 | `<option>` | `key` | **required**: what the user types (case-insensitive) | |
 | | `nav` | `Controller/Action`, or `Action` on the current controller | |
 | | `quit` | flag: quit the application | |
+| | `back` | flag: return to the previous screen (on the first screen, it is shown again) | |
 | | `post` | flag: post the view's `Form` with the navigation | off |
 | | style attributes | as for `<text>` | |
 
-Each option needs exactly one of `nav` or `quit`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
+Each option needs exactly one of `nav`, `quit` or `back`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
 
 !!! note "Top level only"
     `<input>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
+
+### `<breadcrumbs />`
+
+Shows where the user is, from the navigation history: `Home › Orders › Details`. Each screen is labelled with its controller for an `Index` action, else its action; the current one is bold. When the trail is too wide the oldest items become `…`, so the current screen always shows. It renders nothing outside an application (for example in a unit test).
+
+```
+<breadcrumbs class="muted" />
+<breadcrumbs separator=" / " color="darkgrey" />
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `separator` | text between items | ` › ` |
+| `color` / `colour` | a [colour](#colours) | terminal default |
+| `class` | [theme](#themes-and-class) classes | none |
+
+Views can also read the history in C#: `NavigationHistory` (the routes, oldest first) and `Breadcrumbs` (the labels).
 
 ### `<errors />`
 

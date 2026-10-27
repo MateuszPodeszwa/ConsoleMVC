@@ -34,6 +34,9 @@ public abstract class ConsoleView : ConsoleViewBase
         if (option is null || option.Quit)
             return NavigationResult.Quit();
 
+        if (option.Back)
+            return NavigationResult.Back();
+
         var target = option.Target ?? "";
         var parts = target.Split('/');
         if (parts.Length > 2 || parts.Any(p => p.Trim().Length == 0))

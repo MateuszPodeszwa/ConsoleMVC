@@ -31,7 +31,7 @@ A ready-to-run console application structured with the MVC pattern:
 
 The template includes working examples of:
 
-- **Navigation**: `<menu>` elements moving between controllers and actions (`Home`, `About`)
+- **Navigation**: `<menu>` elements moving between controllers and actions (`Home`, `About`), Back options, and breadcrumbs in the layout
 - **Tables, columns and themes**: a feature tour page with a `<table>` generated from the model, `<columns>` that stack on narrow terminals, and theme classes (`class="panel"`)
 - **Partial views and layouts**: the home and about pages share `Views/Shared/PageHeader.cvw` through `<partial>`, and `Views/Shared/_Layout.cvw` adds an app bar and a separator above every menu
 - **Form data posting with model binding**: a greeting form that collects input and posts it to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`

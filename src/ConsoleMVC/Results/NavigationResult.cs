@@ -83,4 +83,18 @@ public class NavigationResult
     /// <returns>A <see cref="NavigationResult"/> with <see cref="Exit"/> set to <see langword="true"/>.</returns>
     public static NavigationResult Quit()
         => new() { Exit = true };
+
+    /// <summary>
+    /// Gets a value indicating whether this navigation returns to the previous screen (see <see cref="Back"/>).
+    /// </summary>
+    public bool IsBack { get; init; }
+
+    /// <summary>
+    /// Returns to the screen shown before this one: its action runs again, without form data. On the first screen the
+    /// current screen is shown again. A <c>&lt;menu&gt;</c> option marked <c>back</c> does the same.
+    /// </summary>
+    /// <returns>A navigation result that goes back one screen.</returns>
+    /// <example><code>if (key == "b") return NavigationResult.Back();</code></example>
+    public static NavigationResult Back()
+        => new() { IsBack = true };
 }

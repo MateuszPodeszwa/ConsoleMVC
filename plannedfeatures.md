@@ -18,6 +18,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 
 - [C-View Markup 1.0](docs/guides/docs/c-view-markup.md): text, boxes, tables, column layouts that stack on narrow terminals, themes with `class="…"`, inputs, menus and validation messages
 - [Partial views](docs/design/partial-views.md) and [layouts](docs/design/layout-views.md): reusable markup in `Views/Shared`, checked at build time
+- [Navigation history](docs/design/navigation-history.md): Back options and `<breadcrumbs />`
 - [Responsive screens](docs/design/responsive-redraw.md) that redraw when the terminal is resized
 - [Form validation](docs/design/form-validation.md) with DataAnnotations and `ModelState`
 - [Dependency injection](docs/guides/docs/dependency-injection.md) with `builder.Services` and `@inject`
@@ -32,8 +33,8 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 ### Near-term
 
-- [ ] **Navigation history**: `NavigationResult.Back()` and an automatic "back" key, plus breadcrumbs (`<breadcrumbs />`) built from the history
 - [ ] **Route values in navigation**: `nav="Orders/Details?id=@order.Id"` binds `id` to the action, without a form
+- [ ] **Fill columns**: `<column width="*">` takes the space the other columns leave, so an app bar can put a title on the left and status on the right
 - [ ] **More inputs**: `<select>`, `<checkbox>` and `<radio>`, with arrow-key selection where the terminal supports it
 - [ ] **Hosting integration**: `builder.Configuration` (appsettings.json, environment variables) and `builder.Logging` from the .NET generic host
 - [ ] **Testing package**: `ConsoleMVC.Testing` with a test host that drives an application with scripted input and asserts on the rendered screens (snapshot testing)
