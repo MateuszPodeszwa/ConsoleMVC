@@ -27,6 +27,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 - [Configuration and logging](docs/guides/docs/hosting.md): `appsettings.json`, environment variables, the command line, options and `ILogger<T>`
 - [Async actions and middleware](docs/guides/docs/async-and-middleware.md)
 - [Live reload](docs/guides/docs/getting-started.md#live-reload) with `dotnet watch`
+- [Testing](docs/guides/docs/testing.md): the `ConsoleMVC.Testing` package with a test host, scripted lines and keys, and snapshots
 
 The ideas below are what comes next. They are proposals, not promises: if one matters to you, say so in an issue.
 
@@ -37,7 +38,7 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 ### Near-term
 
 - [ ] **Richer inputs**: `<number>` and `<date>` fields that step with the arrow keys and check ranges, and a searchable `<select filter>` for long lists
-- [ ] **Testing package**: `ConsoleMVC.Testing` with a test host that drives an application with scripted input and asserts on the rendered screens (snapshot testing)
+- [ ] **Test project in the template**: `dotnet new consolemvc --tests` adds a test project with `ConsoleMVC.Testing` and a first snapshot
 - [ ] **More compile-time checks**: `RedirectToAction("Detials")` and `View("Nme")` in C# checked like `nav` targets, and a code fix that creates a missing view
 
 ### Medium-term

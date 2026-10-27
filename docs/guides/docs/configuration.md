@@ -37,32 +37,19 @@ that needs it.
 
 ## Testing
 
-Drive a whole application with scripted input and capture plain-text output:
+The `ConsoleMVC.Testing` package runs the application with scripted lines and keys, records each screen and compares
+screens with snapshot files:
 
 ```csharp
-sealed class ScriptedInput(params string[] lines) : ITextInput
-{
-    private readonly Queue<string> _lines = new(lines);
-    public string? ReadLine() => _lines.Count > 0 ? _lines.Dequeue() : null;   // null = end of input
-    public string? ReadMasked(char mask) => ReadLine();
-}
+var run = MvcTestHost.For<HomeController>(b => b.Services.AddSingleton<IGreetingService, FakeGreetings>())
+    .Run("2", "Ada", "3", "n", "q");
 
-var output = new StringWriter();
-var builder = MvcApplication.CreateBuilder([]);
-builder.ApplicationAssembly = typeof(HomeController).Assembly;
-builder.Renderer = new MarkupRenderer(new PlainTextRenderTarget(output), () => 60);
-builder.Input = new ScriptedInput("2", "Ada", "teal", "s", "q");
-builder.Services.AddSingleton<IGreetingService, FakeGreetings>();
-
-using var app = builder.Build();
-app.Run();
-
-Assert.Contains("Hello, Ada!", output.ToString());
+Assert.Contains("Hello, Ada!", run.LastScreen);
+Snapshot.Match(run.LastScreen, "greeting");
 ```
 
-At the end of the scripted input, menus quit instead of waiting, so the run always finishes. Controllers can also be
-tested on their own: create one with `Router.ResolveController(name, services)`, or construct it directly and check
-the `ViewResult` it returns.
+See [Testing](testing.md). `builder.Input` takes any `ITextInput` and `builder.Renderer` any `IMarkupRenderer` if you
+want to drive the application yourself.
 
 ## Live reload
 

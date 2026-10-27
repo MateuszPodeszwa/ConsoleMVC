@@ -2,6 +2,18 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.18.0]
+
+### Added
+
+- **The `ConsoleMVC.Testing` package** ([design](docs/design/testing-package.md), [guide](docs/guides/docs/testing.md)):
+  `MvcTestHost` runs an application with scripted input at a fixed width in the `Testing` environment, with a
+  `MaxScreens` guard; `TestRun` gives the screens, output, routes and unread input; `ScriptedInput` scripts lines and
+  keys (arrow-key fields are used when the next step is a key); `ScreenRecorder` records screens and supports in-place
+  redraws; `Snapshot.Match` compares text with `__snapshots__/<name>.txt`, never creates a snapshot when `CI` is set,
+  saves `.received.txt` on a difference and accepts changes with `CONSOLEMVC_UPDATE_SNAPSHOTS=1`.
+- The publish workflow packs and publishes `ConsoleMVC.Testing` with the other packages.
+
 ## [1.17.0]
 
 ### Added

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>ConsoleMVC.Testing</RootNamespace>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- NuGet Package Metadata -->
+        <PackageId>ConsoleMVC.Testing</PackageId>
+        <Title>ConsoleMVC.Testing - test host and snapshots for ConsoleMVC applications</Title>
+        <Version>1.18.0</Version>
+        <Authors>Mateusz Podeszwa</Authors>
+        <Description>Test ConsoleMVC applications end to end: run them with scripted lines and keys, capture every screen as plain text, assert on the routes visited, and compare screens with snapshot files. Works with xUnit, NUnit and MSTest.</Description>
+        <Copyright>Copyright (c) 2026 Mateusz Podeszwa</Copyright>
+        <PackageTags>mvc;console;testing;snapshot;consolemvc;dotnet</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
+        <PackageProjectUrl>https://github.com/MateuszPodeszwa/ConsoleMVC</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/MateuszPodeszwa/ConsoleMVC</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="PACKAGE_README.md" Pack="true" PackagePath="" />
+    </ItemGroup>
+
+    <!-- Packed as a dependency on ConsoleMVC.Framework of the same version -->
+    <ItemGroup>
+        <ProjectReference Include="../ConsoleMVC/ConsoleMVC.csproj" />
+    </ItemGroup>
+
+</Project>

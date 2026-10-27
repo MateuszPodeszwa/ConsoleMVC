@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.17: a typo in `nav="Orders/Detials"` is a build warning (CVW119). 1.16 added `appsettings.json`, options and `ILogger<T>`, 1.15 `<select>`, `<radio>` and `<checkbox>` answered with the arrow keys. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.18: the `ConsoleMVC.Testing` package runs your application in tests with scripted input and snapshot files. 1.17 made a `nav` typo a build warning (CVW119), 1.16 added `appsettings.json`, options and `ILogger<T>`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -25,6 +25,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Dependency injection**: register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
 - **Configuration and logging**: `builder.Configuration` reads `appsettings.json`, `appsettings.{Environment}.json`, environment variables and the command line; options bind with `Configure<T>`, and `ILogger<T>` works everywhere, with no logger writing over the screen
 - **Async actions and middleware**: actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
+- **Testing**: the `ConsoleMVC.Testing` package runs the application with scripted lines and keys, records every screen and the routes visited, and compares screens with snapshot files
 - **Live reload**: run `dotnet watch` and edits to views and controllers appear from the next screen, without restarting
 
 ## Getting Started
@@ -733,7 +734,6 @@ app.Run();
 
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
-- A **`ConsoleMVC.Testing`** package for snapshot tests
 - **Richer inputs** (`<number>`, `<date>`, a searchable `<select filter>`) and **more compile-time checks** for `RedirectToAction` and `View` names
 - **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
 - **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
@@ -745,9 +745,10 @@ Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszw
 | Package | Description | Purpose |
 |---------|-------------|---------|
 | [`ConsoleMVC.Framework`](https://www.nuget.org/packages/ConsoleMVC.Framework) | Framework library + source generator | Referenced by your project |
+| [`ConsoleMVC.Testing`](https://www.nuget.org/packages/ConsoleMVC.Testing) | Test host, scripted input and snapshots | Referenced by your test project ([guide](docs/guides/docs/testing.md)) |
 | [`ConsoleMVC.Template`](https://www.nuget.org/packages/ConsoleMVC.Template) | `dotnet new` project template | Used to scaffold new projects |
 
-Both packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
+All three packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
 
 ## License
 
@@ -777,6 +778,7 @@ ConsoleMVC/
       Validation/ DependencyInjection/ Middleware/
       Hosting/                            #   Configuration, environment and logging for the builder
       Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
+    ConsoleMVC.Testing/                   # Test host, scripted input and snapshots (NuGet: ConsoleMVC.Testing)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
       ConsoleMVC.Generators.csproj
       ViewSourceGenerator.cs              #   Pipeline: .cvw → parse → diagnostics → emit ConsoleView<T>
@@ -809,18 +811,19 @@ dotnet test ConsoleMVC.sln
 
 ### Releasing a New Version
 
-**1. Bump version numbers** in both `.csproj` files:
+**1. Bump version numbers** in the three packed `.csproj` files:
 
 - `src/ConsoleMVC/ConsoleMVC.csproj`: update `<Version>`
+- `src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj`: update `<Version>`
 - `ConsoleMVC.Template.csproj`: update `<Version>`
 
 If the template references a new framework version, also update the `<PackageReference>` version in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj`.
 
 **2. Merge to `main`.** The [Publish packages](.github/workflows/publish.yml) workflow notices that the version has no `vX.Y.Z` tag yet and:
 
-- checks that both `<Version>` values and the template's framework reference agree;
+- checks that the three `<Version>` values and the template's framework reference agree;
 - builds with `-warnaserror` and runs every test;
-- packs `ConsoleMVC.Framework` and `ConsoleMVC.Template`;
+- packs `ConsoleMVC.Framework`, `ConsoleMVC.Testing` and `ConsoleMVC.Template`;
 - pushes them to **NuGet.org** with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key: GitHub issues a short-lived token that nuget.org exchanges for a one-hour key) and to **GitHub Packages** with the built-in `GITHUB_TOKEN`;
 - creates the GitHub release `vX.Y.Z` with this version's section of `CHANGELOG.md` and the `.nupkg` files attached.
 
@@ -834,7 +837,7 @@ Publishing a release by hand, or **Actions → Publish packages → Run workflow
 | Repository | `ConsoleMVC` |
 | Workflow File | `publish.yml` |
 | Environment | `release` |
-| Glob patterns and packages | `ConsoleMVC.Framework` and `ConsoleMVC.Template` (one per line), or `ConsoleMVC.*` to cover future packages |
+| Glob patterns and packages | `ConsoleMVC.*` (covers `ConsoleMVC.Framework`, `ConsoleMVC.Testing`, `ConsoleMVC.Template` and future packages) |
 | Scope | Push new versions of existing packages (with `ConsoleMVC.*`, also push new packages) |
 
 The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repository variable `NUGET_USER` to use another account. GitHub creates the `release` environment on the first run; add required reviewers to it under **Settings → Environments** if you want to approve each release.
@@ -843,6 +846,7 @@ The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repositor
 
 ```bash
 dotnet pack src/ConsoleMVC/ConsoleMVC.csproj -c Release -o nupkg
+dotnet pack src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj -c Release -o nupkg
 dotnet pack ConsoleMVC.Template.csproj -c Release -o nupkg
 dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org   # a key from nuget.org/account/apikeys
 dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_GITHUB_TOKEN --source https://nuget.pkg.github.com/MateuszPodeszwa/index.json
