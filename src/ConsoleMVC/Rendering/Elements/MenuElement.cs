@@ -146,6 +146,8 @@ public sealed class MenuElement : Element
             if (line is null)
                 return null;
 
+            renderer.RecordInput(line);
+
             var choice = line.Trim();
             var option = _options.FirstOrDefault(o => string.Equals(NormalisedKey(o), choice, StringComparison.OrdinalIgnoreCase));
             if (option is not null)

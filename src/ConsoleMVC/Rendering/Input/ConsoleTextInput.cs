@@ -15,7 +15,12 @@ public sealed class ConsoleTextInput : ITextInput
     public static ConsoleTextInput Instance { get; } = new();
 
     /// <inheritdoc />
-    public string? ReadLine() => Console.ReadLine();
+    public string? ReadLine()
+    {
+        // The runtime echoes what is typed; that is the user's input, not output from a view
+        using (ForeignOutputTracker.Suppress())
+            return Console.ReadLine();
+    }
 
     /// <inheritdoc />
     /// <remarks>
@@ -26,13 +31,16 @@ public sealed class ConsoleTextInput : ITextInput
         if (Console.IsInputRedirected)
             return Console.ReadLine();
 
-        var editor = new MaskedLineEditor(mask, Console.Out);
-        string? value;
-
-        while (!editor.Process(Console.ReadKey(intercept: true), out value))
+        using (ForeignOutputTracker.Suppress())
         {
-        }
+            var editor = new MaskedLineEditor(mask, Console.Out);
+            string? value;
 
-        return value;
+            while (!editor.Process(Console.ReadKey(intercept: true), out value))
+            {
+            }
+
+            return value;
+        }
     }
 }

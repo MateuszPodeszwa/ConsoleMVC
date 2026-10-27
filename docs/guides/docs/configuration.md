@@ -26,7 +26,7 @@ await app.RunAsync();
 | `Theme` | Named styles for `class="…"` ([themes](c-view-markup.md#themes-and-class)) |
 | `ClearScreenBetweenViews` | Clear the console before each view |
 | `ApplicationAssembly` | Where controllers and views are discovered |
-| `Renderer` | How markup is drawn: colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output are detected |
+| `Renderer` | How markup is drawn: colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output are detected, and the screen is redrawn when the terminal is resized ([details](c-view-markup.md#resizing-the-terminal)) |
 | `Input` | Where `<input>` and `<menu>` read from |
 
 `Build()` validates the service registrations, so a missing dependency fails at start-up rather than on the screen

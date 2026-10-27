@@ -20,7 +20,7 @@ public abstract class ConsoleViewBase
     /// Shared console renderer used by views that are created outside the application loop
     /// (for example in unit tests or when rendering a view manually).
     /// </summary>
-    private static readonly Lazy<IMarkupRenderer> DefaultRenderer = new(MarkupRenderer.CreateForConsole);
+    private static readonly Lazy<IMarkupRenderer> DefaultRenderer = new(() => MarkupRenderer.CreateForConsole(redrawOnResize: false));
 
     private IMarkupRenderer? _renderer;
     private ITextInput? _input;

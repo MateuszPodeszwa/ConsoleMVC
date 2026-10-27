@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.9: C-View Markup 1.0 with column layouts and themes, on top of partial views (1.7), live reload (1.8), async actions and middleware (1.6), dependency injection (1.5) and form validation (1.4). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.10: screens redraw when the terminal is resized. 1.9 added C-View Markup 1.0 with column layouts and themes, on top of partial views (1.7), live reload (1.8), async actions and middleware (1.6), dependency injection (1.5) and form validation (1.4). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -17,6 +17,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **C-View Markup**: declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
 - **Partial views**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
+- **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
 - **Declarative input and navigation**: `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
@@ -700,7 +701,7 @@ app.Run();
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests |
-| `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output. Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
+| `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output, and redraws the current screen when the terminal is resized (`MarkupRenderer.CreateForConsole(redrawOnResize: false)` turns that off). Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
 
 ## Roadmap
 

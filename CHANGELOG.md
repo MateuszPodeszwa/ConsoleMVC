@@ -2,6 +2,18 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.10.0]
+
+### Added
+
+- **Responsive screens** ([design](docs/design/responsive-redraw.md),
+  [guide](docs/guides/docs/c-view-markup.md#resizing-the-terminal)): when the terminal is resized, the current screen
+  is laid out again at the new width, including prompts and the answers already typed. Tables, boxes and columns no
+  longer break onto new lines when the window gets narrower, and use the extra room when it gets wider.
+- `MarkupRenderer.RedrawIfWidthChanged`, `MarkupRenderer.MarkForeignOutput`, `MarkupRenderer.MaxRedrawHistory`,
+  `IMarkupRenderer.RecordInput` (with a default implementation) and `ForeignOutputTracker`.
+- `MarkupRenderer.CreateForConsole(redrawOnResize)`; `MarkupRenderer` implements `IDisposable` to stop watching.
+
 ## [1.9.0]
 
 ### Added

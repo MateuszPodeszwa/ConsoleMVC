@@ -67,6 +67,9 @@ public sealed class InputElement : Element
             if (raw is null)
                 return null;
 
+            // What the terminal now shows after the label, for a redraw when the window is resized
+            renderer.RecordInput(Masked ? new string(MaskCharacter, raw.Length) : raw);
+
             var value = raw.Trim();
             if (value.Length == 0)
                 value = Default ?? "";

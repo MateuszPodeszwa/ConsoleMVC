@@ -373,6 +373,15 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW115 | A partial that declares `@model` is used without a `model` attribute |
 | CVW116 | A partial view renders itself |
 
+## Resizing the terminal
+
+Elements are laid out to the terminal's width when they are drawn. When the window is resized, the framework clears the screen and lays the current screen out again at the new width, so a table re-wraps inside its borders instead of breaking onto new lines, and a wider window gives boxes and columns more room. Prompts and the answers already typed are shown again, and the cursor returns to the prompt that is waiting.
+
+- This works on macOS, Linux and Windows terminals, a moment after the window stops changing size.
+- A screen that also writes with `Console.WriteLine` is not redrawn, because that output cannot be laid out again; it stays as the terminal shows it.
+- Characters typed at a prompt but not yet confirmed with Enter are kept, but appear again only after Enter.
+- To turn it off: `builder.Renderer = MarkupRenderer.CreateForConsole(redrawOnResize: false);`
+
 ## Rendering outside views
 
 The elements are ordinary classes in the `ConsoleMVC.Rendering` namespace, which has no dependency on the MVC framework. You can use them directly:
