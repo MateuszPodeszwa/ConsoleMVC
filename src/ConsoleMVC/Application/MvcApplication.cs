@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Runtime.ExceptionServices;
+using ConsoleMVC.Rendering;
 
 namespace ConsoleMVC.Mvc;
 
@@ -22,9 +24,25 @@ namespace ConsoleMVC.Mvc;
 /// mirroring ASP.NET Core's <c>WebApplication</c> approach.
 /// </para>
 /// </remarks>
+/// <example>
+/// <code>
+/// var builder = MvcApplication.CreateBuilder(args);
+/// var app = builder.Build();
+/// app.Run();
+/// </code>
+/// </example>
 public class MvcApplication
 {
+    /// <summary>
+    /// The maximum number of consecutive redirects (without rendering a view) before the
+    /// application assumes a redirect loop and stops with an error.
+    /// </summary>
+    public const int MaxConsecutiveRedirects = 32;
+
     private readonly Router _router = new();
+    private readonly Assembly? _applicationAssembly;
+    private readonly IMarkupRenderer? _configuredRenderer;
+    private readonly bool _clearScreenBetweenViews;
     private RouteContext _currentRoute;
 
     /// <summary>
@@ -39,6 +57,9 @@ public class MvcApplication
             Controller = builder.DefaultController,
             Action = builder.DefaultAction
         };
+        _applicationAssembly = builder.ApplicationAssembly;
+        _configuredRenderer = builder.Renderer;
+        _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
     }
 
     /// <summary>
@@ -57,56 +78,125 @@ public class MvcApplication
 
     /// <summary>
     /// Starts the application main loop. The framework discovers all controllers and views
-    /// in the entry assembly, then begins the route-action-render cycle starting from the
+    /// in the application assembly, then begins the route-action-render cycle starting from the
     /// configured default route.
     /// </summary>
     /// <remarks>
     /// The loop continues until a view returns <see cref="NavigationResult.Quit"/>,
-    /// at which point the method returns and the application exits.
+    /// at which point the method returns and the application exits. Exceptions thrown by
+    /// actions or views propagate unchanged (not wrapped in <see cref="TargetInvocationException"/>).
     /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when routing fails, an action returns an unsupported result, a view receives an
+    /// incompatible model, or a redirect loop is detected.
+    /// </exception>
     public void Run()
     {
-        _router.DiscoverAll(Assembly.GetEntryAssembly()!);
+        _router.DiscoverAll(ResolveApplicationAssembly());
+        var renderer = _configuredRenderer ?? MarkupRenderer.CreateForConsole();
+        var consecutiveRedirects = 0;
 
         while (true)
         {
-            // 1. Resolve the controller and action
-            var controller = _router.ResolveController(_currentRoute.Controller);
-            controller.RouteContext = _currentRoute;
+            var result = InvokeCurrentAction();
 
-            var actionMethod = _router.ResolveAction(controller.GetType(), _currentRoute.Action);
-
-            // 2. Invoke the action, binding form data to parameters if present
-            var args = ModelBinder.BindParameters(actionMethod, _currentRoute.FormData);
-            var result = (ActionResult)actionMethod.Invoke(controller, args)!;
-
-            // 3. Process the result
-            if (result is ViewResult viewResult)
+            switch (result)
             {
-                var view = _router.ResolveView(viewResult.ControllerName, viewResult.ViewName);
-                view.ViewData = viewResult.ViewData;
+                case ViewResult viewResult:
+                    consecutiveRedirects = 0;
 
-                Console.Clear();
-                var navigation = view.RenderInternal(viewResult.Model);
+                    var navigation = RenderView(viewResult, renderer);
+                    if (navigation.Exit)
+                        return;
 
-                if (navigation.Exit)
+                    _currentRoute = new RouteContext
+                    {
+                        Controller = navigation.Controller ?? _currentRoute.Controller,
+                        Action = navigation.Action ?? _currentRoute.Action,
+                        FormData = navigation.FormData
+                    };
                     break;
 
-                _currentRoute = new RouteContext
-                {
-                    Controller = navigation.Controller ?? _currentRoute.Controller,
-                    Action = navigation.Action ?? _currentRoute.Action,
-                    FormData = navigation.FormData
-                };
-            }
-            else if (result is RedirectToActionResult redirect)
-            {
-                _currentRoute = new RouteContext
-                {
-                    Controller = redirect.ControllerName,
-                    Action = redirect.ActionName
-                };
+                case RedirectToActionResult redirect:
+                    if (++consecutiveRedirects > MaxConsecutiveRedirects)
+                    {
+                        throw new InvalidOperationException(
+                            $"More than {MaxConsecutiveRedirects} consecutive redirects without rendering a view " +
+                            $"(last: '{_currentRoute.Controller}/{_currentRoute.Action}' → '{redirect.ControllerName}/{redirect.ActionName}'). " +
+                            "This usually means an action redirects to itself.");
+                    }
+
+                    _currentRoute = new RouteContext
+                    {
+                        Controller = redirect.ControllerName,
+                        Action = redirect.ActionName
+                    };
+                    break;
+
+                default:
+                    throw new InvalidOperationException(
+                        $"Action '{_currentRoute.Controller}/{_currentRoute.Action}' returned " +
+                        $"{(result is null ? "null" : $"an unsupported result of type '{result.GetType().Name}'")}. " +
+                        "Return View(...) or RedirectToAction(...).");
             }
         }
+    }
+
+    /// <summary>
+    /// Returns the configured application assembly, or the entry assembly.
+    /// </summary>
+    private Assembly ResolveApplicationAssembly() =>
+        _applicationAssembly
+        ?? Assembly.GetEntryAssembly()
+        ?? throw new InvalidOperationException(
+            "Could not determine the application assembly. Set MvcApplicationBuilder.ApplicationAssembly, " +
+            "e.g. builder.ApplicationAssembly = typeof(Program).Assembly;");
+
+    /// <summary>
+    /// Resolves the controller and action for the current route, binds form data and invokes the action.
+    /// </summary>
+    private ActionResult? InvokeCurrentAction()
+    {
+        var controller = _router.ResolveController(_currentRoute.Controller);
+        var actionMethod = _router.ResolveAction(controller.GetType(), _currentRoute.Action);
+
+        // Normalise the route to the declared action name so View() resolves the right view
+        // regardless of the casing used in navigation.
+        controller.RouteContext = new RouteContext
+        {
+            Controller = _currentRoute.Controller,
+            Action = actionMethod.Name,
+            FormData = _currentRoute.FormData
+        };
+
+        var args = ModelBinder.BindParameters(actionMethod, _currentRoute.FormData);
+
+        try
+        {
+            return (ActionResult?)actionMethod.Invoke(controller, args);
+        }
+        catch (TargetInvocationException e) when (e.InnerException is not null)
+        {
+            // Surface the action's own exception with its original stack trace
+            ExceptionDispatchInfo.Capture(e.InnerException).Throw();
+            throw; // unreachable
+        }
+    }
+
+    /// <summary>
+    /// Resolves and renders the view for <paramref name="viewResult"/>.
+    /// </summary>
+    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer)
+    {
+        var view = _router.ResolveView(viewResult.ControllerName, viewResult.ViewName);
+        view.ViewData = viewResult.ViewData;
+        view.Renderer = renderer;
+
+        if (_clearScreenBetweenViews)
+            renderer.Clear();
+
+        return view.RenderInternal(viewResult.Model)
+               ?? throw new InvalidOperationException(
+                   $"View '{view.GetType().Name}' returned null. Views must return a NavigationResult.");
     }
 }

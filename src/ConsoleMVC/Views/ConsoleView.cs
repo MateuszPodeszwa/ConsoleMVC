@@ -1,3 +1,5 @@
+using ConsoleMVC.Rendering;
+
 namespace ConsoleMVC.Mvc;
 
 /// <summary>
@@ -14,6 +16,14 @@ namespace ConsoleMVC.Mvc;
 public abstract class ConsoleView
 {
     /// <summary>
+    /// Shared console renderer used by views that are created outside the application loop
+    /// (for example in unit tests or when rendering a view manually).
+    /// </summary>
+    private static readonly Lazy<IMarkupRenderer> DefaultRenderer = new(MarkupRenderer.CreateForConsole);
+
+    private IMarkupRenderer? _renderer;
+
+    /// <summary>
     /// Gets or sets the <see cref="ViewDataDictionary"/> used to pass supplementary
     /// key-value data from the controller to the view.
     /// </summary>
@@ -23,11 +33,31 @@ public abstract class ConsoleView
     public ViewDataDictionary ViewData { get; internal set; } = new();
 
     /// <summary>
+    /// Gets the renderer that draws C-View Markup elements written in this view. The framework
+    /// assigns the renderer configured on <see cref="MvcApplicationBuilder.Renderer"/>; views
+    /// created manually fall back to a shared console renderer.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// // Generated code for a top-level &lt;text&gt; element calls:
+    /// Renderer.Render(textElement);
+    /// </code>
+    /// </example>
+    public IMarkupRenderer Renderer
+    {
+        get => _renderer ??= DefaultRenderer.Value;
+        internal set => _renderer = value;
+    }
+
+    /// <summary>
     /// Renders the view using the supplied model object and returns a
     /// <see cref="NavigationResult"/> indicating the next route.
     /// </summary>
     /// <param name="model">The view model instance, or <see langword="null"/> if no model is provided.</param>
     /// <returns>A <see cref="NavigationResult"/> describing where the application should navigate next.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <paramref name="model"/> is not compatible with the view's model type.
+    /// </exception>
     internal abstract NavigationResult RenderInternal(object? model);
 }
 
@@ -54,6 +84,16 @@ public abstract class ConsoleView<TModel> : ConsoleView
     /// <inheritdoc />
     internal override NavigationResult RenderInternal(object? model)
     {
-        return Render((TModel)model!);
+        return model switch
+        {
+            TModel typed => Render(typed),
+            null when default(TModel) is null => Render(default!),
+            null => throw new InvalidOperationException(
+                $"View '{GetType().Name}' requires a model of type '{typeof(TModel).Name}', but the controller " +
+                "passed no model. Call View(model) with a value, or change the view's @model directive."),
+            _ => throw new InvalidOperationException(
+                $"View '{GetType().Name}' expects a model of type '{typeof(TModel).FullName}', but the controller " +
+                $"passed '{model.GetType().FullName}'. Pass the correct model to View(), or change the view's @model directive.")
+        };
     }
 }
