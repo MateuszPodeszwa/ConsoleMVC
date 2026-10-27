@@ -139,6 +139,24 @@ internal static class CvwDiagnostics
         "Markup is nested more than {0} levels deep",
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
+    /// <summary>CVW114: a <c>&lt;partial&gt;</c> names a partial view that does not exist (or not as a literal).</summary>
+    public static readonly DiagnosticDescriptor UnknownPartial = new(
+        "CVW114", "Unknown partial view",
+        "{0}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>CVW115: a partial that declares <c>@model</c> is used without a <c>model</c> attribute.</summary>
+    public static readonly DiagnosticDescriptor PartialModelMissing = new(
+        "CVW115", "Partial view needs a model",
+        "Partial '{0}' declares '@model {1}'; pass one with model=\"@...\"",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>CVW116: a partial view renders itself, which would never end.</summary>
+    public static readonly DiagnosticDescriptor RecursivePartial = new(
+        "CVW116", "Partial view includes itself",
+        "Partial '{0}' renders itself with <partial name=\"{0}\" />, which would never end",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
     /// <summary>CVW108: malformed tag syntax.</summary>
     public static readonly DiagnosticDescriptor MalformedTag = new(
         "CVW108", "Malformed tag",

@@ -58,7 +58,9 @@ public class HomeController : Controller
                 new("<separator>", "A horizontal rule"),
                 new("<table>", "Rows and cells with columns sized to the content"),
                 new("<input>", "Reads a value into the view's Form"),
-                new("<menu>", "Shows options, reads the choice and navigates")
+                new("<menu>", "Shows options, reads the choice and navigates"),
+                new("<errors>", "Shows validation messages for the form"),
+                new("<partial>", "Renders a reusable view from Views/Shared")
             ]
         };
 

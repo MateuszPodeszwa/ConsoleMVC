@@ -238,6 +238,33 @@ Shows validation messages from the view's `ModelState` (see [Validation](https:/
 | `for` | a field name (case-insensitive) | all fields |
 | `color` / `colour` | a [colour](#colours) | `red` |
 
+### `<partial />`
+
+Renders a **partial view**: a reusable piece of markup in `Views/Shared/{Name}.cvw`. Partials are compiled like views but cannot navigate, so they contain no `<menu>` and need no `return`.
+
+```
+@* Views/Shared/Header.cvw *@
+@model string
+<box border="double" align="centre">@Model</box>
+<br />
+```
+
+```
+@* Views/Home/IndexView.cvw *@
+<partial name="Header" model="@Model.Title" />
+<partial name="Footer" />
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `name` | the partial's file name, written literally (required) | |
+| `model` | an expression (`@Model.User`) or literal text (passed as a `string`) | none |
+
+* The partial is checked when you build: an unknown name (CVW114) lists the available partials, a partial with `@model` needs a `model` attribute (CVW115), and a model of the wrong type is a compiler error in the view that passes it.
+* A partial shares the view's `Form`, `ModelState`, `ViewData`, renderer and input: an `<input>` in a partial fills the view's form, and `<errors />` shows the view's errors.
+* Partials may use `@inject`, C# code and other partials (a partial cannot render itself: CVW116).
+* Like `<input>`, `<partial>` is written at the top level of the view (it may be inside a C# `if` or loop), not inside another element.
+
 ## Attribute values
 
 * **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute.
@@ -266,7 +293,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |
-| CVW103 | Element not allowed here (e.g. `<box>` inside `<text>`, `<row>` outside `<table>`, `<menu>` inside `<box>`) |
+| CVW103 | Element not allowed here (e.g. `<box>` inside `<text>`, `<row>` outside `<table>`, `<menu>` inside `<box>` or in a partial view) |
 | CVW104 | Unterminated expression, string, comment or block |
 | CVW105 | Unknown element (write `&lt;` for a literal `<`) |
 | CVW106 | Control flow or a code block inside `<text>` |
@@ -277,6 +304,9 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW111 | Required attribute missing (`<option key>`, `<input name>`) |
 | CVW112 | `@()` contains no expression |
 | CVW113 | Markup nested more than 100 levels deep |
+| CVW114 | `<partial>` names no partial view in `Views/Shared`, or its name is not written literally |
+| CVW115 | A partial that declares `@model` is used without a `model` attribute |
+| CVW116 | A partial view renders itself |
 
 ## Rendering outside views
 

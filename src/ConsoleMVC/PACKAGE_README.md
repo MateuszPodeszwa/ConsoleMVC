@@ -68,6 +68,7 @@ public class HomeViewModel
 - **Razor-like view engine** — `.cvw` files are compiled into `ConsoleView<TModel>` classes at build time by a source generator
 - **No boilerplate** — Views are plain C# code with an `@model` directive, no class inheritance required
 - **C-View Markup** — `<box>`, `<text>`, `<separator>`, `<br>` and `<table>` elements with colours, borders, alignment and word wrapping, plus `@` expressions and `@if`/`@foreach`; validated at compile time with errors pointing at the `.cvw` file
+- **Partial views** — reusable markup in `Views/Shared/{Name}.cvw`, rendered with `<partial name="Header" model="@Model.Title" />` and checked at build time
 - **Declarative input and navigation** — `<input>` fields (required, default, masked) collect a `Form`, and `<menu>` reads the choice and navigates
 - **Secure output** — model values are sanitised so they cannot inject terminal escape sequences
 - **Reusable rendering engine** — the `ConsoleMVC.Rendering` namespace can draw elements in any console app

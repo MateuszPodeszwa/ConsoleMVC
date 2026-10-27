@@ -8,7 +8,7 @@ namespace ConsoleMVC.Mvc;
 /// <para>
 /// Use this when you need to pass small amounts of data to a view without adding
 /// properties to the view model. The dictionary is populated in the controller and
-/// made available in the view via <see cref="ConsoleView.ViewData"/>.
+/// made available in the view via <see cref="ConsoleViewBase.ViewData"/>.
 /// </para>
 /// <para>
 /// For strongly-typed data, prefer using a dedicated view model class instead.

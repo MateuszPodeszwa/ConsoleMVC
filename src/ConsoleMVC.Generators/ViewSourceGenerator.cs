@@ -20,7 +20,8 @@ namespace ConsoleMVC.Generators;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Each <c>.cvw</c> file must reside at <c>Views/{Controller}/{Action}View.cvw</c>. It may begin with an
+/// Each <c>.cvw</c> file must reside at <c>Views/{Controller}/{Action}View.cvw</c>, or at
+/// <c>Views/Shared/{Name}.cvw</c> for a partial view (a <c>ConsolePartialView&lt;TModel&gt;</c>). It may begin with an
 /// <c>@model</c> directive (defaulting to <c>object</c>) and <c>@using</c> directives; the rest of the file
 /// is the body of the generated <c>Render</c> method — C# code that may embed C-View Markup elements.
 /// </para>
@@ -65,9 +66,17 @@ public class ViewSourceGenerator : IIncrementalGenerator
             .Combine(rootNamespace)
             .Select(static (pair, _) => FindDuplicates(pair.Left, pair.Right));
 
-        context.RegisterSourceOutput(viewFiles.Combine(rootNamespace).Combine(duplicates), static (ctx, pair) =>
+        // The partial views (Views/Shared) by name, so <partial> elements can be checked and compiled to direct calls.
+        // Only a partial's name and @model feed this step, so editing its body does not regenerate other views.
+        var partials = viewFiles
+            .Combine(rootNamespace)
+            .Select(static (pair, cancellationToken) => PartialEntryFor(pair.Left, pair.Right, cancellationToken))
+            .Collect()
+            .Select(static (entries, _) => new PartialCatalogue(entries.Where(e => e is not null)!));
+
+        context.RegisterSourceOutput(viewFiles.Combine(rootNamespace).Combine(duplicates).Combine(partials), static (ctx, pair) =>
         {
-            var ((file, rootNs), duplicateOf) = pair;
+            var (((file, rootNs), duplicateOf), catalogue) = pair;
 
             if (duplicateOf.TryGetValue(file.Path, out var original))
             {
@@ -79,8 +88,22 @@ public class ViewSourceGenerator : IIncrementalGenerator
 
             var text = file.GetText(ctx.CancellationToken);
             if (text is not null)
-                GenerateView(ctx, file.Path, text, rootNs);
+                GenerateView(ctx, file.Path, text, rootNs, catalogue);
         });
+    }
+
+    /// <summary>
+    /// Returns the catalogue entry for a partial view file, or <see langword="null"/> when the file is not in
+    /// <c>Views/Shared</c>.
+    /// </summary>
+    private static PartialEntry? PartialEntryFor(AdditionalText file, string rootNamespace, System.Threading.CancellationToken cancellationToken)
+    {
+        if (!ViewInfo.TryCreate(file.Path, rootNamespace, out var info) || !info.IsPartial)
+            return null;
+
+        var text = file.GetText(cancellationToken)?.ToString() ?? "";
+        var model = CvwDocumentParser.Parse(text, MarkupSchema.Default).Model?.Value;
+        return new PartialEntry(info.ClassName, info.FullClassName, model);
     }
 
     /// <summary>
@@ -129,7 +152,8 @@ public class ViewSourceGenerator : IIncrementalGenerator
     /// <summary>
     /// Validates, parses and emits a single view, reporting diagnostics against the <c>.cvw</c> file.
     /// </summary>
-    private static void GenerateView(SourceProductionContext context, string path, SourceText text, string rootNamespace)
+    private static void GenerateView(SourceProductionContext context, string path, SourceText text, string rootNamespace,
+        PartialCatalogue partials)
     {
         if (!ViewInfo.TryCreate(path, rootNamespace, out var info))
         {
@@ -155,12 +179,14 @@ public class ViewSourceGenerator : IIncrementalGenerator
             return;
         }
 
-        if (!info.ClassName.EndsWith("View", StringComparison.Ordinal))
+        if (!info.IsPartial && !info.ClassName.EndsWith("View", StringComparison.Ordinal))
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.ViewNameSuffix, Location.Create(path, default, default), info.ClassName));
 
         var document = CvwDocumentParser.Parse(text.ToString(), MarkupSchema.Default);
 
-        foreach (var diagnostic in document.Diagnostics)
+        IReadOnlyList<ParseDiagnostic> compositionErrors = document.HasErrors ? [] : PartialChecker.Check(document, info, partials);
+
+        foreach (var diagnostic in document.Diagnostics.Concat(compositionErrors))
         {
             var span = TextSpan.FromBounds(
                 Math.Min(diagnostic.Span.Start, text.Length),
@@ -169,10 +195,10 @@ public class ViewSourceGenerator : IIncrementalGenerator
             context.ReportDiagnostic(Diagnostic.Create(diagnostic.Descriptor, location, diagnostic.Arguments));
         }
 
-        if (document.HasErrors)
+        if (document.HasErrors || compositionErrors.Count > 0)
             return;
 
-        context.AddSource(info.HintName, ViewEmitter.Emit(document, info));
+        context.AddSource(info.HintName, ViewEmitter.Emit(document, info, partials));
     }
 
     /// <summary>A name usable as a C# identifier: valid characters and not a reserved keyword such as <c>class</c>.</summary>

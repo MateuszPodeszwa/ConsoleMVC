@@ -294,3 +294,21 @@ internal sealed class RouteAttributeType : AttributeType
     public override string WrapExpression(string expressionCode) =>
         "global::ConsoleMVC.Rendering.MarkupValue.Format(" + expressionCode + ")";
 }
+
+/// <summary>
+/// The model passed to a partial view: an expression (<c>model="@Model.User"</c>), type-checked by the compiler against
+/// the partial's <c>@model</c>, or literal text, which is passed as a <see cref="string"/>.
+/// </summary>
+internal sealed class ModelAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "a model expression";
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        error = "expected a value, e.g. model=\"@Model.User\"";
+        code = CSharpLiteral.String(literal ?? "");
+        return literal is not null;
+    }
+}

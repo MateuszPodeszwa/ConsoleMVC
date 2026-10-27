@@ -9,7 +9,7 @@ namespace ConsoleMVC.Generators.Schema;
 /// <summary>
 /// The set of C-View Markup elements known to the generator: v0.1 <c>text</c>, <c>box</c>, <c>separator</c>,
 /// <c>br</c>; v0.2 <c>table</c>/<c>row</c>/<c>cell</c>, <c>menu</c>/<c>option</c> and <c>input</c>; and
-/// <c>errors</c> for validation messages.
+/// <c>errors</c> for validation messages; and <c>partial</c> to render a partial view.
 /// </summary>
 /// <remarks>
 /// To add an element: create its runtime class in <c>ConsoleMVC.Rendering</c> and register an
@@ -20,6 +20,12 @@ internal sealed class MarkupSchema
 {
     /// <summary>The tag name of the line break element, which is also allowed inside text.</summary>
     public const string LineBreakTag = "br";
+
+    /// <summary>The tag name of the partial view element, which the emitter handles itself.</summary>
+    public const string PartialTag = "partial";
+
+    /// <summary>The tag name of the menu element, which partial views may not contain.</summary>
+    public const string MenuTag = "menu";
 
     /// <summary>The tag name of the text element, used for implicit text inside containers.</summary>
     public const string TextTag = "text";
@@ -180,7 +186,14 @@ internal sealed class MarkupSchema
                 new AttributeSchema("for", "For", text),
                 new AttributeSchema("color", "Colour", colour),
                 new AttributeSchema("colour", "Colour", colour)
-            ], initialisers: ["Source = this.ModelState"])
+            ], initialisers: ["Source = this.ModelState"]),
+
+            // ---- composition: rendered by the emitter as a call to the partial's Render(model)
+            new ElementSchema(PartialTag, "", ContentModel.Void,
+            [
+                new AttributeSchema("name", "Name", text, required: true),
+                new AttributeSchema("model", "Model", new ModelAttributeType())
+            ], topLevelOnly: true)
         ]);
     }
 

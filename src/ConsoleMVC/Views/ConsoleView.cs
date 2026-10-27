@@ -13,93 +13,8 @@ namespace ConsoleMVC.Mvc;
 /// Views authored as <c>.cvw</c> files are automatically compiled into
 /// <see cref="ConsoleView{TModel}"/> subclasses by the source generator at build time.
 /// </remarks>
-public abstract class ConsoleView
+public abstract class ConsoleView : ConsoleViewBase
 {
-    /// <summary>
-    /// Shared console renderer used by views that are created outside the application loop
-    /// (for example in unit tests or when rendering a view manually).
-    /// </summary>
-    private static readonly Lazy<IMarkupRenderer> DefaultRenderer = new(MarkupRenderer.CreateForConsole);
-
-    private IMarkupRenderer? _renderer;
-    private ITextInput? _input;
-
-    /// <summary>
-    /// Gets or sets the <see cref="ViewDataDictionary"/> used to pass supplementary
-    /// key-value data from the controller to the view.
-    /// </summary>
-    /// <value>
-    /// A dictionary of loosely-typed data items shared between the controller and view.
-    /// </value>
-    public ViewDataDictionary ViewData { get; internal set; } = new();
-
-    /// <summary>
-    /// Gets the validation errors from the action that rendered this view (see <see cref="Controller.ModelState"/>).
-    /// Show them with <c>&lt;errors /&gt;</c> or <c>&lt;errors for="Name" /&gt;</c>.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// @if (!ModelState.IsValid) { &lt;text color="red"&gt;Please correct the errors below.&lt;/text&gt; }
-    /// </code>
-    /// </example>
-    public ModelStateDictionary ModelState { get; internal set; } = new();
-
-    /// <summary>
-    /// Gets the renderer that draws C-View Markup elements written in this view. The framework
-    /// assigns the renderer configured on <see cref="MvcApplicationBuilder.Renderer"/>; views
-    /// created manually fall back to a shared console renderer.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// // Generated code for a top-level &lt;text&gt; element calls:
-    /// Renderer.Render(textElement);
-    /// </code>
-    /// </example>
-    public IMarkupRenderer Renderer
-    {
-        get => _renderer ??= DefaultRenderer.Value;
-        internal set => _renderer = value;
-    }
-
-    /// <summary>
-    /// Gets the source of user input used by <c>&lt;input&gt;</c> and <c>&lt;menu&gt;</c>. The framework assigns
-    /// <see cref="MvcApplicationBuilder.Input"/>; views created manually fall back to the console.
-    /// </summary>
-    public ITextInput Input
-    {
-        get => _input ??= ConsoleTextInput.Instance;
-        internal set => _input = value;
-    }
-
-    /// <summary>
-    /// Gets the values collected by <c>&lt;input&gt;</c> elements in this view, keyed by their <c>name</c>
-    /// (case-insensitive). Post them to a controller with <c>NavigationResult.ToAction("Save", Form)</c> or a
-    /// menu option marked <c>post</c>.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// &lt;input name="Name" label="Name: " required /&gt;
-    /// return NavigationResult.ToAction("Result", Form);
-    /// </code>
-    /// </example>
-    public Dictionary<string, string> Form { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Reads a value for an <c>&lt;input&gt;</c> element and stores it in <see cref="Form"/>. Generated code calls
-    /// this for every top-level <c>&lt;input&gt;</c>.
-    /// </summary>
-    /// <param name="input">The input element to read.</param>
-    /// <returns>The value read; an empty string when the input has ended.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="input"/> is <see langword="null"/>.</exception>
-    protected internal string ReadInput(InputElement input)
-    {
-        ArgumentNullException.ThrowIfNull(input);
-
-        var value = input.Read(Renderer, Input) ?? "";
-        Form[input.Name] = value;
-        return value;
-    }
-
     /// <summary>
     /// Shows a <c>&lt;menu&gt;</c>, waits for a valid choice and converts it into a <see cref="NavigationResult"/>.
     /// Generated code returns the result of this method for a top-level <c>&lt;menu&gt;</c>.
@@ -107,7 +22,7 @@ public abstract class ConsoleView
     /// <param name="menu">The menu to show.</param>
     /// <returns>
     /// <see cref="NavigationResult.Quit"/> for a <c>quit</c> option or when the input ends; otherwise navigation to
-    /// the option's <c>nav</c> target, carrying a copy of <see cref="Form"/> when the option is marked <c>post</c>.
+    /// the option's <c>nav</c> target, carrying a copy of <see cref="ConsoleViewBase.Form"/> when the option is marked <c>post</c>.
     /// </returns>
     /// <exception cref="InvalidOperationException">Thrown when an option's target is not <c>Controller/Action</c> or <c>Action</c>.</exception>
     protected internal NavigationResult RunMenu(MenuElement menu)

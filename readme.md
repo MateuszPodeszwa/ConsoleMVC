@@ -15,6 +15,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Familiar API** — `View()`, `RedirectToAction()`, `ViewData` — the same patterns from ASP.NET Core MVC
 - **Razor-like view engine** — `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
 - **C-View Markup** — declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
+- **Partial views** — reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time
 - **Declarative input and navigation** — `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default** — model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
@@ -163,6 +164,27 @@ return input switch
 | `@model FullTypeName` | Declares the ViewModel type. The model is available as `Model` in the view code. Optional — defaults to `object`. |
 | `@using Namespace` | Adds a `using` statement to the generated class. |
 | `@inject Type Name` | Declares a property filled from the application's services (see [Dependency Injection](#dependency-injection)). |
+
+#### Partial Views
+
+Markup used by several views — a header, a footer, a group of form fields — goes in a partial view, `Views/Shared/{Name}.cvw`, and is rendered with `<partial>`:
+
+```
+@* Views/Shared/PageHeader.cvw *@
+@model MyApp.Models.HomeViewModel
+<box title="@Model.Title" border="rounded" color="cyan" padding="2">
+    <text>@Model.Message</text>
+</box>
+```
+
+```
+@* Views/Home/IndexView.cvw *@
+@model MyApp.Models.HomeViewModel
+<partial name="PageHeader" model="@Model" />
+<menu>…</menu>
+```
+
+`<partial>` compiles to a direct call, so the name and the model's type are checked when you build (CVW114, CVW115). A partial shares the view's `Form`, `ModelState` and `ViewData`, may use `@inject`, and cannot contain a `<menu>`. See the [guide](docs/guides/docs/c-view-markup.md#partial) and the [design](docs/design/partial-views.md).
 
 **C-View Markup:**
 
@@ -708,7 +730,7 @@ ConsoleMVC/
       Controllers/
       Models/
       Services/
-      Views/
+      Views/                              #   including Views/Shared partials
 ```
 
 ### Building and Testing

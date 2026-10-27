@@ -10,7 +10,7 @@ namespace ConsoleMVC.Mvc;
 /// </summary>
 /// <remarks>
 /// The same instance is passed to the view returned by the action, so the view can show the errors with
-/// <c>&lt;errors /&gt;</c> or read them from <see cref="ConsoleView.ModelState"/>.
+/// <c>&lt;errors /&gt;</c> or read them from <see cref="ConsoleViewBase.ModelState"/>.
 /// </remarks>
 /// <example>
 /// <code>
