@@ -74,7 +74,7 @@ Right now, `.cvw` files are plain C# code. You write `Console.WriteLine()` calls
 - [ ] Dependency injection support — register and resolve services in controllers
 - [ ] Middleware pipeline — before/after action hooks for cross-cutting concerns
 - [ ] Async action support — `Task<ActionResult>` return types
-- [ ] Form validation framework — attributes like `[Required]`, `[MaxLength]` on form models, with automatic validation before the action executes
+- [x] Form validation framework — attributes like `[Required]`, `[MaxLength]` on form models, with automatic validation before the action executes — **shipped in 1.4.0**, see the [design](docs/design/form-validation.md)
 
 ### Medium-term
 - [x] C-View Markup v0.1 — basic tags (`<text>`, `<box>`, `<separator>`, `<br>`) — **shipped in 1.2.0**, see the [guide](docs/guides/docs/c-view-markup.md) and [design](docs/design/c-view-markup.md)

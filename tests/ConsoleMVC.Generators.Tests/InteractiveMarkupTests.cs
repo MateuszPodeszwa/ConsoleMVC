@@ -166,4 +166,26 @@ public class InteractiveMarkupTests
 
         Assert.Equal("x: ", ViewHarness.Render(view + Quit, input: "1"));
     }
+
+    [Fact]
+    public void Errors_ShowTheViewsModelState()
+    {
+        const string view = """
+            ModelState.AddModelError("Name", "The Name field is required.");
+            ModelState.AddModelError("Age", "Too young.");
+            <errors />
+            <box border="ascii" padding="0">
+                <errors for="Age" colour="yellow" />
+            </box>
+            """;
+
+        Assert.Equal("• The Name field is required.\n• Too young.\n+------------+\n|• Too young.|\n+------------+\n",
+            ViewHarness.Render(view + "\nreturn NavigationResult.Quit();"));
+    }
+
+    [Fact]
+    public void Errors_WithNoErrors_RenderNothing()
+    {
+        Assert.Equal("", ViewHarness.Render("<errors />\nreturn NavigationResult.Quit();"));
+    }
 }

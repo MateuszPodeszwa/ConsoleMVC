@@ -5,6 +5,9 @@
 </box>
 <br />
 
+@* Shows validation errors when the form is shown again after an invalid submission *@
+<errors />
+
 @* Each <input> stores its value in Form under its name. Posting Form to the Result
    action binds the values to the GreetFormModel parameter of GreetController.Result. *@
 <input name="Name" label="  Name: " required />

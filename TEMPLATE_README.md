@@ -32,7 +32,7 @@ The template includes working examples of:
 
 - **Navigation** — `<menu>` elements moving between controllers and actions (`Home`, `About`)
 - **Tables** — a feature tour page with a `<table>` generated from the model
-- **Form data posting with model binding** — a greeting form that collects input and posts it to a controller as a `GreetFormModel` class
+- **Form data posting with model binding** — a greeting form that collects input and posts it to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
 - **Form data posting with simple parameters** — a calculator that posts individual values (`int a`, `int b`, `string op`) directly to action method parameters
 
 ## IDE Support

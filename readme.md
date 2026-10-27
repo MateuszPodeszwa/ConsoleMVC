@@ -18,6 +18,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Declarative input and navigation** — `<input>` collects form values and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default** — model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting** — Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
+- **Validation** — posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
 
 ## Getting Started
 
@@ -350,7 +351,80 @@ The model binder converts string values from the form data dictionary to the fol
 
 Key matching is **case-insensitive** — a form data key `"name"` binds to a parameter `Name` or a property `Name`.
 
-When a key is missing or the value can't be converted, the parameter receives its default value (`null` for reference types, `0` for numeric types, `false` for `bool`, etc.).
+When a key is missing or the value can't be converted, the parameter receives its default value (`null` for reference types, `0` for numeric types, `false` for `bool`, etc.). A value that can't be converted is also reported in `ModelState` (see below).
+
+Numbers and dates are parsed with the invariant culture (`1.5`, `2026-10-27`), so a form behaves the same on every machine regardless of the user's regional settings.
+
+### Validation
+
+Posted form data is validated **before the action runs**, using the standard `System.ComponentModel.DataAnnotations` attributes — on model properties or directly on action parameters. Check `ModelState.IsValid` and show the form again when it is not, exactly as in ASP.NET Core MVC:
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+public class SignupModel
+{
+    [Required, StringLength(30)]
+    public string Name { get; set; } = "";
+
+    [Range(13, 120)]
+    public int Age { get; set; }
+
+    [EmailAddress]
+    public string? Email { get; set; }
+}
+
+public class AccountController : Controller
+{
+    public ActionResult Signup() => View();
+
+    public ActionResult Save(SignupModel model)
+    {
+        if (!ModelState.IsValid)
+            return View("Signup", model);          // render SignupView again, with the errors
+
+        if (users.Exists(model.Name))
+        {
+            ModelState.AddModelError("Name", "That name is taken.");
+            return View("Signup", model);
+        }
+
+        return RedirectToAction("Welcome");
+    }
+
+    // Simple parameters can be validated too
+    public ActionResult Rate([Range(1, 5)] int stars) => ModelState.IsValid ? View() : View("Signup", null);
+}
+```
+
+The view shows the messages with `<errors />` (all errors) or `<errors for="Email" />` (one field):
+
+```
+<errors />
+<input name="Name" label="Name: " />
+<input name="Age" label="Age: " />
+<input name="Email" label="E-mail: " />
+<menu>
+    <option key="s" nav="Save" post>Save</option>
+</menu>
+```
+
+```
+• The Name field is required.
+• The value 'twelve' is not valid for Age.
+Name: _
+```
+
+| API | Purpose |
+|-----|---------|
+| `ModelState.IsValid` | `true` when binding and validation produced no errors |
+| `ModelState.AddModelError(key, message)` | Add your own error (an empty key for a general error) |
+| `ModelState.ErrorsFor(key)` | The messages for one field |
+| `View("ActionName", model)` | Render another action's view, e.g. the form again |
+| `TryValidateModel(model)` | Validate an object built in code |
+| `ConsoleView.ModelState` | The errors, available in the view |
+
+Validation runs only when form data is posted. A value that can't be converted produces one message (`The value 'abc' is not valid for Age.`) and that field is not validated again. Error keys are the form field names, so they match `<input name="…">`. `IValidatableObject` is supported for rules that involve several fields.
 
 ### Conventions
 

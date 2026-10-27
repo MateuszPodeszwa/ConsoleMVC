@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ConsoleMVC.App.Models;
 using ConsoleMVC.Mvc;
 
@@ -25,8 +26,12 @@ public class CalcController : Controller
     /// <param name="a">The first operand, bound from form data key "a".</param>
     /// <param name="b">The second operand, bound from form data key "b".</param>
     /// <param name="op">The operator (+, -, *, /), bound from form data key "op".</param>
-    public ActionResult Result(int a, int b, string op)
+    public ActionResult Result(int a, int b, [RegularExpression(@"^[+\-*/]$", ErrorMessage = "The operator must be +, -, * or /.")] string op)
     {
+        // Values that are not whole numbers, or an unknown operator, are reported in ModelState
+        if (!ModelState.IsValid)
+            return View("Index", null);
+
         var (expression, result) = op switch
         {
             "-" => ($"{a} - {b}", (a - b).ToString()),

@@ -2,6 +2,24 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.4.0]
+
+### Added
+
+- **Form validation** ([design](docs/design/form-validation.md)): posted form data is validated with the standard
+  DataAnnotations attributes before the action runs — on model properties (including `IValidatableObject`) and on
+  simple action parameters.
+- `ModelStateDictionary` (`Controller.ModelState`, `ConsoleView.ModelState`) with `IsValid`, `AddModelError`,
+  `ErrorsFor` and `Clear`.
+- Values that cannot be converted (e.g. `"abc"` for an `int`) are reported in `ModelState` instead of being ignored.
+- `Controller.View(viewName, model)` renders another action's view (e.g. the form again) and
+  `Controller.TryValidateModel(model)` validates objects built in code.
+- `<errors />` / `<errors for="Field" />` markup element and the `ValidationErrorsElement` runtime class.
+
+### Changed
+
+- The template's greeting and calculator forms are validated and show their errors.
+
 ## [1.3.0]
 
 ### Added

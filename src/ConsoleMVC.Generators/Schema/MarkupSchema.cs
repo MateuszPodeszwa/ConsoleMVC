@@ -8,7 +8,8 @@ namespace ConsoleMVC.Generators.Schema;
 
 /// <summary>
 /// The set of C-View Markup elements known to the generator: v0.1 <c>text</c>, <c>box</c>, <c>separator</c>,
-/// <c>br</c>; v0.2 <c>table</c>/<c>row</c>/<c>cell</c>, <c>menu</c>/<c>option</c> and <c>input</c>.
+/// <c>br</c>; v0.2 <c>table</c>/<c>row</c>/<c>cell</c>, <c>menu</c>/<c>option</c> and <c>input</c>; and
+/// <c>errors</c> for validation messages.
 /// </summary>
 /// <remarks>
 /// To add an element: create its runtime class in <c>ConsoleMVC.Rendering</c> and register an
@@ -171,7 +172,15 @@ internal sealed class MarkupSchema
                 new AttributeSchema("masked", "Masked", boolean),
                 new AttributeSchema("color", "LabelColour", colour),
                 new AttributeSchema("colour", "LabelColour", colour)
-            ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});")
+            ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+
+            // ---- validation
+            new ElementSchema("errors", Rendering + "ValidationErrorsElement", ContentModel.Void,
+            [
+                new AttributeSchema("for", "For", text),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour)
+            ], initialisers: ["Source = this.ModelState"])
         ]);
     }
 

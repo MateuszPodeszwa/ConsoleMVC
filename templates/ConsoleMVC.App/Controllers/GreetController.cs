@@ -26,9 +26,10 @@ public class GreetController : Controller
     /// <param name="model">The form data automatically bound from the view's form submission.</param>
     public ActionResult Result(GreetFormModel model)
     {
-        // Validate — redirect back to the form if name is missing.
-        if (string.IsNullOrWhiteSpace(model.Name))
-            return RedirectToAction("Index");
+        // The posted form was validated against GreetFormModel's attributes before this action ran.
+        // Show the form again, with its errors, when anything is wrong.
+        if (!ModelState.IsValid)
+            return View("Index", null);
 
         var greeting = $"Hello, {model.Name}!";
 

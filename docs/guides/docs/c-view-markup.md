@@ -219,6 +219,25 @@ Each option needs exactly one of `nav` or `quit`. Options can be generated in a 
 !!! note "Top level only"
     `<input>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view — they may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
 
+### `<errors />`
+
+Shows validation messages from the view's `ModelState` (see [Validation](https://github.com/MateuszPodeszwa/ConsoleMVC#validation)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.
+
+```
+<errors />
+<errors for="Email" color="yellow" />
+```
+
+```
+• The Name field is required.
+• The value 'twelve' is not valid for Age.
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `for` | a field name (case-insensitive) | all fields |
+| `color` / `colour` | a [colour](#colours) | `red` |
+
 ## Attribute values
 
 * **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute.
