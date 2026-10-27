@@ -8,6 +8,17 @@ namespace ConsoleMVC.Mvc;
 /// Supports simple type parameters (string, int, bool, etc.) matched by name,
 /// and complex type parameters whose public properties are populated from form data.
 /// </summary>
+/// <remarks>
+/// Key matching is case-insensitive; when two keys differ only by case, the first one wins.
+/// Properties of complex models are only assigned when their key is present and the value
+/// converts successfully, so property initialisers act as defaults.
+/// </remarks>
+/// <example>
+/// <code>
+/// var args = ModelBinder.BindParameters(actionMethod, new Dictionary&lt;string, string&gt; { ["age"] = "30" });
+/// actionMethod.Invoke(controller, args);
+/// </code>
+/// </example>
 internal static class ModelBinder
 {
     /// <summary>
@@ -29,116 +40,74 @@ internal static class ModelBinder
         if (parameters.Length == 0)
             return null;
 
+        var values = ToCaseInsensitive(formData);
         var args = new object?[parameters.Length];
-        formData ??= new Dictionary<string, string>();
 
         for (var i = 0; i < parameters.Length; i++)
-        {
-            args[i] = BindParameter(parameters[i], formData);
-        }
+            args[i] = BindParameter(parameters[i], values);
 
         return args;
     }
 
-    private static object? BindParameter(ParameterInfo parameter, Dictionary<string, string> formData)
+    /// <summary>
+    /// Converts a string to <paramref name="targetType"/>, returning the type's default value
+    /// (<see langword="null"/>, 0, <see langword="false"/>…) when conversion fails.
+    /// </summary>
+    /// <param name="value">The string to convert.</param>
+    /// <param name="targetType">The destination type.</param>
+    /// <returns>The converted value, or the default of <paramref name="targetType"/>.</returns>
+    internal static object? ConvertValue(string value, Type targetType) =>
+        TryConvert(value, targetType, out var result) ? result : DefaultOf(targetType);
+
+    /// <summary>
+    /// Attempts to convert a string to <paramref name="targetType"/> using the invariant culture.
+    /// Empty strings convert to <see langword="null"/> for nullable and reference types.
+    /// </summary>
+    /// <param name="value">The string to convert.</param>
+    /// <param name="targetType">The destination type.</param>
+    /// <param name="result">The converted value when successful.</param>
+    /// <returns><see langword="true"/> when the value was converted.</returns>
+    internal static bool TryConvert(string value, Type targetType, out object? result)
     {
-        var paramType = parameter.ParameterType;
+        result = null;
 
-        // Try to bind as a simple type directly from form data by parameter name
-        if (IsSimpleType(paramType))
-        {
-            return TryGetAndConvert(formData, parameter.Name!, paramType, parameter.DefaultValue);
-        }
-
-        // Complex type — create instance and populate properties from form data
-        return BindComplexType(paramType, formData);
-    }
-
-    private static object? BindComplexType(Type type, Dictionary<string, string> formData)
-    {
-        object instance;
-        try
-        {
-            instance = Activator.CreateInstance(type)!;
-        }
-        catch
-        {
-            return null;
-        }
-
-        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanWrite);
-
-        foreach (var prop in properties)
-        {
-            if (!IsSimpleType(prop.PropertyType))
-                continue;
-
-            var value = TryGetAndConvert(formData, prop.Name, prop.PropertyType, defaultValue: null);
-            if (value is not null)
-            {
-                prop.SetValue(instance, value);
-            }
-        }
-
-        return instance;
-    }
-
-    private static object? TryGetAndConvert(
-        Dictionary<string, string> formData,
-        string name,
-        Type targetType,
-        object? defaultValue)
-    {
-        // Case-insensitive key lookup
-        var key = formData.Keys.FirstOrDefault(k =>
-            string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
-
-        if (key is null || !formData.TryGetValue(key, out var stringValue))
-        {
-            if (defaultValue != DBNull.Value && defaultValue is not null)
-                return defaultValue;
-
-            return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
-        }
-
-        return ConvertValue(stringValue, targetType);
-    }
-
-    internal static object? ConvertValue(string value, Type targetType)
-    {
-        // Handle nullable types
         var underlyingType = Nullable.GetUnderlyingType(targetType);
         if (underlyingType is not null)
         {
             if (string.IsNullOrEmpty(value))
-                return null;
+                return true; // empty → null for nullable types
 
             targetType = underlyingType;
         }
 
         if (targetType == typeof(string))
-            return value;
-
-        if (string.IsNullOrEmpty(value))
-            return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
-
-        var converter = TypeDescriptor.GetConverter(targetType);
-        if (converter.CanConvertFrom(typeof(string)))
         {
-            try
-            {
-                return converter.ConvertFromInvariantString(value);
-            }
-            catch
-            {
-                return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
-            }
+            result = value;
+            return true;
         }
 
-        return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
+        if (string.IsNullOrEmpty(value))
+            return false;
+
+        var converter = TypeDescriptor.GetConverter(targetType);
+        if (!converter.CanConvertFrom(typeof(string)))
+            return false;
+
+        try
+        {
+            result = converter.ConvertFromInvariantString(value);
+            return true;
+        }
+        catch (Exception e) when (e is FormatException or ArgumentException or NotSupportedException or OverflowException)
+        {
+            return false;
+        }
     }
 
+    /// <summary>
+    /// Returns <see langword="true"/> for types bound directly from a single form value.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
     internal static bool IsSimpleType(Type type)
     {
         var t = Nullable.GetUnderlyingType(type) ?? type;
@@ -152,4 +121,60 @@ internal static class ModelBinder
                || t == typeof(TimeSpan)
                || t == typeof(Guid);
     }
+
+    private static object? BindParameter(ParameterInfo parameter, IReadOnlyDictionary<string, string> values)
+    {
+        var parameterType = parameter.ParameterType;
+
+        if (!IsSimpleType(parameterType))
+            return BindComplexType(parameterType, values);
+
+        if (values.TryGetValue(parameter.Name!, out var raw) && TryConvert(raw, parameterType, out var converted))
+            return converted;
+
+        // Missing or unconvertible: use the declared default (e.g. int page = 1), else the type default
+        return parameter.HasDefaultValue ? parameter.DefaultValue : DefaultOf(parameterType);
+    }
+
+    private static object? BindComplexType(Type type, IReadOnlyDictionary<string, string> values)
+    {
+        object instance;
+        try
+        {
+            instance = Activator.CreateInstance(type)!;
+        }
+        catch (Exception e) when (e is MissingMethodException or MemberAccessException or ArgumentException or NotSupportedException)
+        {
+            // No accessible parameterless constructor
+            return null;
+        }
+
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanWrite && p.GetIndexParameters().Length == 0 && IsSimpleType(p.PropertyType));
+
+        foreach (var property in properties)
+        {
+            if (values.TryGetValue(property.Name, out var raw) && TryConvert(raw, property.PropertyType, out var converted))
+                property.SetValue(instance, converted);
+        }
+
+        return instance;
+    }
+
+    /// <summary>
+    /// Copies form data into a case-insensitive dictionary. When keys differ only by case, the first is kept.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> ToCaseInsensitive(Dictionary<string, string>? formData)
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (formData is null)
+            return values;
+
+        foreach (var (key, value) in formData)
+            values.TryAdd(key, value);
+
+        return values;
+    }
+
+    private static object? DefaultOf(Type type) => type.IsValueType ? Activator.CreateInstance(type) : null;
 }
