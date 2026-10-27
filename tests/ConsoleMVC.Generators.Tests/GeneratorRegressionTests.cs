@@ -207,4 +207,30 @@ public class GeneratorRegressionTests
 
         Assert.Contains(result.GeneratorDiagnostics, d => d.Id == "CVW113");
     }
+
+    // --- found in the 1.9 review ---
+
+    [Fact]
+    public void TopLevelMarkupComments_AreIgnored()
+    {
+        Assert.Equal("a\n1\n", ViewHarness.Render("<!-- heading -->\n<text>a</text>\nvar x = 1;\n<!-- multi\nline -->\n<text>@x</text>" + Quit));
+    }
+
+    [Theory]
+    [InlineData("<separator>abc</separator>", "separator")]
+    [InlineData("<input name=\"a\">x</input>", "input")]
+    public void VoidElementsWithContent_ReportCVW103(string cvw, string tag)
+    {
+        var result = ViewHarness.Generate(cvw + Quit);
+
+        var diagnostic = Assert.Single(result.GeneratorDiagnostics, d => d.Id == "CVW103");
+        Assert.Contains($"<{tag} />", diagnostic.GetMessage());
+        Assert.DoesNotContain(result.CompilationDiagnostics, d => d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void VoidElementsWithAnEmptyClosingTag_AreAccepted()
+    {
+        Assert.Equal("\n", ViewHarness.Render("<br>  </br>" + Quit));
+    }
 }

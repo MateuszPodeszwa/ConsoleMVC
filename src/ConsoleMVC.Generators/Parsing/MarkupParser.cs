@@ -136,6 +136,15 @@ internal sealed class MarkupParser
                 }
             }
 
+            // A markup comment where a statement may begin (C# never starts a statement with "<!--") is dropped
+            if (c == '<' && IsStatementStart(lastSignificant) && StartsWith("<!--"))
+            {
+                AddCode(nodes, codeStart, _position);
+                SkipComment("<!--", "-->", "markup comment");
+                codeStart = _position;
+                continue;
+            }
+
             if (c == '<' && IsStatementStart(lastSignificant) && TryPeekTag(_position, out _, out var known) && known)
             {
                 AddCode(nodes, codeStart, _position);
@@ -262,8 +271,27 @@ internal sealed class MarkupParser
     private void SkipVoidClosingTag(string tag)
     {
         var closing = "</" + tag + ">";
-        if (string.CompareOrdinal(_text, _position, closing, 0, closing.Length) == 0)
-            _position += closing.Length;
+
+        // <br></br> or <br>   </br>: an empty element written with a closing tag
+        var next = _position;
+        while (next < _text.Length && char.IsWhiteSpace(_text[next]))
+            next++;
+
+        if (string.CompareOrdinal(_text, next, closing, 0, closing.Length) == 0)
+        {
+            _position = next + closing.Length;
+            return;
+        }
+
+        // <separator>text</separator> on one line: the content would otherwise be compiled as C#
+        var lineEnd = _text.IndexOf('\n', _position);
+        var close = _text.IndexOf(closing, _position, (lineEnd < 0 ? _text.Length : lineEnd) - _position, StringComparison.Ordinal);
+        if (close < 0)
+            return;
+
+        Report(CvwDiagnostics.ElementNotAllowed, SourceSpan.FromBounds(_position, close + closing.Length),
+            $"<{tag}> cannot have content; write <{tag} />");
+        _position = close + closing.Length;
     }
 
     /// <summary>

@@ -26,8 +26,9 @@ public sealed class Theme
 {
     private readonly Dictionary<string, ThemeStyle> _styles = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Gets an empty theme: every class is ignored.</summary>
-    public static Theme Empty { get; } = new();
+    /// <summary>Gets a new, empty theme: every class is ignored until you add some with <see cref="Set"/>.</summary>
+    /// <example><code>builder.Theme = Theme.Empty.Set("brand", new ThemeStyle { Bold = true });</code></example>
+    public static Theme Empty => new();
 
     /// <summary>Gets the names of the classes defined.</summary>
     public IEnumerable<string> Names => _styles.Keys;

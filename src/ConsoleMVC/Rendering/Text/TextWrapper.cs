@@ -92,7 +92,7 @@ public static class TextWrapper
                 else
                 {
                     // Keep paragraph indentation, but only while the first character still fits after it
-                    var firstWidth = TextWidth.Of(Rune.GetRuneAt(word, 0));
+                    var firstWidth = TextWidth.OfElement(System.Globalization.StringInfo.GetNextTextElement(word));
                     var indent = Math.Max(Math.Min(pendingSpaces, width - firstWidth), 0);
                     line.Append(' ', indent);
                     lineWidth = indent;

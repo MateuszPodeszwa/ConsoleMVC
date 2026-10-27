@@ -104,8 +104,38 @@ public static class TextWidth
             return 0;
 
         var width = 0;
-        foreach (var rune in text.EnumerateRunes())
-            width += Of(rune);
+        var elements = StringInfo.GetTextElementEnumerator(text);
+        while (elements.MoveNext())
+            width += OfElement(elements.GetTextElement());
+
+        return width;
+    }
+
+    /// <summary>
+    /// Returns the number of terminal columns one user-perceived character (an extended grapheme cluster) occupies.
+    /// </summary>
+    /// <remarks>
+    /// A cluster is drawn as one glyph, so only its first character counts, with one exception: the emoji
+    /// presentation selector <c>U+FE0F</c> turns a narrow symbol such as ❤ into a two-column emoji (❤️). Emoji joined
+    /// with zero-width joiners (👨‍👩‍👧), skin tones (👍🏽), flags (🇬🇧) and combining accents therefore all measure as one character.
+    /// </remarks>
+    /// <param name="element">One text element, e.g. from <see cref="StringInfo.GetTextElementEnumerator(string)"/>.</param>
+    /// <returns>0, 1 or 2.</returns>
+    /// <example><code>TextWidth.OfElement("👍🏽"); // 2</code></example>
+    public static int OfElement(string element)
+    {
+        if (string.IsNullOrEmpty(element))
+            return 0;
+
+        var first = Rune.GetRuneAt(element, 0);
+        var width = Of(first);
+
+        // Regional indicator pairs (flags) are one cluster; each indicator alone is narrow
+        if (first.Value is >= 0x1F1E6 and <= 0x1F1FF && element.Length > first.Utf16SequenceLength)
+            return 2;
+
+        if (width == 1 && element.Contains('\uFE0F'))
+            return 2;
 
         return width;
     }
@@ -168,14 +198,17 @@ public static class TextWidth
         var width = 0;
         consumed = 0;
 
-        foreach (var rune in text.EnumerateRunes())
+        // Whole clusters only, so an emoji sequence or an accented letter is never split
+        var elements = StringInfo.GetTextElementEnumerator(text);
+        while (elements.MoveNext())
         {
-            var runeWidth = Of(rune);
-            if (width + runeWidth > columns)
+            var element = elements.GetTextElement();
+            var elementWidth = OfElement(element);
+            if (width + elementWidth > columns)
                 break;
 
-            width += runeWidth;
-            consumed += rune.Utf16SequenceLength;
+            width += elementWidth;
+            consumed += element.Length;
         }
 
         return text[..consumed];

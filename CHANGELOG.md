@@ -14,6 +14,34 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
     `muted`, `success`, `warning`, `danger`, `info` and `panel`). `ConsoleViewBase.Theme` is shared with partials.
   - `min-width` and `max-width` on `<box>` and `<table>` (`MinWidth` / `MaxWidth`).
 - The template's feature tour uses columns and theme classes.
+- `MvcApplication` implements `IAsyncDisposable` (`await using var app = builder.Build();`).
+- A release workflow publishes both packages to NuGet.org and GitHub Packages when a GitHub release is published.
+- Guides for controllers and forms, validation, and configuration and testing.
+
+### Changed
+
+- Controllers or views with the same name in different namespaces now fail with a message naming both, instead of
+  one silently replacing the other.
+- `Theme.Empty` returns a new theme on each access.
+- Text widths are measured per user-perceived character: emoji with `U+FE0F`, skin tones, flags and ZWJ sequences
+  (👨‍👩‍👧) occupy two columns and are never split when wrapping or truncating.
+
+### Fixed
+
+- `<!-- comments -->` at the top level of a view are ignored instead of being compiled as C#.
+- `<separator>text</separator>` and other void elements with content report CVW103 instead of C# errors.
+- `@inject` rejects names that hide view members (`Theme`, `PreparePartial`, …), allows trailing comments, and maps
+  the property name to its column.
+- A literal `model` or `class` of the wrong type is reported at the attribute.
+- `Views/shared` (any case) holds partials; clashing, misnamed or broken partials no longer cause compiler errors
+  in the views that use them; a partial named `Render` reports CVW009.
+- Columns inside an auto-width box no longer stack on a wide terminal.
+- `Dispose` no longer throws for services that implement only `IAsyncDisposable`; controllers and views that implement
+  only `IAsyncDisposable`, class middleware created per cycle, and every controller created by a retrying middleware
+  are disposed.
+- `RunAsync` can run again after finishing or being cancelled before it started.
+- Array action parameters bind `null` again instead of throwing.
+- Hot reload refreshes the cached `@inject` properties of edited views.
 
 ## [1.8.0]
 

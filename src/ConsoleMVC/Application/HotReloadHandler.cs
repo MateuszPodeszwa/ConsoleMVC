@@ -28,9 +28,7 @@ internal static class HotReloadHandler
     /// Called by the runtime first, so caches can be cleared. The router's caches are rebuilt on the next screen.
     /// </summary>
     /// <param name="updatedTypes">The changed types, or <see langword="null"/> when unknown.</param>
-    public static void ClearCache(Type[]? updatedTypes)
-    {
-    }
+    public static void ClearCache(Type[]? updatedTypes) => ServiceInjector.ClearCache(updatedTypes);
 
     /// <summary>
     /// Called by the runtime after an update has been applied.

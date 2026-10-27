@@ -67,6 +67,36 @@ public sealed class ActionContext
     /// <example><code>context.Items["started"] = Stopwatch.GetTimestamp();</code></example>
     public IDictionary<object, object?> Items { get; } = new Dictionary<object, object?>();
 
+    /// <summary>Instances created for this cycle outside the container (controllers, views, middleware).</summary>
+    private readonly List<object> _owned = [];
+
+    /// <summary>
+    /// Remembers <paramref name="instance"/> so it is disposed at the end of the cycle when it is
+    /// <see cref="IDisposable"/> or <see cref="IAsyncDisposable"/>.
+    /// </summary>
+    /// <returns><paramref name="instance"/>, for chaining.</returns>
+    internal T Own<T>(T instance) where T : notnull
+    {
+        if (instance is IDisposable or IAsyncDisposable)
+            _owned.Add(instance);
+
+        return instance;
+    }
+
+    /// <summary>Disposes the instances from <see cref="Own{T}"/>, most recent first.</summary>
+    internal async ValueTask DisposeOwnedAsync()
+    {
+        for (var i = _owned.Count - 1; i >= 0; i--)
+        {
+            if (_owned[i] is IAsyncDisposable asyncDisposable)
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+            else
+                ((IDisposable)_owned[i]).Dispose();
+        }
+
+        _owned.Clear();
+    }
+
     /// <summary>
     /// Sets <see cref="Result"/> to a redirect, as <c>Controller.RedirectToAction</c> does.
     /// </summary>

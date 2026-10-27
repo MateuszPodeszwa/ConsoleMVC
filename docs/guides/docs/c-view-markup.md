@@ -354,6 +354,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW006 | `@model` is declared more than once; the last one is used (warning) |
 | CVW007 | `@inject` without a type and a property name, or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
 | CVW008 | Two `@inject` directives declare the same property name |
+| CVW009 | A partial view file is named `Render`, the name of its own method |
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |

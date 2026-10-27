@@ -20,7 +20,7 @@ using var app = builder.Build();
 app.Run();
 ```
 
-`using var app` disposes the container when the application ends, which disposes every singleton it created.
+`using var app` disposes the container when the application ends, which disposes every singleton it created. Use `await using var app` when a service implements only `IAsyncDisposable`.
 
 ## Controllers: constructor injection
 
@@ -49,7 +49,7 @@ A constructor parameter that cannot be resolved fails with an `InvalidOperationE
 `@inject IOptions<Dictionary<string, int>> Limits`.
 
 The name must be a valid C# identifier and cannot be one the view already has (`Model`, `ViewData`, `ModelState`,
-`Renderer`, `Input`, `Form`). Mistakes are build errors in the `.cvw` file:
+`Renderer`, `Input`, `Form`, `Theme`, `Services`, `PreparePartial`). Mistakes are build errors in the `.cvw` file:
 
 | Id | Meaning |
 |---|---|

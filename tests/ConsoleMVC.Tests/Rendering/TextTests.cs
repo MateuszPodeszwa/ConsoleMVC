@@ -15,6 +15,12 @@ public class TextTests
     [InlineData("日本", 4)]          // East Asian wide characters occupy two cells
     [InlineData("é", 1)]      // combining acute accent occupies no cell
     [InlineData("🙂", 2)]           // emoji outside the BMP
+    [InlineData("\u2764\uFE0F", 2)]  // heart with emoji presentation (❤️)
+    [InlineData("\u2764", 1)]         // heart as a text symbol
+    [InlineData("👍🏽", 2)]          // skin tone modifier
+    [InlineData("👨\u200D👩\u200D👧", 2)] // family: one ZWJ sequence
+    [InlineData("🇬🇧", 2)]          // flag: a regional indicator pair
+    [InlineData("a👍🏽b", 4)]
     public void TextWidth_GetWidth_CountsTerminalCells(string text, int expected)
     {
         Assert.Equal(expected, TextWidth.Of(text));
@@ -25,6 +31,7 @@ public class TextTests
     [InlineData("Hello", 5, "Hello")]
     [InlineData("Hello", 1, "…")]
     [InlineData("日本語", 5, "日本…")]
+    [InlineData("👨\u200D👩\u200D👧xyz", 3, "👨\u200D👩\u200D👧…")]
     public void TextWidth_Truncate_AddsEllipsis(string text, int width, string expected)
     {
         Assert.Equal(expected, TextWidth.Truncate(text, width));

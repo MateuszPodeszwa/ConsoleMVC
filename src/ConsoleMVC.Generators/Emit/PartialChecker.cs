@@ -72,6 +72,13 @@ internal static class PartialChecker
             return;
         }
 
+        if (partial.HasErrors)
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.UnknownPartial, nameAttribute.Span,
+                $"Partial view '{partial.Name}' has errors; fix them first"));
+            return;
+        }
+
         if (info.IsPartial && partial.FullClassName == info.FullClassName)
         {
             diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.RecursivePartial, element.Span, partial.Name));

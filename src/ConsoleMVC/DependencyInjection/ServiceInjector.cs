@@ -38,6 +38,26 @@ internal static class ServiceInjector
     }
 
     /// <summary>
+    /// Forgets the cached properties of <paramref name="types"/>, or of every type when <see langword="null"/>. Hot reload
+    /// calls this, because an edit can add an <c>@inject</c> property to an existing view class.
+    /// </summary>
+    /// <param name="types">The changed types, or <see langword="null"/> for all.</param>
+    public static void ClearCache(Type[]? types)
+    {
+        if (types is null)
+        {
+            PropertiesByType.Clear();
+            return;
+        }
+
+        foreach (var type in types)
+            PropertiesByType.TryRemove(type, out _);
+    }
+
+    /// <summary>Returns whether the properties of <paramref name="type"/> are cached (for tests).</summary>
+    internal static bool IsCached(Type type) => PropertiesByType.ContainsKey(type);
+
+    /// <summary>
     /// Returns the writable properties of <paramref name="type"/> (including inherited and private setters)
     /// marked with <see cref="InjectAttribute"/>.
     /// </summary>

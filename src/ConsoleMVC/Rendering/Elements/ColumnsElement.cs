@@ -25,6 +25,11 @@ public sealed class ColumnsElement : Element
 {
     private readonly List<ColumnElement> _columns = [];
 
+    // The last measurement: a parent measures with the width it offers, then lays out at the measured width, which can
+    // be below StackBelow even though the offered width was not. Layout reuses the decision for that width.
+    private int _measuredWidth = -1;
+    private bool _measuredStacked;
+
     /// <summary>Gets or sets the number of spaces between columns. Defaults to 2.</summary>
     public int Gap { get; set; } = 2;
 
@@ -63,11 +68,14 @@ public sealed class ColumnsElement : Element
         if (_columns.Count == 0)
             return 0;
 
-        if (IsStacked(available))
-            return Math.Min(_columns.Max(c => c.MeasureWidth(available)), available);
+        var stacked = IsStacked(available);
+        var measured = stacked
+            ? Math.Min(_columns.Max(c => c.MeasureWidth(available)), available)
+            : Math.Min(ResolveWidths(available).Sum() + SafeGap * (_columns.Count - 1), available);
 
-        var widths = ResolveWidths(available);
-        return Math.Min(widths.Sum() + SafeGap * (_columns.Count - 1), available);
+        _measuredWidth = measured;
+        _measuredStacked = stacked;
+        return measured;
     }
 
     /// <inheritdoc />
@@ -77,7 +85,9 @@ public sealed class ColumnsElement : Element
         if (_columns.Count == 0)
             return [];
 
-        if (IsStacked(available))
+        var stacked = available == _measuredWidth ? _measuredStacked : IsStacked(available);
+        _measuredWidth = -1; // a measurement is used once, so a later render decides afresh
+        if (stacked)
             return _columns.SelectMany(c => c.Layout(available)).Select(l => l.Clip(available)).ToList();
 
         var widths = ResolveWidths(available);
