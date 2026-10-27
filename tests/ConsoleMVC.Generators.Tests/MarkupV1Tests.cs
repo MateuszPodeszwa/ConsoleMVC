@@ -89,4 +89,13 @@ public class MarkupV1Tests
 
         Assert.Contains(result.GeneratorDiagnostics, d => d.Id == "CVW101");
     }
+
+    [Fact]
+    public void FillColumns_InMarkup()
+    {
+        var output = ViewHarness.Render(
+            "<columns gap=\"1\"><column width=\"*\"><text>left</text></column><column><text>right</text></column></columns>" + Quit, width: 20);
+
+        Assert.Equal("left           right\n", output); // the fill column is 20 - 1 - 5 = 14 wide
+    }
 }

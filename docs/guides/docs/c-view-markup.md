@@ -96,7 +96,7 @@ A bordered panel. Its children are stacked vertically; text written directly ins
 | Attribute | Values | Default |
 |---|---|---|
 | `title` | text, may contain `@expressions` | none |
-| `width` | `auto`, a column count (`40`), or a percentage (`50%`) | `auto` (fit the content) |
+| `width` | `auto`, a column count (`40`), a percentage (`50%`), or `*` (all the width) | `auto` (fit the content) |
 | `border` | `single`, `double`, `rounded`, `heavy`, `ascii`, `none` | `single` |
 | `padding` | columns between border and content (0–20) | `1` |
 | `color` / `colour` | border colour | terminal default |
@@ -187,9 +187,9 @@ Places content side by side. Each `<column>` holds block content, like a box wit
 |---|---|---|---|
 | `<columns>` | `gap` | spaces between columns (0–20) | `2` |
 | | `stack-below` | a width in columns: narrower terminals stack the columns vertically | never stack |
-| `<column>` | `width` | `auto`, a column count, or a percentage of the width after the gaps | `auto` |
+| `<column>` | `width` | `auto`, a column count, a percentage of the width after the gaps, or `*` for what the other columns leave | `auto` |
 
-* Fixed and percentage columns take their width first; `auto` columns use their content's natural width when it fits. Otherwise narrow columns keep their width and wide ones share the rest equally, wrapping their text.
+* Fixed and percentage columns take their width first; `auto` columns use their content's natural width when it fits; `*` (fill) columns share what is left, so `<column width="*">` followed by an auto column puts the second one at the right edge. Otherwise narrow columns keep their width and wide ones share the rest equally, wrapping their text.
 * Columns can be generated with `@foreach`, nested in a `<box>`, and contain any block elements, including other columns.
 * `<columns>` may only contain `<column>` elements, and `<column>` only appears inside `<columns>`.
 

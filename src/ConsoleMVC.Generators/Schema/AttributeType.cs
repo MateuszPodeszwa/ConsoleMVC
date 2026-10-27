@@ -198,7 +198,7 @@ internal sealed class ColourAttributeType : AttributeType
 internal sealed class LengthAttributeType : AttributeType
 {
     /// <inheritdoc />
-    public override string Description => "'auto', a column count such as '40', or a percentage such as '50%'";
+    public override string Description => "'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width";
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
@@ -210,6 +210,12 @@ internal sealed class LengthAttributeType : AttributeType
         if (string.Equals(trimmed, "auto", StringComparison.OrdinalIgnoreCase))
         {
             code = "global::ConsoleMVC.Rendering.Length.Auto";
+            return true;
+        }
+
+        if (trimmed == "*")
+        {
+            code = "global::ConsoleMVC.Rendering.Length.Fill";
             return true;
         }
 

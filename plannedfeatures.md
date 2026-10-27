@@ -33,7 +33,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 ### Near-term
 
-- [ ] **Fill columns**: `<column width="*">` takes the space the other columns leave, so an app bar can put a title on the left and status on the right
 - [ ] **More inputs**: `<select>`, `<checkbox>` and `<radio>`, with arrow-key selection where the terminal supports it
 - [ ] **Hosting integration**: `builder.Configuration` (appsettings.json, environment variables) and `builder.Logging` from the .NET generic host
 - [ ] **Testing package**: `ConsoleMVC.Testing` with a test host that drives an application with scripted input and asserts on the rendered screens (snapshot testing)

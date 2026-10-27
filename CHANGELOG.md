@@ -2,6 +2,15 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.14.0]
+
+### Added
+
+- **Fill columns**: `<column width="*">` takes the width the other columns leave (shared between fill columns), so
+  content can sit at the right edge. `Length.Fill`, `LengthKind.Fill` and `Length.IsRelative`; `*` is also accepted by
+  other `width` attributes, meaning all the available width.
+- The template's app bar shows the breadcrumbs on the left and the app name on the right.
+
 ## [1.13.0]
 
 ### Added

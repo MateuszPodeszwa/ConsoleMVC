@@ -119,7 +119,7 @@ public sealed class BoxElement : ContainerElement
     }
 
     /// <inheritdoc />
-    protected internal override bool HasRelativeWidth => Width.Kind == LengthKind.Percent;
+    protected internal override bool HasRelativeWidth => Width.IsRelative;
 
     /// <summary>Builds the top border, embedding the (possibly truncated) title.</summary>
     private RenderedLine TopBorder(int boxWidth, TextStyle borderStyle)

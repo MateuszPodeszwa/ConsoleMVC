@@ -14,7 +14,13 @@ public enum LengthKind
     Fixed,
 
     /// <summary>A percentage (0–100) of the available width.</summary>
-    Percent
+    Percent,
+
+    /// <summary>
+    /// All the width left over (<c>*</c>). In <c>&lt;columns&gt;</c>, fill columns share what the other columns leave;
+    /// elsewhere it is the whole available width.
+    /// </summary>
+    Fill
 }
 
 /// <summary>
@@ -39,6 +45,13 @@ public readonly record struct Length
 
     /// <summary>Gets the automatic length.</summary>
     public static Length Auto => default;
+
+    /// <summary>Gets a length that takes all the width left over (<c>*</c>).</summary>
+    /// <example><code>new ColumnElement { Width = Length.Fill };</code></example>
+    public static Length Fill => new(LengthKind.Fill, 0);
+
+    /// <summary>Gets a value indicating whether this length depends on the available width (a percentage or <see cref="Fill"/>).</summary>
+    public bool IsRelative => Kind is LengthKind.Percent or LengthKind.Fill;
 
     /// <summary>Gets how the length is resolved.</summary>
     public LengthKind Kind { get; }
@@ -85,7 +98,7 @@ public readonly record struct Length
         if (TryParse(text, out var length))
             return length;
 
-        throw new FormatException($"'{text}' is not a valid length. Use 'auto', a column count such as '40', or a percentage such as '50%'.");
+        throw new FormatException($"'{text}' is not a valid length. Use 'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width.");
     }
 
     /// <summary>
@@ -101,6 +114,12 @@ public readonly record struct Length
 
         if (trimmed.Equals("auto", StringComparison.OrdinalIgnoreCase))
             return true;
+
+        if (trimmed == "*")
+        {
+            length = Fill;
+            return true;
+        }
 
         if (trimmed.EndsWith('%'))
         {
@@ -131,6 +150,7 @@ public readonly record struct Length
         {
             LengthKind.Fixed => Value,
             LengthKind.Percent => (int)((long)available * Value / 100),
+            LengthKind.Fill => available,
             _ => natural
         };
 
@@ -150,6 +170,7 @@ public readonly record struct Length
     {
         LengthKind.Fixed => Value.ToString(CultureInfo.InvariantCulture),
         LengthKind.Percent => $"{Value}%",
+        LengthKind.Fill => "*",
         _ => "auto"
     };
 }
