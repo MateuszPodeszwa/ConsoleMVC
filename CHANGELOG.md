@@ -2,6 +2,26 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.16.0]
+
+### Added
+
+- **Configuration and logging** ([design](docs/design/hosting-integration.md), [guide](docs/guides/docs/hosting.md)):
+  `builder.Configuration` reads `appsettings.json`, `appsettings.{Environment}.json`, environment variables and the
+  command line (later ones win); `builder.Environment` (`IHostEnvironment`); `builder.Logging` (`ILoggingBuilder`,
+  levels from the `Logging` section, no provider by default so nothing writes over the screen).
+- `IConfiguration`, `IHostEnvironment`, `IOptions<T>` and `ILogger<T>` can be injected into controllers, views and
+  services. Options registered with `ValidateOnStart()` are validated by `Build()`.
+- `MvcApplication.CreateBuilder(MvcApplicationOptions)` (arguments, environment name, content root, application name),
+  `MvcApplication.Configuration` and `MvcApplication.Environment`, and `ConsoleHostEnvironment`.
+- The framework logs the start, each screen (Debug), unhandled exceptions (Error, still rethrown) and the stop under
+  `ConsoleMVC.Mvc.MvcApplication`.
+- The template has an `appsettings.json` with a `Greeting` section bound to `GreetingOptions`.
+
+### Changed
+
+- `CreateBuilder(args)` now uses `args` (as command-line configuration).
+
 ## [1.15.0]
 
 ### Added

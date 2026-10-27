@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.15: `<select>`, `<radio>` and `<checkbox>`, answered with the arrow keys. 1.14 added fill columns (`width="*"`), 1.13 route values (`nav="Orders/Details?id=@order.Id"`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.16: `appsettings.json`, options and `ILogger<T>` through `builder.Configuration` and `builder.Logging`. 1.15 added `<select>`, `<radio>` and `<checkbox>` answered with the arrow keys, 1.14 fill columns (`width="*"`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -23,6 +23,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation**: posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
 - **Dependency injection**: register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
+- **Configuration and logging**: `builder.Configuration` reads `appsettings.json`, `appsettings.{Environment}.json`, environment variables and the command line; options bind with `Configure<T>`, and `ILogger<T>` works everywhere, with no logger writing over the screen
 - **Async actions and middleware**: actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
 - **Live reload**: run `dotnet watch` and edits to views and controllers appear from the next screen, without restarting
 
@@ -709,6 +710,8 @@ builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected aut
 builder.Input = ConsoleTextInput.Instance;              // Default: the console
 builder.Theme.Set("brand", new ThemeStyle { Bold = true }); // Default: Theme.CreateDefault()
 builder.Services.AddSingleton<IClock, SystemClock>();   // Your services
+builder.Services.Configure<ShopOptions>(builder.Configuration.GetSection("Shop")); // Settings
+builder.Logging.AddDebug();                             // Log somewhere other than the screen
 using var app = builder.Build();
 app.Run();
 ```
@@ -721,6 +724,9 @@ app.Run();
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |
+| `Configuration` | Settings from `appsettings.json`, `appsettings.{Environment}.json`, environment variables (`Shop__Name`) and the command line (`--Shop:Name=Corner`), later ones winning; registered as `IConfiguration` (see [Configuration Files and Logging](docs/guides/docs/hosting.md)) |
+| `Environment` | `EnvironmentName` (`DOTNET_ENVIRONMENT`, default `Production`), `ContentRootPath` and `ApplicationName`; registered as `IHostEnvironment`. Choose them in code with `MvcApplication.CreateBuilder(new MvcApplicationOptions { … })` |
+| `Logging` | Log providers and levels (the `Logging` section of the configuration). None is added by default, because the console is the user interface; the framework logs screens and failures under `ConsoleMVC.Mvc.MvcApplication` |
 | `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output, and redraws the current screen when the terminal is resized (`MarkupRenderer.CreateForConsole(redrawOnResize: false)` turns that off). Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
 
 ## Roadmap
@@ -728,7 +734,7 @@ app.Run();
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
 - **Compile-time route checks** for `nav` targets
-- **Hosting integration** (configuration and logging) and a **`ConsoleMVC.Testing`** package for snapshot tests
+- A **`ConsoleMVC.Testing`** package for snapshot tests
 - **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
 - **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
 
@@ -769,6 +775,7 @@ ConsoleMVC/
       Application/ Controllers/ Results/  #   MVC framework (namespace ConsoleMVC.Mvc)
       Routing/ Binding/ Views/
       Validation/ DependencyInjection/ Middleware/
+      Hosting/                            #   Configuration, environment and logging for the builder
       Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
     ConsoleMVC.Generators/                # Source generator (bundled into ConsoleMVC package)
       ConsoleMVC.Generators.csproj
@@ -786,6 +793,7 @@ ConsoleMVC/
       .template.config/template.json      #   Template engine configuration
       ConsoleMVC.App.csproj               #   sourceName replaced with user's project name
       Program.cs
+      appsettings.json                    #   Settings read by builder.Configuration
       Controllers/
       Models/
       Services/

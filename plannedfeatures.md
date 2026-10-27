@@ -23,6 +23,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 - [Choice inputs](docs/design/choice-inputs.md): `<select>` (also `multiple`), `<radio>` and `<checkbox>`, answered with the arrow keys in a terminal and typed otherwise
 - [Form validation](docs/design/form-validation.md) with DataAnnotations and `ModelState`
 - [Dependency injection](docs/guides/docs/dependency-injection.md) with `builder.Services` and `@inject`
+- [Configuration and logging](docs/guides/docs/hosting.md): `appsettings.json`, environment variables, the command line, options and `ILogger<T>`
 - [Async actions and middleware](docs/guides/docs/async-and-middleware.md)
 - [Live reload](docs/guides/docs/getting-started.md#live-reload) with `dotnet watch`
 
@@ -35,11 +36,12 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 ### Near-term
 
 - [ ] **Richer inputs**: `<number>` and `<date>` fields that step with the arrow keys and check ranges, and a searchable `<select filter>` for long lists
-- [ ] **Hosting integration**: `builder.Configuration` (appsettings.json, environment variables) and `builder.Logging` from the .NET generic host
 - [ ] **Testing package**: `ConsoleMVC.Testing` with a test host that drives an application with scripted input and asserts on the rendered screens (snapshot testing)
 - [ ] **Compile-time route checks**: report a `nav="Orders/Detials"` typo as a build error, with a code fix that creates a missing view
 
 ### Medium-term
+
+- [ ] **File logging**: a built-in rolling file logger (`builder.Logging.AddFile("logs/app.log")`), since the console cannot show logs
 
 - [ ] **Full-screen mode**: use the alternate screen buffer, redraw when the terminal is resized, and scroll long content (`<scroll>`, a pager for long lists)
 - [ ] **Live elements**: `<progress>` and `<spinner>` that update while an async action runs, and views that refresh on a timer

@@ -13,6 +13,8 @@ builder.Renderer = MarkupRenderer.CreateForConsole();            // default: det
 builder.Input = ConsoleTextInput.Instance;                       // default: the console
 builder.Theme.Set("brand", new ThemeStyle { Bold = true });      // default: Theme.CreateDefault()
 builder.Services.AddSingleton<IClock, SystemClock>();            // your services
+builder.Services.Configure<ShopOptions>(builder.Configuration.GetSection("Shop"));
+builder.Logging.AddDebug();                                       // logs, not on the screen
 
 using var app = builder.Build();
 app.Use(async (context, next) => await next(context));           // middleware
@@ -23,11 +25,12 @@ await app.RunAsync();
 |---|---|
 | `DefaultController` / `DefaultAction` | The first route |
 | `Services` | Services for controller constructors, `@inject` and middleware ([Dependency Injection](dependency-injection.md)) |
+| `Configuration` / `Environment` / `Logging` | Settings, the environment and log providers ([Configuration Files and Logging](hosting.md)) |
 | `Theme` | Named styles for `class="…"` ([themes](c-view-markup.md#themes-and-class)) |
 | `ClearScreenBetweenViews` | Clear the console before each view |
 | `ApplicationAssembly` | Where controllers and views are discovered |
 | `Renderer` | How markup is drawn: colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output are detected, and the screen is redrawn when the terminal is resized ([details](c-view-markup.md#resizing-the-terminal)) |
-| `Input` | Where `<input>` and `<menu>` read from |
+| `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from |
 
 `Build()` validates the service registrations, so a missing dependency fails at start-up rather than on the screen
 that needs it.

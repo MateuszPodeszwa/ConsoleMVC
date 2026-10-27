@@ -1,7 +1,11 @@
 using System.Reflection;
 using ConsoleMVC.Rendering;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConsoleMVC.Mvc;
 
@@ -12,7 +16,7 @@ namespace ConsoleMVC.Mvc;
 /// </summary>
 /// <remarks>
 /// This mirrors ASP.NET Core's <c>WebApplicationBuilder</c> pattern. Obtain an instance
-/// via <see cref="MvcApplication.CreateBuilder"/>, configure the desired properties,
+/// via <see cref="MvcApplication.CreateBuilder(string[])"/>, configure the desired properties,
 /// then call <see cref="Build"/> to create the application host.
 /// </remarks>
 /// <example>
@@ -21,12 +25,102 @@ namespace ConsoleMVC.Mvc;
 /// builder.DefaultController = "Dashboard";
 /// builder.ClearScreenBetweenViews = false;
 /// builder.Services.AddSingleton&lt;IGreetingService, GreetingService&gt;();
+/// builder.Services.Configure&lt;ShopOptions&gt;(builder.Configuration.GetSection("Shop"));
+/// builder.Logging.AddDebug();
 /// using var app = builder.Build();
 /// app.Run();
 /// </code>
 /// </example>
 public class MvcApplicationBuilder
 {
+    /// <summary>The environment used when neither the options nor <c>DOTNET_ENVIRONMENT</c> name one.</summary>
+    public const string DefaultEnvironmentName = "Production";
+
+    /// <summary>
+    /// Initialises a builder without command-line arguments. Prefer <see cref="MvcApplication.CreateBuilder(string[])"/>.
+    /// </summary>
+    /// <example><code>var builder = new MvcApplicationBuilder();</code></example>
+    public MvcApplicationBuilder()
+        : this(new MvcApplicationOptions())
+    {
+    }
+
+    /// <summary>
+    /// Initialises a builder: works out the environment, reads the configuration (see <see cref="Configuration"/>)
+    /// and registers configuration, options and logging services.
+    /// </summary>
+    /// <param name="options">The arguments, environment and content root.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidDataException">Thrown when a configuration file is not valid JSON.</exception>
+    /// <example><code>var builder = new MvcApplicationBuilder(new MvcApplicationOptions { Args = args });</code></example>
+    public MvcApplicationBuilder(MvcApplicationOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var environmentName = options.EnvironmentName;
+        if (string.IsNullOrWhiteSpace(environmentName))
+            environmentName = System.Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+        if (string.IsNullOrWhiteSpace(environmentName))
+            environmentName = DefaultEnvironmentName;
+
+        var applicationName = options.ApplicationName ?? Assembly.GetEntryAssembly()?.GetName().Name ?? "ConsoleMVC";
+        var contentRoot = options.ContentRootPath ?? AppContext.BaseDirectory;
+        Environment = new ConsoleHostEnvironment(environmentName, applicationName, contentRoot);
+
+        // Later sources win: appsettings.json < appsettings.{Environment}.json < environment variables < command line
+        Configuration.SetBasePath(contentRoot);
+        Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+        Configuration.AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: false);
+        Configuration.AddEnvironmentVariables();
+        if (options.Args.Length > 0)
+            Configuration.AddCommandLine(options.Args);
+
+        Services.AddSingleton<IConfiguration>(Configuration);
+        Services.AddSingleton<IHostEnvironment>(Environment);
+        Services.AddOptions();
+
+        // No providers: the console is the user interface, so log output must be sent somewhere else on purpose
+        Services.AddLogging();
+        Logging = new MvcLoggingBuilder(Services);
+        Logging.AddConfiguration(Configuration.GetSection("Logging"));
+    }
+
+    /// <summary>
+    /// Gets the application's configuration, read when the builder is created from, in order (later sources win):
+    /// <c>appsettings.json</c> and <c>appsettings.{Environment}.json</c> in <see cref="IHostEnvironment.ContentRootPath"/>
+    /// (both optional), environment variables (<c>Shop__Name</c> for <c>Shop:Name</c>) and the command line
+    /// (<c>--Shop:Name=Corner</c>). Add more sources here. It is registered as <see cref="IConfiguration"/>.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var pageSize = builder.Configuration.GetValue("Shop:PageSize", 20);
+    /// builder.Services.Configure&lt;ShopOptions&gt;(builder.Configuration.GetSection("Shop"));
+    /// builder.Configuration.AddJsonFile("secrets.json", optional: true);
+    /// </code>
+    /// </example>
+    public ConfigurationManager Configuration { get; } = new();
+
+    /// <summary>
+    /// Gets the environment: its name (from <see cref="MvcApplicationOptions.EnvironmentName"/>, the
+    /// <c>DOTNET_ENVIRONMENT</c> variable, or <see cref="DefaultEnvironmentName"/>), the application name and the
+    /// content root. It is registered as <see cref="IHostEnvironment"/>.
+    /// </summary>
+    /// <example><code>if (builder.Environment.IsDevelopment()) builder.Logging.SetMinimumLevel(LogLevel.Debug);</code></example>
+    public IHostEnvironment Environment { get; }
+
+    /// <summary>
+    /// Gets the logging configuration. <see cref="ILogger{TCategoryName}"/> can be injected into controllers, views and
+    /// services; levels follow the <c>Logging</c> section of the configuration. No provider is added by default,
+    /// because the console shows the application: add one that writes elsewhere, such as <c>AddDebug()</c>, a file
+    /// or a log service.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// builder.Logging.AddDebug();                      // Microsoft.Extensions.Logging.Debug
+    /// builder.Logging.SetMinimumLevel(LogLevel.Debug);
+    /// </code>
+    /// </example>
+    public ILoggingBuilder Logging { get; }
     /// <summary>
     /// Gets or sets the name of the default controller to navigate to on application startup.
     /// </summary>
@@ -65,7 +159,8 @@ public class MvcApplicationBuilder
     public IMarkupRenderer? Renderer { get; set; }
 
     /// <summary>
-    /// Gets or sets where <c>&lt;input&gt;</c> and <c>&lt;menu&gt;</c> elements read user input from.
+    /// Gets or sets where <c>&lt;input&gt;</c>, <c>&lt;select&gt;</c>, <c>&lt;radio&gt;</c>, <c>&lt;checkbox&gt;</c> and
+    /// <c>&lt;menu&gt;</c> elements read user input from.
     /// </summary>
     /// <value>Defaults to <see langword="null"/>, meaning <see cref="ConsoleTextInput.Instance"/>.</value>
     /// <example>
@@ -122,9 +217,23 @@ public class MvcApplicationBuilder
     /// <see cref="Renderer"/> and <see cref="Input"/>, when set, take precedence over services of the same type.
     /// </remarks>
     /// <exception cref="InvalidOperationException">Thrown when the service registrations are invalid.</exception>
+    /// <exception cref="OptionsValidationException">
+    /// Thrown when options registered with <c>ValidateOnStart()</c> are invalid, so bad configuration fails at start-up.
+    /// </exception>
     public MvcApplication Build()
     {
-        return new MvcApplication(this, BuildServiceProvider());
+        var services = BuildServiceProvider();
+        try
+        {
+            services.GetService<IStartupValidator>()?.Validate();
+        }
+        catch
+        {
+            services.Dispose();
+            throw;
+        }
+
+        return new MvcApplication(this, services);
     }
 
     /// <summary>
@@ -143,6 +252,12 @@ public class MvcApplicationBuilder
             services.TryAddSingleton<IMarkupRenderer>(_ => MarkupRenderer.CreateForConsole());
 
         services.AddSingleton(Theme ?? Theme.Empty);
+
+        // Also when Services was cleared: these calls only add what is missing
+        services.TryAddSingleton<IConfiguration>(Configuration);
+        services.TryAddSingleton(Environment);
+        services.AddOptions();
+        services.AddLogging(logging => logging.AddConfiguration(Configuration.GetSection("Logging")));
 
         if (Input is not null)
             services.AddSingleton(Input);

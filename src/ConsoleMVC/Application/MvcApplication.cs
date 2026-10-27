@@ -1,6 +1,9 @@
 using System.Reflection;
 using ConsoleMVC.Rendering;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace ConsoleMVC.Mvc;
 
@@ -20,7 +23,7 @@ namespace ConsoleMVC.Mvc;
 /// </para>
 /// <para>
 /// Instances are created via the builder pattern using
-/// <see cref="CreateBuilder"/> and <see cref="MvcApplicationBuilder.Build"/>,
+/// <see cref="CreateBuilder(string[])"/> and <see cref="MvcApplicationBuilder.Build"/>,
 /// mirroring ASP.NET Core's <c>WebApplication</c> approach.
 /// </para>
 /// </remarks>
@@ -109,8 +112,34 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// </remarks>
     public static MvcApplicationBuilder CreateBuilder(string[] args)
     {
-        return new MvcApplicationBuilder();
+        ArgumentNullException.ThrowIfNull(args);
+        return new MvcApplicationBuilder(new MvcApplicationOptions { Args = args });
     }
+
+    /// <summary>
+    /// Creates a new <see cref="MvcApplicationBuilder"/> with the environment and content root chosen in code.
+    /// </summary>
+    /// <param name="options">The command-line arguments, environment name, content root and application name.</param>
+    /// <returns>A new <see cref="MvcApplicationBuilder"/> instance.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <example>
+    /// <code>
+    /// var builder = MvcApplication.CreateBuilder(new MvcApplicationOptions { Args = args, EnvironmentName = "Development" });
+    /// </code>
+    /// </example>
+    public static MvcApplicationBuilder CreateBuilder(MvcApplicationOptions options) => new(options);
+
+    /// <summary>
+    /// Gets the application's configuration (<see cref="MvcApplicationBuilder.Configuration"/>).
+    /// </summary>
+    /// <example><code>var title = app.Configuration["App:Title"];</code></example>
+    public IConfiguration Configuration => _services.GetRequiredService<IConfiguration>();
+
+    /// <summary>
+    /// Gets the environment the application runs in (<see cref="MvcApplicationBuilder.Environment"/>).
+    /// </summary>
+    /// <example><code>if (app.Environment.IsDevelopment()) { /* seed test data */ }</code></example>
+    public IHostEnvironment Environment => _services.GetRequiredService<IHostEnvironment>();
 
     /// <summary>
     /// Adds a middleware that runs around every action, in registration order (the first one added is the outermost).
@@ -223,11 +252,20 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         var renderer = _services.GetRequiredService<IMarkupRenderer>();
         var input = _services.GetRequiredService<ITextInput>();
         var theme = _services.GetRequiredService<Theme>();
+        var logger = _services.GetRequiredService<ILogger<MvcApplication>>();
+        MvcApplicationLog.Starting(logger, _currentRoute, Environment.EnvironmentName);
 
         HotReloadHandler.Updated += OnHotReload;
         try
         {
-            await RunLoopAsync(pipeline, assembly, renderer, input, theme, cancellationToken).ConfigureAwait(false);
+            await RunLoopAsync(pipeline, assembly, renderer, input, theme, logger, cancellationToken).ConfigureAwait(false);
+            MvcApplicationLog.Stopped(logger);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Logged where it happened, then rethrown unchanged for the caller (and the terminal) to see
+            MvcApplicationLog.UnhandledException(logger, e, _currentRoute);
+            throw;
         }
         finally
         {
@@ -251,7 +289,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// Runs navigation cycles until a view quits: the pipeline, then rendering the view or following the redirect.
     /// </summary>
     private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, IMarkupRenderer renderer, ITextInput input,
-        Theme theme, CancellationToken cancellationToken)
+        Theme theme, ILogger logger, CancellationToken cancellationToken)
     {
         var consecutiveRedirects = 0;
 
@@ -262,6 +300,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             // dotnet watch applied an edit: pick up new or changed controllers and views from this screen on
             if (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
                 Discover(assembly);
+
+            MvcApplicationLog.Running(logger, _currentRoute);
 
             // One scope per navigation cycle: the action and the view it renders share scoped services
             await using var scope = _services.CreateAsyncScope();
