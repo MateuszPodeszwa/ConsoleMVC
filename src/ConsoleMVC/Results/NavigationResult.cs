@@ -97,4 +97,35 @@ public class NavigationResult
     /// <example><code>if (key == "b") return NavigationResult.Back();</code></example>
     public static NavigationResult Back()
         => new() { IsBack = true };
+
+    /// <summary>
+    /// Gets the values passed to the target action like a query string (see <see cref="Mvc.RouteValues"/>), or
+    /// <see langword="null"/>. Unlike <see cref="FormData"/>, they do not trigger validation.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? RouteValues { get; init; }
+
+    /// <summary>
+    /// Navigates to a target written as in a menu's <c>nav</c> attribute: <c>Controller/Action</c> or <c>Action</c>,
+    /// optionally with route values, <c>Orders/Details?id=42</c>.
+    /// </summary>
+    /// <param name="target">The target.</param>
+    /// <returns>The navigation result.</returns>
+    /// <exception cref="ArgumentException">Thrown when the target is not valid.</exception>
+    /// <example><code>return NavigationResult.To($"Orders/Details?id={order.Id}");</code></example>
+    public static NavigationResult To(string target)
+    {
+        var (controller, action, values) = Mvc.RouteValues.ParseTarget(target);
+        return new NavigationResult { Controller = controller, Action = action, RouteValues = values };
+    }
+
+    /// <summary>
+    /// Navigates to an action with route values from an object such as <c>new { id = 42 }</c>.
+    /// </summary>
+    /// <param name="controller">The controller name.</param>
+    /// <param name="action">The action name.</param>
+    /// <param name="routeValues">The values; see <see cref="Mvc.RouteValues.From"/>.</param>
+    /// <returns>The navigation result.</returns>
+    /// <example><code>return NavigationResult.To("Orders", "Details", new { id = order.Id });</code></example>
+    public static NavigationResult To(string controller, string action, object routeValues)
+        => new() { Controller = controller, Action = action, RouteValues = Mvc.RouteValues.From(routeValues) };
 }

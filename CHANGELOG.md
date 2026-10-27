@@ -2,6 +2,23 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.13.0]
+
+### Added
+
+- **Route values** ([design](docs/design/route-values.md), [guide](docs/guides/docs/controllers-and-forms.md#route-values)):
+  `nav="Orders/Details?id=@order.Id"`, `NavigationResult.To("Orders/Details?id=42")`,
+  `NavigationResult.To(controller, action, routeValues)` and `RedirectToAction(action, [controller,] routeValues)` pass
+  values that bind to the action's parameters. Form data wins over route values; route values do not trigger
+  validation. Expressions after `?` in `nav` are URL-escaped.
+- `RouteValues.From` and `RouteValues.ParseTarget`; `RouteValues` on `NavigationResult`, `RedirectToActionResult` and
+  `RouteContext`.
+- Back returns to the screen with the same route values.
+
+### Changed
+
+- Literal `nav` values may include `?key=value` route values (checked at build time, CVW101).
+
 ## [1.12.0]
 
 ### Added

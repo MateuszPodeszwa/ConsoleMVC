@@ -23,6 +23,7 @@ public class HomeController(IGreetingService greetings) : Controller
 
 | Method | Result |
 |---|---|
+| `RedirectToAction("Details", new { id })` | Run another action with [route values](#route-values) |
 | `View()` / `View(model)` | Render the current action's view (`Views/{Controller}/{Action}View.cvw`) |
 | `View("Action")` / `View("Action", model)` | Render another action's view, for example a form again after validation fails |
 | `RedirectToAction("Action")` / `RedirectToAction("Action", "Controller")` | Run another action instead of rendering |
@@ -39,10 +40,30 @@ A view ends by returning a `NavigationResult`, or with a `<menu>`, which returns
 | `NavigationResult.To("Controller", "Action")` | Go to an action |
 | `NavigationResult.To("Controller", "Action", formData)` | Go to an action and post form data |
 | `NavigationResult.ToAction("Action")` / `ToAction("Action", formData)` | The same, on the current controller |
+| `NavigationResult.To("Orders/Details?id=42")` | Go to an action with [route values](#route-values) |
 | `NavigationResult.Back()` | Return to the previous screen (the same as a menu option marked `back`) |
 | `NavigationResult.Quit()` | Exit the application |
 
 The framework remembers the screens shown (up to 50). `Back()` and `<option key="b" back>Back</option>` return to the previous one, running its action again without form data; showing the same screen twice in a row (a form after validation fails) counts once. Views read the trail from `NavigationHistory` and show it with `<breadcrumbs />`. See the [design](https://github.com/MateuszPodeszwa/ConsoleMVC/blob/main/docs/design/navigation-history.md).
+
+## Route values
+
+Pass the values an action needs in the navigation itself, like a query string, instead of building a form:
+
+```
+<option key="1" nav="Orders/Details?id=@order.Id">@order.Title</option>
+```
+
+```csharp
+public ActionResult Details(int id) => View(store.Find(id));
+public ActionResult Save(OrderForm form) => RedirectToAction("Details", new { id = form.Id });
+return NavigationResult.To("Orders", "Details", new { id = 42 });   // from a view's C#
+```
+
+- Route values bind to parameters and model properties by name, like form data; when both have a key, the form wins.
+- They do not trigger validation (only posted forms are validated), but a value that cannot be converted is still reported in `ModelState`.
+- Values from `@expressions` in `nav` are URL-escaped, and values from objects use the invariant culture (`1.5`, `2026-10-27`).
+- Back returns to the screen with the same route values.
 
 ## Posting forms
 

@@ -76,7 +76,7 @@ public class HomeViewModel
 - **Secure output**: model values are sanitised so they cannot inject terminal escape sequences
 - **Reusable rendering engine**: the `ConsoleMVC.Rendering` namespace can draw elements in any console app
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, all the patterns you know from ASP.NET Core MVC
-- **Navigation**: Views return `NavigationResult` to control app flow (`NavigationResult.To()`, `Back()`, `Quit()`); menus offer `back` options and `<breadcrumbs />` shows the trail
+- **Navigation**: Views return `NavigationResult` to control app flow (`NavigationResult.To()`, `Back()`, `Quit()`); menus offer `back` options and `<breadcrumbs />` shows the trail; route values (`nav="Orders/Details?id=@order.Id"`) bind to action parameters
 - **Validation**: posted forms are checked with DataAnnotations (`[Required]`, `[Range]`, `[EmailAddress]`, …) before the action runs; use `ModelState.IsValid`, `View("Form", model)` and `<errors />` as in ASP.NET Core MVC
 - **Dependency injection**: `builder.Services` (Microsoft.Extensions.DependencyInjection); constructor injection into controllers, `@inject Type Name` in views, one scope per screen
 - **Async actions and middleware**: `Task<ActionResult>` actions, `RunAsync(token)`, and `app.Use(...)` / `UseMiddleware<T>()` around every action

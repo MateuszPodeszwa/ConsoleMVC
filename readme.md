@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.12: a Back option and breadcrumbs from the navigation history. 1.11 added layouts that frame every screen. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.13: route values (`nav="Orders/Details?id=@order.Id"`). 1.12 added Back and breadcrumbs, 1.11 layouts. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -273,6 +273,7 @@ Every view must return a `NavigationResult` to tell the framework what to do nex
 | `NavigationResult.To("Controller", "Action", formData)` | Navigate and post form data to the target action |
 | `NavigationResult.ToAction("Action")` | Navigate to a different action on the current controller |
 | `NavigationResult.ToAction("Action", formData)` | Navigate within the current controller and post form data |
+| `NavigationResult.To("Orders/Details?id=42")` | Navigate with route values, which bind to the action's parameters (also `nav="Orders/Details?id=@order.Id"` and `RedirectToAction("Details", new { id })`) |
 | `NavigationResult.Back()` | Return to the previous screen (the same as a menu option marked `back`) |
 | `NavigationResult.Quit()` | Exit the application |
 
@@ -721,7 +722,7 @@ app.Run();
 
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
-- **Route values** in navigation (`nav="Orders/Details?id=@order.Id"`) and **compile-time route checks**
+- **Compile-time route checks** for `nav` targets
 - **More inputs** (`<select>`, `<checkbox>`, `<radio>`) with arrow-key selection
 - **Hosting integration** (configuration and logging) and a **`ConsoleMVC.Testing`** package for snapshot tests
 - **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**

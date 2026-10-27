@@ -62,3 +62,36 @@ namespace ConsoleMVC.Tests.Mvc.HistoryApp.Views.Trail
         public override NavigationResult Render(object Model) => HistoryScript.Next(this, $"Details({Model})");
     }
 }
+
+namespace ConsoleMVC.Tests.Mvc.HistoryApp.Controllers
+{
+    public sealed class ShelfController : Controller
+    {
+        public ActionResult Index() => View();
+
+        public ActionResult Item(int id, string? name, [System.ComponentModel.DataAnnotations.Range(1, 5)] int stars = 1)
+        {
+            HistoryApp.HistoryScript.Log.Add($"item:{id}:{name}:{stars}:{ModelState.IsValid}");
+            return View();
+        }
+
+        public ActionResult Forward(int id) => RedirectToAction("Item", new { id = id + 1, name = "a & b" });
+
+        public ActionResult Across() => RedirectToAction("Item", "Shelf", new Dictionary<string, string> { ["id"] = "9" });
+    }
+}
+
+namespace ConsoleMVC.Tests.Mvc.HistoryApp.Views.Shelf
+{
+    using ConsoleMVC.Tests.Mvc.HistoryApp;
+
+    public sealed class IndexView : ConsoleView<object>
+    {
+        public override NavigationResult Render(object Model) => HistoryScript.Next(this, "Shelf");
+    }
+
+    public sealed class ItemView : ConsoleView<object>
+    {
+        public override NavigationResult Render(object Model) => HistoryScript.Next(this, "Item");
+    }
+}

@@ -55,7 +55,19 @@ internal static class ModelBinder
     /// Thrown when a complex parameter has neither a public parameterless constructor nor a public constructor
     /// whose parameters are all simple types.
     /// </exception>
-    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData, ModelStateDictionary? modelState)
+    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData, ModelStateDictionary? modelState) =>
+        BindParameters(method, formData, routeValues: null, modelState);
+
+    /// <summary>
+    /// Binds the action's parameters from form data and route values; form data wins when both have a key.
+    /// </summary>
+    /// <param name="method">The action method whose parameters should be bound.</param>
+    /// <param name="formData">The posted form data, or <see langword="null"/>.</param>
+    /// <param name="routeValues">The route values (<c>Orders/Details?id=42</c>), or <see langword="null"/>.</param>
+    /// <param name="modelState">Receives conversion errors, or <see langword="null"/> to ignore them.</param>
+    /// <returns>The bound arguments, or <see langword="null"/> when the method has no parameters.</returns>
+    public static object?[]? BindParameters(MethodInfo method, Dictionary<string, string>? formData,
+        IReadOnlyDictionary<string, string>? routeValues, ModelStateDictionary? modelState)
     {
         var parameters = method.GetParameters();
 
@@ -63,6 +75,16 @@ internal static class ModelBinder
             return null;
 
         var values = ToCaseInsensitive(formData);
+        if (routeValues is not null)
+        {
+            var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, value) in routeValues)
+                merged.TryAdd(key, value);
+            foreach (var (key, value) in values)
+                merged[key] = value; // form data wins
+
+            values = merged;
+        }
         var args = new object?[parameters.Length];
 
         for (var i = 0; i < parameters.Length; i++)

@@ -241,7 +241,7 @@ Select an option: _
 | | `error` | message after an invalid choice | `Invalid choice, please try again.` |
 | | `key-color` / `key-colour` | colour of the `[key]` labels | terminal default |
 | `<option>` | `key` | **required**: what the user types (case-insensitive) | |
-| | `nav` | `Controller/Action`, or `Action` on the current controller | |
+| | `nav` | `Controller/Action`, or `Action` on the current controller, optionally with route values: `Orders/Details?id=@order.Id` (values from expressions are URL-escaped) | |
 | | `quit` | flag: quit the application | |
 | | `back` | flag: return to the previous screen (on the first screen, it is shown again) | |
 | | `post` | flag: post the view's `Form` with the navigation | off |

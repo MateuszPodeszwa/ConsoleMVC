@@ -14,7 +14,7 @@ namespace ConsoleMVC.Mvc;
 /// </para>
 /// <para>
 /// Action methods must be public, parameterless, and return <see cref="ActionResult"/>.
-/// Use <see cref="View(object?)"/> to render a view or <see cref="RedirectToAction"/> to navigate
+/// Use <see cref="View(object?)"/> to render a view or <see cref="RedirectToAction(string, string?)"/> to navigate
 /// to a different action without rendering.
 /// </para>
 /// </remarks>
@@ -133,6 +133,35 @@ public abstract class Controller
         {
             ActionName = action,
             ControllerName = controller ?? GetControllerName()
+        };
+    }
+
+    /// <summary>
+    /// Creates a <see cref="RedirectToActionResult"/> to an action on this controller, passing route values from an object
+    /// such as <c>new { id = 42 }</c> or a dictionary.
+    /// </summary>
+    /// <param name="action">The name of the target action method.</param>
+    /// <param name="routeValues">The values bound to the action's parameters; see <see cref="Mvc.RouteValues.From"/>.</param>
+    /// <returns>The redirect.</returns>
+    /// <example><code>return RedirectToAction("Details", new { id = order.Id });</code></example>
+    protected RedirectToActionResult RedirectToAction(string action, object routeValues) =>
+        RedirectToAction(action, null, routeValues);
+
+    /// <summary>
+    /// Creates a <see cref="RedirectToActionResult"/> to an action on another controller, passing route values.
+    /// </summary>
+    /// <param name="action">The name of the target action method.</param>
+    /// <param name="controller">The target controller, or <see langword="null"/> for this one.</param>
+    /// <param name="routeValues">The values bound to the action's parameters; see <see cref="Mvc.RouteValues.From"/>.</param>
+    /// <returns>The redirect.</returns>
+    /// <example><code>return RedirectToAction("Details", "Orders", new { id });</code></example>
+    protected RedirectToActionResult RedirectToAction(string action, string? controller, object routeValues)
+    {
+        return new RedirectToActionResult
+        {
+            ActionName = action,
+            ControllerName = controller ?? GetControllerName(),
+            RouteValues = Mvc.RouteValues.From(routeValues)
         };
     }
 

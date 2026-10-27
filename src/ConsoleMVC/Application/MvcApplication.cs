@@ -288,7 +288,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                             {
                                 Controller = navigation.Controller ?? context.Route.Controller,
                                 Action = navigation.Action ?? context.Route.Action,
-                                FormData = navigation.FormData
+                                FormData = navigation.FormData,
+                                RouteValues = navigation.RouteValues
                             };
                         break;
 
@@ -304,7 +305,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                         _currentRoute = new RouteContext
                         {
                             Controller = redirect.ControllerName,
-                            Action = redirect.ActionName
+                            Action = redirect.ActionName,
+                            RouteValues = redirect.RouteValues
                         };
                         break;
 
@@ -355,12 +357,13 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         {
             Controller = route.Controller,
             Action = actionMethod.Name,
-            FormData = route.FormData
+            FormData = route.FormData,
+            RouteValues = route.RouteValues
         };
 
         // Bind posted values, then validate them before the action runs
         var modelState = new ModelStateDictionary();
-        var args = ModelBinder.BindParameters(actionMethod, route.FormData, modelState);
+        var args = ModelBinder.BindParameters(actionMethod, route.FormData, route.RouteValues, modelState);
         if (route.FormData is not null)
             ModelValidator.Validate(actionMethod, args, modelState);
 
@@ -393,7 +396,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     {
         // The controller's route has the action's declared name, whatever casing navigation used
         var route = context.Controller?.RouteContext ?? context.Route;
-        var screen = new RouteContext { Controller = route.Controller, Action = route.Action };
+        var screen = new RouteContext { Controller = route.Controller, Action = route.Action, RouteValues = route.RouteValues };
 
         if (_history.Count > 0 && SameScreen(_history[^1], screen))
             _history[^1] = screen;
@@ -414,7 +417,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             _history.RemoveAt(_history.Count - 1);
 
         var previous = _history[^1];
-        return new RouteContext { Controller = previous.Controller, Action = previous.Action };
+        return new RouteContext { Controller = previous.Controller, Action = previous.Action, RouteValues = previous.RouteValues };
     }
 
     private static bool SameScreen(RouteContext a, RouteContext b) =>

@@ -44,4 +44,33 @@ public class NavigationMarkupTests
         Assert.True(result.Assembly is not null && !result.Errors.Any(), result.Describe());
         Assert.Contains("Items = this.Breadcrumbs", result.GeneratedSource);
     }
+
+    [Fact]
+    public void RouteValuesInNav_AreEscapedWhenTheyComeFromExpressions()
+    {
+        var (_, navigation) = ViewHarness.RenderWithNavigation(
+            "var name = \"Tea & cake\";\nvar id = 7;\n<menu><option key=\"1\" nav=\"Shelf/Item?id=@id&name=@name\">Open</option></menu>",
+            input: "1");
+
+        Assert.Equal("7", navigation.RouteValues!["id"]);
+        Assert.Equal("Tea & cake", navigation.RouteValues["name"]);
+    }
+
+    [Fact]
+    public void LiteralNavWithAQuery_IsValid()
+    {
+        var result = ViewHarness.Generate("<menu><option key=\"1\" nav=\"Shelf/Item?id=5\">Open</option></menu>");
+
+        Assert.True(result.Assembly is not null && !result.Errors.Any(), result.Describe());
+    }
+
+    [Theory]
+    [InlineData("Shelf/Item?=5")]
+    [InlineData("Shelf/It em?id=5")]
+    public void InvalidLiteralNav_ReportsCVW101(string nav)
+    {
+        var result = ViewHarness.Generate("<menu><option key=\"1\" nav=\"" + nav + "\">Open</option></menu>");
+
+        Assert.Contains(result.GeneratorDiagnostics, d => d.Id == "CVW101");
+    }
 }

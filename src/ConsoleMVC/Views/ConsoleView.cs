@@ -38,19 +38,23 @@ public abstract class ConsoleView : ConsoleViewBase
             return NavigationResult.Back();
 
         var target = option.Target ?? "";
-        var parts = target.Split('/');
-        if (parts.Length > 2 || parts.Any(p => p.Trim().Length == 0))
+        string? controller;
+        string action;
+        Dictionary<string, string>? routeValues;
+        try
+        {
+            (controller, action, routeValues) = RouteValues.ParseTarget(target);
+        }
+        catch (ArgumentException)
         {
             throw new InvalidOperationException(
                 $"Menu option '{option.Key}' in view '{GetType().Name}' has an invalid target '{target}'. " +
-                "Use 'Controller/Action' or 'Action'.");
+                "Use 'Controller/Action' or 'Action', optionally followed by '?key=value'.");
         }
 
         var formData = option.PostForm ? new Dictionary<string, string>(Form, StringComparer.OrdinalIgnoreCase) : null;
 
-        return parts.Length == 2
-            ? new NavigationResult { Controller = parts[0].Trim(), Action = parts[1].Trim(), FormData = formData }
-            : new NavigationResult { Action = parts[0].Trim(), FormData = formData };
+        return new NavigationResult { Controller = controller, Action = action, FormData = formData, RouteValues = routeValues };
     }
 
     /// <summary>

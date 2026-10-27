@@ -421,10 +421,23 @@ internal sealed class ViewEmitter
         if (attribute.Parts.Count == 1)
             return type.WrapExpression(MapExpression(attribute.Parts[0].Text, attribute.Parts[0].Span.Start));
 
-        // Text mixed with expressions (string attributes only): concatenate
-        var pieces = attribute.Parts.Select(part => part.IsExpression
-            ? type.WrapExpression(MapExpression(part.Text, part.Span.Start))
-            : CSharpLiteral.String(part.Text));
+        // Text mixed with expressions (string attributes only): concatenate. In a route, values after the '?' are escaped.
+        var inQuery = false;
+        var pieces = new List<string>();
+        foreach (var part in attribute.Parts)
+        {
+            if (!part.IsExpression)
+            {
+                inQuery |= part.Text.IndexOf('?') >= 0;
+                pieces.Add(CSharpLiteral.String(part.Text));
+                continue;
+            }
+
+            var expression = MapExpression(part.Text, part.Span.Start);
+            pieces.Add(inQuery && type is RouteAttributeType
+                ? RouteAttributeType.WrapQueryExpression(expression)
+                : type.WrapExpression(expression));
+        }
 
         return "string.Concat(new string[] { " + string.Join(", ", pieces) + " })";
     }
