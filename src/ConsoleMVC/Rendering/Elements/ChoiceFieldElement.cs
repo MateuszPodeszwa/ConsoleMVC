@@ -324,10 +324,27 @@ public abstract class ChoiceFieldElement : Element, IFormField
     /// <summary>The choice each line of the last vertical layout shows, by line object.</summary>
     private readonly Dictionary<RenderedLine, int> _choiceOfLine = new(ReferenceEqualityComparer.Instance);
 
+    /// <summary>Where each choice of the last side-by-side layout is: its line and columns, and its index.</summary>
+    private readonly List<(int Line, int From, int To, int Choice)> _choicePlaces = [];
+
     private void MapChoiceLines(IReadOnlyList<RenderedLine> lines)
     {
         var visible = Matching(_filter);
         var targets = new List<ClickTarget>();
+
+        // Side by side: a choice is part of a line; clicking it moves there (Home, then Right) and presses Enter
+        foreach (var (line, from, to, choice) in _choicePlaces)
+        {
+            var position = visible.IndexOf(choice);
+            if (position < 0 || line >= lines.Count)
+                continue;
+
+            var keys = new List<ConsoleKeyInfo> { ClickTarget.Key(ConsoleKey.Home) };
+            keys.AddRange(Enumerable.Repeat(ClickTarget.Key(ConsoleKey.RightArrow), position));
+            keys.Add(ClickTarget.Key(ConsoleKey.Enter));
+            targets.Add(new ClickTarget(line, keys) { FromColumn = from, ToColumn = to });
+        }
+
         for (var line = 0; line < lines.Count; line++)
         {
             if (!_choiceOfLine.TryGetValue(lines[line], out var choice))
@@ -489,6 +506,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
             _ => words.SelectKeys
         };
         _choiceOfLine.Clear();
+        _choicePlaces.Clear();
         var lines = ChoiceLines(width, items.Select(i => (i.Marker, i.Choice, i.Bold)).ToList(), hint, markerStyle,
             indent: LabelIndent + 1, choiceIndices: items.Select(i => i.Index).ToList()).ToList();
 
@@ -542,21 +560,23 @@ public abstract class ChoiceFieldElement : Element, IFormField
         if (Horizontal)
         {
             // One space after the label, two between choices
-            var segments = new List<(Span[] Spans, int Gap)>();
+            var segments = new List<(Span[] Spans, int Gap, int Choice)>();
             if (SafeLabel.Length > 0)
-                segments.Add(([new Span(SafeLabel, LabelStyle)], 0));
+                segments.Add(([new Span(SafeLabel, LabelStyle)], 0, -1));
 
-            foreach (var (marker, choice, bold) in items)
+            for (var item = 0; item < items.Count; item++)
             {
+                var (marker, choice, bold) = items[item];
                 var style = bold ? choice.Style.WithDecoration(TextDecoration.Bold) : choice.Style;
                 var gap = segments.Count == 0 ? 0 : segments.Count == 1 && SafeLabel.Length > 0 ? 1 : 2;
-                segments.Add(([new Span(marker, markerStyle), Span.Spaces(1), new Span(TextSanitiser.Sanitise(choice.LabelText), style)], gap));
+                segments.Add(([new Span(marker, markerStyle), Span.Spaces(1), new Span(TextSanitiser.Sanitise(choice.LabelText), style)], gap,
+                    choiceIndices?[item] ?? -1));
             }
 
             if (hint is not null)
-                segments.Add(([new Span(hint, hintStyle)], 2));
+                segments.Add(([new Span(hint, hintStyle)], 2, -1));
 
-            return Flow(segments, width);
+            return Flow(segments, width, _choicePlaces);
         }
 
         var lines = HeadingLines(width, hint);
@@ -586,32 +606,40 @@ public abstract class ChoiceFieldElement : Element, IFormField
     /// <summary>The label of a vertical field, followed by the keys to press when there is a hint.</summary>
     private List<RenderedLine> HeadingLines(int width, string? hint)
     {
-        var heading = new List<(Span[] Spans, int Gap)>();
+        var heading = new List<(Span[] Spans, int Gap, int Choice)>();
         if (SafeLabel.Length > 0)
-            heading.Add(([new Span(SafeLabel, LabelStyle)], 0));
+            heading.Add(([new Span(SafeLabel, LabelStyle)], 0, -1));
         if (hint is not null)
-            heading.Add(([new Span(hint, TextStyle.Plain.WithDecoration(TextDecoration.Dim))], 1));
-        return heading.Count == 0 ? [] : Flow(heading, width);
+            heading.Add(([new Span(hint, TextStyle.Plain.WithDecoration(TextDecoration.Dim))], 1, -1));
+        return heading.Count == 0 ? [] : Flow(heading, width, []);
     }
 
     /// <summary>
-    /// Places segments side by side, each after its gap of spaces, starting a new line when one does not fit.
+    /// Lays segments out side by side, starting a new line when the next one does not fit. A segment wider than a whole
+    /// line (a long choice on a narrow terminal) wraps onto the lines below, under its own text, rather than being cut.
     /// </summary>
-    private static List<RenderedLine> Flow(List<(Span[] Spans, int Gap)> segments, int width)
+    /// <param name="segments">The label, the choices and the hint, each with the gap before it and its choice (or -1).</param>
+    /// <param name="width">The width of the lines.</param>
+    /// <param name="places">Receives where each choice was put: its lines and columns.</param>
+    private static List<RenderedLine> Flow(List<(Span[] Spans, int Gap, int Choice)> segments, int width,
+        List<(int Line, int From, int To, int Choice)> places)
     {
         var lines = new List<RenderedLine>();
         var current = new List<Span>();
         var used = 0;
 
-        foreach (var (segment, gap) in segments)
+        void NewLine()
+        {
+            lines.Add(new RenderedLine(current).Clip(width));
+            current = [];
+            used = 0;
+        }
+
+        foreach (var (segment, gap, choice) in segments)
         {
             var segmentWidth = segment.Sum(s => s.Width);
             if (current.Count > 0 && used + gap + segmentWidth > width)
-            {
-                lines.Add(new RenderedLine(current).Clip(width));
-                current = [];
-                used = 0;
-            }
+                NewLine();
 
             if (current.Count > 0)
             {
@@ -619,8 +647,37 @@ public abstract class ChoiceFieldElement : Element, IFormField
                 used += gap;
             }
 
-            current.AddRange(segment);
-            used += segmentWidth;
+            if (used + segmentWidth <= width)
+            {
+                if (choice >= 0)
+                    places.Add((lines.Count, used, used + segmentWidth, choice));
+                current.AddRange(segment);
+                used += segmentWidth;
+                continue;
+            }
+
+            // Too wide for any line: the marker and as many words as fit, then the rest under the text, line by line
+            var prefix = segment.Take(segment.Length - 1).ToArray();
+            var last = segment[^1];
+            var indent = used + prefix.Sum(s => s.Width);
+            var pieces = TextWrapper.Wrap(last.Text, Math.Max(width - indent, 1));
+            for (var i = 0; i < pieces.Count; i++)
+            {
+                if (i > 0)
+                {
+                    NewLine();
+                    current.Add(Span.Spaces(indent));
+                    used = indent;
+                }
+
+                var start = i == 0 ? used : indent;
+                if (i == 0)
+                    current.AddRange(prefix);
+                current.Add(last with { Text = pieces[i] });
+                used = indent + TextWidth.Of(pieces[i]);
+                if (choice >= 0)
+                    places.Add((lines.Count, i == 0 ? start : indent, used, choice));
+            }
         }
 
         if (current.Count > 0)

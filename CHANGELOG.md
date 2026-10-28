@@ -26,6 +26,9 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - CVW120 also checks the route of `app.MapKey(key, "Help/Index")`. CVW119, CVW120 and CVW121 suggest the closest name
   (`Did you mean 'Details'?`) and list the others closest first, saying how many more there are.
 
+- `ClickTarget.FromColumn` and `ToColumn` let several click targets share a line, and `IMarkupRenderer.KeysAt(row,
+  column)` finds the one clicked (the default implementation calls `KeysAt(row)`, so existing renderers keep working).
+
 ### Changed
 
 - Ctrl+C ends a local run cleanly: the screen waiting for the user is left at once (it used to end only after the next
@@ -87,6 +90,9 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   ignored, leaving the feature off; `Build()` now stops with a message naming the setting. The new
   `ConsoleMVC:FullScreen` setting matches `builder.FullScreen`, and the configuration guide lists every `ConsoleMVC:`
   setting.
+- Clicking a `<radio>` choice did nothing: a radio's choices are side by side, and only whole lines could be clicked.
+  The mouse guide spoke of a "vertical `<radio>`", which does not exist. A long radio choice on a narrow terminal was
+  cut off at the edge (`Large and extra wide choi`); it now wraps under its own text.
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).

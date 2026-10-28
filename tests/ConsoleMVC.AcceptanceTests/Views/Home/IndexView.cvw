@@ -9,5 +9,6 @@
     <option key="5" nav="Consent/Index">Consent</option>
     <option key="6" nav="Services/Index">Services</option>
     <option key="7" nav="Clock/Index">Clock</option>
+    <option key="8" nav="Size/Index">Size</option>
     <option key="q" quit>Quit</option>
 </menu>

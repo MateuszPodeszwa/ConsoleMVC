@@ -11,6 +11,26 @@ namespace ConsoleMVC.Rendering;
 public sealed record ClickTarget(int Line, IReadOnlyList<ConsoleKeyInfo> Keys)
 {
     /// <summary>
+    /// Gets the first column of the target, counted from 0; with <see cref="ToColumn"/> it lets several targets share a
+    /// line, as the choices of a side-by-side <c>&lt;radio&gt;</c> do. The default, 0, starts the target at the left.
+    /// </summary>
+    /// <example><code>new ClickTarget(0, keys) { FromColumn = 10, ToColumn = 18 }</code></example>
+    public int FromColumn { get; init; }
+
+    /// <summary>
+    /// Gets the column after the last one of the target; the default, <see cref="int.MaxValue"/>, is the whole line from
+    /// <see cref="FromColumn"/>.
+    /// </summary>
+    /// <example><code>new ClickTarget(0, keys) { FromColumn = 10, ToColumn = 18 } // columns 10 to 17</code></example>
+    public int ToColumn { get; init; } = int.MaxValue;
+
+    /// <summary>Whether a click at <paramref name="column"/> is on this target.</summary>
+    /// <param name="column">The column clicked, from 0.</param>
+    /// <returns><see langword="true"/> when the column is within the target.</returns>
+    /// <example><code>if (target.Covers(12)) { /* clicked */ }</code></example>
+    public bool Covers(int column) => column >= FromColumn && column < ToColumn;
+
+    /// <summary>
     /// A target that answers a typed prompt with <paramref name="text"/>: it erases what was typed so far
     /// (<see cref="ConsoleKey.Clear"/>), types the text and presses Enter.
     /// </summary>

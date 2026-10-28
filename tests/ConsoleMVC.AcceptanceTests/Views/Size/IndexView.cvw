@@ -1,0 +1,7 @@
+<radio name="size" label="Size:" default="Small">
+    <choice>Small</choice>
+    <choice>Medium</choice>
+    <choice>Large and extra wide choice</choice>
+</radio>
+
+return NavigationResult.ToAction("Show", Form);

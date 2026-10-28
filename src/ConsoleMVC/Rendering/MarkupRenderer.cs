@@ -94,6 +94,16 @@ public interface IMarkupRenderer
     /// <example><code>var keys = renderer.KeysAt(4);</code></example>
     IReadOnlyList<ConsoleKeyInfo>? KeysAt(int row) => null;
 
+    /// <summary>
+    /// Returns the keys of the click target at a place in the window, both counted from 0 at the top left, or
+    /// <see langword="null"/>. Targets may cover part of a row (<see cref="ClickTarget.FromColumn"/>).
+    /// </summary>
+    /// <param name="row">The row that was clicked.</param>
+    /// <param name="column">The column that was clicked.</param>
+    /// <returns>The keys, or <see langword="null"/>. The default implementation ignores the column and calls <see cref="KeysAt(int)"/>.</returns>
+    /// <example><code>var keys = renderer.KeysAt(4, 12);</code></example>
+    IReadOnlyList<ConsoleKeyInfo>? KeysAt(int row, int column) => KeysAt(row);
+
     /// <summary>Turns the terminal's mouse reports on or off, for <c>builder.Mouse</c>.</summary>
     /// <param name="on"><see langword="true"/> to report clicks.</param>
     /// <returns><see langword="true"/> when the output switched; the default implementation returns <see langword="false"/>.</returns>
@@ -145,7 +155,7 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     // Rows written since the screen was cleared (the cursor's row), where the last element starts, and the click targets
     private int _row;
     private int _lastElementRow;
-    private readonly Dictionary<int, IReadOnlyList<ConsoleKeyInfo>> _clicks = [];
+    private readonly Dictionary<int, List<ClickTarget>> _clicks = [];
 
     /// <summary>
     /// Initialises a renderer.
@@ -226,20 +236,28 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
         ArgumentNullException.ThrowIfNull(targets);
         lock (_sync)
         {
-            foreach (var target in targets.Where(t => t.Line >= 0 && t.Line < Math.Max(_lastElementLines, 0)))
-                _clicks[_lastElementRow + target.Line] = target.Keys;
+            // An element maps its lines afresh: its earlier targets on those rows are replaced
+            var mapped = targets.Where(t => t.Line >= 0 && t.Line < Math.Max(_lastElementLines, 0)).ToList();
+            foreach (var row in mapped.Select(t => _lastElementRow + t.Line).Distinct())
+                _clicks[row] = [];
+            foreach (var target in mapped)
+                _clicks[_lastElementRow + target.Line].Add(target);
         }
     }
 
     /// <inheritdoc />
     /// <remarks>When more rows were written than the window holds, the top ones have scrolled away; the row is counted from what is visible.</remarks>
-    public IReadOnlyList<ConsoleKeyInfo>? KeysAt(int row)
+    public IReadOnlyList<ConsoleKeyInfo>? KeysAt(int row) => KeysAt(row, column: 0);
+
+    /// <inheritdoc />
+    /// <remarks>When more rows were written than the window holds, the top ones have scrolled away; the row is counted from what is visible.</remarks>
+    public IReadOnlyList<ConsoleKeyInfo>? KeysAt(int row, int column)
     {
         lock (_sync)
         {
             var height = _heightProvider();
             var scrolled = height == int.MaxValue ? 0 : Math.Max(_row + 1 - Math.Max(height, 1), 0);
-            return _clicks.TryGetValue(row + scrolled, out var keys) ? keys : null;
+            return _clicks.TryGetValue(row + scrolled, out var targets) ? targets.FirstOrDefault(t => t.Covers(column))?.Keys : null;
         }
     }
 

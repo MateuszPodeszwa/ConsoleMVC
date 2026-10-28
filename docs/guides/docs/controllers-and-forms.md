@@ -108,7 +108,7 @@ In terminals that report the mouse (most do; the legacy Windows console does not
 | Click | Does |
 |---|---|
 | a `<menu>` option | chooses it (whatever was typed is replaced) |
-| a `<select>` or vertical `<radio>` choice | chooses it (ticks it in a `<select multiple>`) |
+| a `<select>` or `<radio>` choice (a `<radio>`'s choices are side by side; any part of one, on any of its lines, is the choice) | chooses it (ticks it in a `<select multiple>`) |
 | a `<checkbox>` | ticks or clears it, as Space does |
 | the wheel | moves through lists and `<scroll>` like the arrow keys |
 
