@@ -1473,7 +1473,7 @@
           "description": "The smallest value accepted.",
           "required": false,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true
@@ -1483,7 +1483,7 @@
           "description": "The largest value accepted.",
           "required": false,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true
@@ -1493,7 +1493,7 @@
           "description": "The amount the arrow keys add or take away; more than 0.",
           "required": false,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true
@@ -1831,7 +1831,7 @@
           "description": "How much is done, out of 'max'.",
           "required": false,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true
@@ -1841,7 +1841,7 @@
           "description": "The value of a full bar; 100 when left out.",
           "required": false,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true
@@ -2099,7 +2099,7 @@
           "description": "The value of a full-width bar; the largest value when left out.",
           "required": false,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true
@@ -2205,7 +2205,7 @@
           "description": "The bar's value.",
           "required": true,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true
@@ -2267,7 +2267,7 @@
           "description": "The value drawn as the lowest block; the smallest value when left out.",
           "required": false,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true
@@ -2277,7 +2277,7 @@
           "description": "The value drawn as the highest block; the largest value when left out.",
           "required": false,
           "kind": "number",
-          "accepts": "a number such as 0, -5 or 2.5",
+          "accepts": "a number such as 0, -5 or 2.5, or an expression of any number type",
           "flag": false,
           "interpolation": false,
           "expression": true

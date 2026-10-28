@@ -167,6 +167,7 @@ internal sealed class IntegerAttributeType : AttributeType
 internal sealed class DecimalAttributeType : AttributeType
 {
     private readonly string _suffix;
+    private readonly string _converter;
 
     /// <summary>
     /// Creates a number attribute type.
@@ -175,10 +176,20 @@ internal sealed class DecimalAttributeType : AttributeType
     public DecimalAttributeType(bool asDouble = false)
     {
         _suffix = asDouble ? "d" : "m";
+        _converter = asDouble ? "ToDouble" : "ToDecimal";
     }
 
     /// <inheritdoc />
-    public override string Description => "a number such as 0, -5 or 2.5";
+    public override string Description => "a number such as 0, -5 or 2.5, or an expression of any number type";
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Converts any number type (<c>int</c>, <c>double</c>, <c>decimal</c>, their nullable forms…) to the property's type
+    /// with <c>MarkupValue.ToDecimal</c> or <c>MarkupValue.ToDouble</c>, so <c>min="@(0.5)"</c> works on a
+    /// <c>decimal</c> property and <c>value="@Model.Total"</c> with a <c>decimal</c> total on a <c>double</c> one.
+    /// </remarks>
+    public override string WrapExpression(string expressionCode) =>
+        "global::ConsoleMVC.Rendering.MarkupValue." + _converter + "(" + expressionCode + ")";
 
     /// <inheritdoc />
     public override string Kind => "number";

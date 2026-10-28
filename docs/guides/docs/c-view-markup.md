@@ -324,7 +324,7 @@ Typed:     Quantity: _      (a number with a dot for decimals; Enter a number fr
 | | `required` | flag: an empty answer is asked again | off |
 | | `color` / `colour`, `highlight-color` / `highlight-colour` | label colour; colour of the value being edited | terminal default; cyan |
 | `<number>` | `default` | the answer to an empty line and the starting value; a number the field accepts | none |
-| | `min`, `max` | the range, e.g. `min="0" max="130"` or `max="@Model.Limit"`; `min` may equal `max` but not exceed it | none |
+| | `min`, `max` | the range, e.g. `min="0" max="130"` or `max="@Model.Limit"` (an expression of any [number type](#attribute-values)); `min` may equal `max` but not exceed it | none |
 | | `step` | how much Up/Down change the value (PageUp/PageDown change it by ten steps); more than 0 | 1 |
 | | `decimals` | the most decimal places; `0` for whole numbers | any |
 | `<date>` | `default`, `min`, `max` | `2026-10-27`, `today`, `tomorrow`, `yesterday`, `today+N` or `today-N` (also `+N`, `-N`), up to 100000 days from today; `min` not after `max` | none; the terminal starts today |
@@ -713,6 +713,7 @@ builder.Theme = Theme.Empty; // or start with no classes at all
 
 * **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute.
 * **Expressions** (`width=@Model.Width`, `title="@Model.Name's account"`) are type-checked by the C# compiler. Expressions can be mixed with text only in text attributes such as `title`.
+* **Number attributes** (`<number>` `min`, `max` and `step`; `<progress>` `value` and `max`; `<bar>` `value`; `<bar-chart>` `max`; `<sparkline>` `min` and `max`) take an expression of any number type: `int`, `long`, `short`, `byte`, `float`, `double`, `decimal` and the other .NET number types, converted to the element's own type, so `<number min="@(0.5)">` and `<progress value="@Model.Total">` with a `decimal` total both work. A nullable number (`double?`) is accepted where the attribute may be left out (`min` and `max` of `<number>` and `<sparkline>`, `max` of `<bar-chart>`), and `null` means not set. A value that is not a number, such as a `string`, is a compile error at the attribute; a number too large for a `decimal` throws an `OverflowException`.
 
 Literal values are also checked against each other and against the element's literal children, with the rules the
 element applies when the view runs, so a value it would throw for (or could never use) is build error CVW101 at that
