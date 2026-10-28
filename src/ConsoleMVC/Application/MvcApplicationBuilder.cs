@@ -215,6 +215,33 @@ public class MvcApplicationBuilder
     /// <example><code>builder.FullScreen = true;</code></example>
     public bool FullScreen { get; set; }
 
+    /// <summary>The setting that turns on <see cref="ScreenReader"/>: <c>--ConsoleMVC:ScreenReader=true</c> or <c>ConsoleMVC__ScreenReader=true</c>.</summary>
+    public const string ScreenReaderSetting = "ConsoleMVC:ScreenReader";
+
+    /// <summary>The setting that turns on <see cref="HighContrast"/>: <c>--ConsoleMVC:HighContrast=true</c> or <c>ConsoleMVC__HighContrast=true</c>.</summary>
+    public const string HighContrastSetting = "ConsoleMVC:HighContrast";
+
+    /// <summary>
+    /// Gets or sets whether screens are drawn for a screen reader (<see cref="ScreenReaderRenderer"/>): plain lines of
+    /// text without borders or bars, typed answers instead of arrow keys, and no clearing. Also on when the
+    /// <see cref="ScreenReaderSetting"/> setting is <c>true</c>, so users can choose it without a new build. Wraps
+    /// <see cref="Renderer"/> when it is set. Overrides <see cref="FullScreen"/>.
+    /// </summary>
+    /// <example><code>builder.ScreenReader = true; // or: dotnet run -- --ConsoleMVC:ScreenReader=true</code></example>
+    public bool ScreenReader { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the built-in classes use <see cref="Theme.CreateHighContrast"/> instead of <see cref="Theme"/>.
+    /// Also on when the <see cref="HighContrastSetting"/> setting is <c>true</c>.
+    /// </summary>
+    /// <example><code>builder.HighContrast = true; // or: ConsoleMVC__HighContrast=true dotnet run</code></example>
+    public bool HighContrast { get; set; }
+
+    /// <summary>Gets whether screen-reader output is chosen in code or in the settings.</summary>
+    internal bool UsesScreenReader => ScreenReader || IsOn(ScreenReaderSetting);
+
+    private bool IsOn(string setting) => bool.TryParse(Configuration[setting], out var on) && on;
+
     /// <summary>
     /// Builds and returns a fully configured <see cref="MvcApplication"/> instance
     /// ready to be started with <see cref="MvcApplication.Run"/>.
@@ -254,12 +281,20 @@ public class MvcApplicationBuilder
         foreach (var descriptor in Services)
             services.Add(descriptor);
 
+        var screenReader = UsesScreenReader;
         if (Renderer is not null)
-            services.AddSingleton(Renderer); // the last registration wins
+        {
+            // The last registration wins
+            services.AddSingleton(screenReader && Renderer is not ScreenReaderRenderer ? new ScreenReaderRenderer(Renderer) : Renderer);
+        }
         else
-            services.TryAddSingleton<IMarkupRenderer>(_ => MarkupRenderer.CreateForConsole());
+        {
+            services.TryAddSingleton<IMarkupRenderer>(_ => screenReader
+                ? new ScreenReaderRenderer(MarkupRenderer.CreateForScreenReader())
+                : MarkupRenderer.CreateForConsole());
+        }
 
-        services.AddSingleton(Theme ?? Theme.Empty);
+        services.AddSingleton(HighContrast || IsOn(HighContrastSetting) ? Theme.CreateHighContrast() : Theme ?? Theme.Empty);
         services.TryAddSingleton<ILiveDisplay>(provider => new LiveDisplay(provider.GetRequiredService<IMarkupRenderer>()));
 
         // Also when Services was cleared: these calls only add what is missing

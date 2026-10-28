@@ -2,6 +2,19 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.28.0]
+
+### Added
+
+- **Screen-reader mode** ([design](docs/design/accessibility.md), [guide](docs/guides/docs/accessibility.md)):
+  `builder.ScreenReader = true` or the `ConsoleMVC:ScreenReader` setting wraps the renderer in `ScreenReaderRenderer`.
+  Elements are described in plain text by `ScreenReaderText` (boxes without borders, tables as `Header: value` lines,
+  progress, spinners and charts in words), fields take typed answers, screens are separated rather than erased, and
+  full-screen mode is ignored. `MarkupRenderer.CreateForScreenReader()`, `MarkdownElement.UseBoxDrawing`.
+- **High contrast**: `Theme.CreateHighContrast()`, chosen with `builder.HighContrast = true` or the
+  `ConsoleMVC:HighContrast` setting.
+- The template's `Program.cs` explains both settings.
+
 ## [1.27.0]
 
 ### Added

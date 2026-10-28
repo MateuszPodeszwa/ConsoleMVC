@@ -18,4 +18,5 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 - [Configuration Files and Logging](hosting.md): `appsettings.json`, environment variables, options and `ILogger<T>`.
 - [Builder Options](configuration.md): the builder, themes and live reload.
 - [Testing](testing.md): run the application in tests with `ConsoleMVC.Testing`, scripted input and snapshots.
+- [Accessibility](accessibility.md): a screen-reader mode and a high-contrast theme that users can turn on.
 - [API Reference](../api/): auto-generated reference documentation for all public types.

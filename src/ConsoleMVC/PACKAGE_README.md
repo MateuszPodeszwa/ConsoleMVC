@@ -78,6 +78,7 @@ public class HomeViewModel
 - **Markdown**: `<markdown text="@Model.Notes" />` (`MarkdownElement`) draws headings, lists, quotes, code, emphasis and links, sanitised
 - **Charts**: `<bar-chart>` with `<bar />` children and `<sparkline values="@Model.History" />` (`BarChartElement`, `SparklineElement`)
 - **Live screens**: `<progress>` and `<spinner>`, kept up to date while an async action works with `ILiveDisplay.Start(element)`, and views that refresh on a timer with `@refresh 5s` or `View(model).RefreshEvery(...)` until the user types
+- **Accessibility**: `builder.ScreenReader` (`ScreenReaderRenderer`: plain text, no borders, typed answers) and `builder.HighContrast` (`Theme.CreateHighContrast()`), also chosen by users with the `ConsoleMVC:ScreenReader` and `ConsoleMVC:HighContrast` settings
 - **Secure output**: model values are sanitised so they cannot inject terminal escape sequences
 - **Reusable rendering engine**: the `ConsoleMVC.Rendering` namespace can draw elements in any console app
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, all the patterns you know from ASP.NET Core MVC

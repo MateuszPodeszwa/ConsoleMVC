@@ -46,6 +46,7 @@ The template includes working examples of:
 - **Form data posting with model binding**: a greeting form with a text `<input>`, a colour `<select>` (arrow keys in a terminal) and a `<checkbox>`, posted to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
 - **Logging**: `Program.cs` sends logs to `logs/app.log` with `builder.Logging.AddFile`, since the console shows the application
 - **Configuration**: the greeting's salutation comes from the `Greeting` section of `appsettings.json` through `IOptions<GreetingOptions>`; try `dotnet run -- --Greeting:Salutation=Hi`
+- **Accessibility**: run with `dotnet run -- --ConsoleMVC:ScreenReader=true` for plain text a screen reader reads well, or `--ConsoleMVC:HighContrast=true` for bold, bright colours
 - **Full screen and scrolling**: `Program.cs` sets `builder.FullScreen = true`, so the app runs on the alternate screen and your scrollback comes back afterwards; the feature tour's table is paged with `<scroll height="12">`
 - **Markdown**: the about page's text is Markdown in `HomeController`, drawn with `<markdown>`
 - **Live screens**: the feature tour's live status option checks the services with a `<progress>` bar that updates while the action works (`ILiveDisplay`), then shows a status page that refreshes every second with `@refresh 1s`, with a `<sparkline>` of the load and a `<bar-chart>` of response times

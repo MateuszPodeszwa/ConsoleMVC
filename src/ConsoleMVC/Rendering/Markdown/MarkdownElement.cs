@@ -42,6 +42,12 @@ public sealed class MarkdownElement : Element
     /// <summary>Gets or sets whether a link's address is shown after its text. Defaults to <see langword="true"/>.</summary>
     public bool ShowLinkUrls { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets whether rules and quotes are drawn with box-drawing characters (<c>─</c>, <c>│</c>). Defaults to
+    /// <see langword="true"/>; the screen-reader renderer turns it off, leaving rules out and starting quotes with "Quote:".
+    /// </summary>
+    public bool UseBoxDrawing { get; set; } = true;
+
     /// <inheritdoc />
     /// <remarks>Markdown fills the width it is given, like a paragraph of <c>&lt;text&gt;</c>.</remarks>
     public override int MeasureWidth(int maxWidth) => 0;
@@ -53,7 +59,7 @@ public sealed class MarkdownElement : Element
         var lines = new List<RenderedLine>();
         MarkdownBlock? previous = null;
 
-        foreach (var block in MarkdownParser.Parse(Text ?? ""))
+        foreach (var block in MarkdownParser.Parse(Text ?? "").Where(b => UseBoxDrawing || b.Kind != MarkdownBlockKind.Rule))
         {
             // One blank line between blocks; none after a heading or between the items of one list
             var continues = block.Kind == MarkdownBlockKind.ListItem && block.ContinuesList;
@@ -78,6 +84,12 @@ public sealed class MarkdownElement : Element
 
                 case MarkdownBlockKind.Quote:
                     var quote = TextStyle.Plain.WithForeground(QuoteColour);
+                    if (!UseBoxDrawing)
+                    {
+                        lines.AddRange(Inline("Quote: " + block.Text, quote, width));
+                        break;
+                    }
+
                     foreach (var line in Inline(block.Text, quote, Math.Max(width - 2, 1)))
                         lines.Add(line.Surround([new Span("│ ", quote)], []));
                     break;

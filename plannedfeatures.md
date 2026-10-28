@@ -18,6 +18,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 
 - [C-View Markup 1.0](docs/guides/docs/c-view-markup.md): text, boxes, tables, column layouts that stack on narrow terminals, themes with `class="…"`, inputs, menus and validation messages
 - [Partial views](docs/design/partial-views.md) and [layouts](docs/design/layout-views.md): reusable markup in `Views/Shared`, checked at build time
+- [Accessibility](docs/guides/docs/accessibility.md): a screen-reader mode without box drawing, and a high-contrast theme, chosen by users with a setting
 - [Full screen and scrolling](docs/design/full-screen.md): `builder.FullScreen = true` on the alternate screen, and `<scroll>` to page long content
 - [Markdown](docs/design/markdown.md): `<markdown text="@Model.Notes" />` for help pages and release notes
 - [Charts](docs/design/charts.md): `<bar-chart>` and `<sparkline>` for dashboards
@@ -47,7 +48,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 
 - [ ] **Localisation**: resource-based strings in views and validation messages, with culture-aware formatting where wanted
-- [ ] **Accessibility**: a screen-reader friendly mode without box drawing, and a high-contrast theme
 
 ### Long-term
 

@@ -176,6 +176,15 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
         return renderer;
     }
 
+    /// <summary>
+    /// Creates a renderer for <see cref="ScreenReaderRenderer"/>: plain text to <see cref="Console.Out"/>, without colours
+    /// or cursor movement, at the terminal's width.
+    /// </summary>
+    /// <returns>A renderer writing plain text.</returns>
+    /// <example><code>builder.Renderer = new ScreenReaderRenderer(MarkupRenderer.CreateForScreenReader());</code></example>
+    public static MarkupRenderer CreateForScreenReader() =>
+        new(new PlainTextRenderTarget(Console.Out), TerminalCapabilities.GetWidth, TerminalCapabilities.GetHeight);
+
     /// <summary>Gets the current layout width (at least <see cref="MinimumWidth"/>).</summary>
     public int Width => Math.Max(_widthProvider(), MinimumWidth);
 

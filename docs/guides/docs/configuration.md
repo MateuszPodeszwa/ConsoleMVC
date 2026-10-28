@@ -9,6 +9,8 @@ builder.DefaultController = "Dashboard";                         // default "Hom
 builder.DefaultAction = "Overview";                              // default "Index"
 builder.ClearScreenBetweenViews = false;                         // default true
 builder.FullScreen = true;                                       // default false
+builder.ScreenReader = true;                                     // default false (or the ConsoleMVC:ScreenReader setting)
+builder.HighContrast = true;                                     // default false (or the ConsoleMVC:HighContrast setting)
 builder.ApplicationAssembly = typeof(Program).Assembly;          // default: the entry assembly
 builder.Renderer = MarkupRenderer.CreateForConsole();            // default: detected automatically
 builder.Input = ConsoleTextInput.Instance;                       // default: the console
@@ -29,6 +31,8 @@ await app.RunAsync();
 | `Configuration` / `Environment` / `Logging` | Settings, the environment and log providers ([Configuration Files and Logging](hosting.md)) |
 | `Theme` | Named styles for `class="…"` ([themes](c-view-markup.md#themes-and-class)) |
 | `ClearScreenBetweenViews` | Clear the console before each view |
+| `ScreenReader` | Plain text for screen readers: no borders or bars, typed answers, no clearing; also on with the `ConsoleMVC:ScreenReader` setting (see [Accessibility](accessibility.md)) |
+| `HighContrast` | Use `Theme.CreateHighContrast()`; also on with the `ConsoleMVC:HighContrast` setting |
 | `FullScreen` | Run on the terminal's alternate screen, like a full-screen editor; the user's scrollback comes back when the application ends, also after an error or Ctrl+C. Ignored when the output is not a terminal that supports it |
 | `ApplicationAssembly` | Where controllers and views are discovered |
 | `Renderer` | How markup is drawn: colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output are detected, and the screen is redrawn when the terminal is resized ([details](c-view-markup.md#resizing-the-terminal)) |

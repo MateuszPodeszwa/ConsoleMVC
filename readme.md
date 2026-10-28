@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.27: full-screen mode on the terminal's alternate screen (`builder.FullScreen = true`) and `<scroll>`, which pages long content with the arrow keys. 1.26 added `<markdown>`, 1.25 charts (`<bar-chart>`, `<sparkline>`), 1.24 `<progress>`, `<spinner>` and `@refresh`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.28: accessibility, with a screen-reader mode (`--ConsoleMVC:ScreenReader=true`) and a high-contrast theme. 1.27 added full-screen mode and `<scroll>`, 1.26 `<markdown>`, 1.25 charts (`<bar-chart>`, `<sparkline>`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -24,6 +24,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Charts**: `<bar-chart>` with `<bar label value />` (bars ending in eighths of a cell) and `<sparkline values="@Model.History" />` for dashboards
 - **Live screens**: `<progress>` and `<spinner>` redraw in place while an async action works (`ILiveDisplay`), and `@refresh 5s` redraws a dashboard with fresh data until the user starts typing
 - **Declarative input and navigation**: `<input>`, `<number>` and `<date>` collect form values, `<select>` (with type-to-filter), `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Accessible**: users turn on a screen-reader mode (plain text, tables read as `Header: value`, typed answers) or a high-contrast theme with `--ConsoleMVC:ScreenReader=true` or `--ConsoleMVC:HighContrast=true`, no new build needed
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation**: posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
@@ -788,6 +789,8 @@ builder.DefaultController = "Dashboard";        // Default: "Home"
 builder.DefaultAction = "Overview";             // Default: "Index"
 builder.ClearScreenBetweenViews = false;        // Default: true
 builder.FullScreen = true;                      // Default: false
+builder.ScreenReader = true;                    // Default: false (users: --ConsoleMVC:ScreenReader=true)
+builder.HighContrast = true;                    // Default: false (users: --ConsoleMVC:HighContrast=true)
 builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
 builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
 builder.Input = ConsoleTextInput.Instance;              // Default: the console
@@ -805,6 +808,8 @@ app.Run();
 | `Services` | Services for controller constructors and `@inject` (see [Dependency Injection](#dependency-injection)) |
 | `Theme` | Named styles used by `class="…"` in markup (see [Layout and Themes](#layout-and-themes)) |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
+| `ScreenReader` | Plain text for screen readers: tables read as `Header: value`, no borders, bars or clearing ([Accessibility](docs/guides/docs/accessibility.md)) |
+| `HighContrast` | Bold, bright theme colours with no dim text (`Theme.CreateHighContrast()`) |
 | `FullScreen` | Run on the terminal's alternate screen; the user's scrollback is restored when the application ends |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |

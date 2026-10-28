@@ -17,6 +17,9 @@ builder.Logging.AddFile("logs/app.log");
 // Run on the terminal's alternate screen, like a full-screen editor: your scrollback comes back when the app ends
 builder.FullScreen = true;
 
+// Accessibility: users choose without a new build, e.g. dotnet run -- --ConsoleMVC:ScreenReader=true
+// (plain text for screen readers) or --ConsoleMVC:HighContrast=true (bold, bright colours)
+
 using var app = builder.Build();
 
 // Keyboard shortcuts that work on every screen; the layout lists them with <shortcuts />
