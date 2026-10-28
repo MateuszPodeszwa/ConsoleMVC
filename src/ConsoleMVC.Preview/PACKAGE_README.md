@@ -11,10 +11,13 @@ cvw-preview Views/Home/IndexView.cvw --width 100
 
 | Option | Meaning |
 |---|---|
-| `--width N` | The width in columns (20 to 500, default 80) |
+| `--width N` | The width in columns: a whole number from 20 to 500 (default 80); any other value is an error |
 | `--format text\|ansi\|html` | Plain text (default), coloured text for a terminal, or an HTML fragment |
 | `--stdin` | Reads the view's text from standard input; the file only says where it is |
 | `--high-contrast` | Uses the high-contrast theme |
+
+A value may also be joined to its option with `=`, as in `--width=100`. Wrong arguments exit with code 1 and say what
+is wrong.
 
 No C# runs: every element is drawn once (the body of a loop appears once, both branches of an `if` appear), and each
 `@expression` shows as a placeholder such as `{Model.Title}`. Partial views and the layout are read from `Views/Shared`

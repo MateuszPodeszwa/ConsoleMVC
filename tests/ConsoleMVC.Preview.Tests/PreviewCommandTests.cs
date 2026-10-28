@@ -49,6 +49,90 @@ public sealed class PreviewCommandTests : IDisposable
         Assert.Equal(30, _output.ToString().ReplaceLineEndings("\n").TrimEnd('\n').Length);
     }
 
+    [Theory]
+    [InlineData("20", 20)]
+    [InlineData("500", 500)]
+    public void TheWidthLimits_AreAccepted(string width, int drawn)
+    {
+        Assert.Equal(PreviewCommand.Success, Run("<separator />", "--stdin", "--width", width));
+        Assert.Equal(drawn, _output.ToString().ReplaceLineEndings("\n").TrimEnd('\n').Length);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("1")]
+    [InlineData("19")]
+    [InlineData("501")]
+    [InlineData("5000")]
+    [InlineData("99999999999")]
+    [InlineData("abc")]
+    [InlineData("-5")]
+    [InlineData("4.5")]
+    [InlineData("")]
+    public void AWidthOutsideTheRange_IsAUsageError_ThatSaysWhatIsAllowed(string width)
+    {
+        Assert.Equal(PreviewCommand.UsageError, Run("<separator />", "--stdin", "--width", width));
+        Assert.StartsWith($"cvw-preview: --width needs a whole number from 20 to 500, not '{width}'.", _error.ToString());
+        Assert.Equal("", _output.ToString());
+    }
+
+    [Fact]
+    public void AMissingWidth_IsAUsageError_ThatSaysWhatIsAllowed()
+    {
+        Assert.Equal(PreviewCommand.UsageError, Run("", "--stdin", "--width"));
+        Assert.StartsWith("cvw-preview: --width needs a whole number from 20 to 500.", _error.ToString());
+    }
+
+    [Theory]
+    [InlineData("--width=30", 30)]
+    [InlineData("--WIDTH=30", null)]
+    public void TheWidth_MayBeJoinedWithAnEqualsSign(string argument, int? drawn)
+    {
+        var exit = Run("<separator />", "--stdin", argument);
+        if (drawn is null)
+        {
+            // Options are lower case, like every other option of the tool
+            Assert.Equal(PreviewCommand.UsageError, exit);
+            return;
+        }
+
+        Assert.Equal(PreviewCommand.Success, exit);
+        Assert.Equal(drawn, _output.ToString().ReplaceLineEndings("\n").TrimEnd('\n').Length);
+    }
+
+    [Fact]
+    public void AJoinedWidthOutsideTheRange_IsAUsageError()
+    {
+        Assert.Equal(PreviewCommand.UsageError, Run("", "--stdin", "--width=19"));
+        Assert.StartsWith("cvw-preview: --width needs a whole number from 20 to 500, not '19'.", _error.ToString());
+    }
+
+    [Fact]
+    public void TheFormat_MayBeJoinedWithAnEqualsSign()
+    {
+        Assert.Equal(PreviewCommand.Success, Run("<text>x</text>", "--stdin", "--format=html"));
+        Assert.StartsWith("<pre class=\"cvw-screen\">", _output.ToString());
+    }
+
+    [Theory]
+    [InlineData("pdf")]
+    [InlineData("1")]
+    [InlineData("")]
+    public void AnUnknownFormat_IsAUsageError_ThatSaysWhatIsAllowed(string format)
+    {
+        Assert.Equal(PreviewCommand.UsageError, Run("", "--stdin", "--format", format));
+        Assert.StartsWith($"cvw-preview: --format needs text, ansi or html, not '{format}'.", _error.ToString());
+    }
+
+    [Theory]
+    [InlineData("--stdin=yes")]
+    [InlineData("--high-contrast=1")]
+    public void AFlag_TakesNoValue(string argument)
+    {
+        Assert.Equal(PreviewCommand.UsageError, Run("", "--stdin", argument));
+        Assert.StartsWith($"cvw-preview: unexpected argument '{argument}'.", _error.ToString());
+    }
+
     [Fact]
     public void Html_ListsTheProblemsAfterTheScreen()
     {

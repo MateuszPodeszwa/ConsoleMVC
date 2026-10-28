@@ -41,7 +41,7 @@ Esc Back  Ctrl+X Quit
 
 | Option | Meaning |
 |---|---|
-| `--width N` | The width in columns, from 20 to 500 (default 80) |
+| `--width N` | The width in columns: a whole number from 20 to 500 (default 80). Any other value is an error |
 | `--format text` | Plain text (the default) |
 | `--format ansi` | Text with colours, for a terminal |
 | `--format html` | An HTML fragment: a `<pre class="cvw-screen">` with a styled `<span>` per run of one style, followed by a `<ul class="cvw-problems">` when there are problems |
@@ -49,8 +49,15 @@ Esc Back  Ctrl+X Quit
 | `--high-contrast` | Draws with the [high-contrast theme](accessibility.md) |
 | `--help` | Shows the usage |
 
+A value can follow its option or be joined to it with `=`: `--width 100` and `--width=100` are the same, and so are
+`--format html` and `--format=html`. Options are written in lower case.
+
 The exit code is 0 when the view was drawn (even with diagnostics), 1 for wrong arguments and 2 when the file cannot
-be read.
+be read. Wrong arguments are explained on standard error, followed by the usage:
+
+```text
+cvw-preview: --width needs a whole number from 20 to 500, not '5000'.
+```
 
 ### What the preview shows
 
