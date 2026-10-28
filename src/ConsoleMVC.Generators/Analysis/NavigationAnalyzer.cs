@@ -44,7 +44,7 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
         context.RegisterCompilationStartAction(start =>
         {
-            var catalogue = Catalogue.Build(start.Compilation);
+            var catalogue = Catalogue.Build(start.Compilation, RouteSymbols.IsModule(start.Compilation, start.Options.AnalyzerConfigOptionsProvider.GlobalOptions));
             if (catalogue.Controllers.Count == 0)
                 return; // controllers compiled elsewhere: nothing to check against
 
@@ -146,6 +146,9 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
     {
         if (!catalogue.Controllers.TryGetValue(controller, out var actions))
         {
+            if (catalogue.IsModule)
+                return; // a module cannot see the controllers of the application that adds it
+
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.UnknownCodeRoute, location,
                 $"{call}: there is no controller '{controller}'.{RouteSuggestions.DidYouMean(catalogue.Controllers.Keys, controller)} " +
                 $"Controllers: {RouteSuggestions.List(catalogue.Controllers.Keys, controller)}."));
@@ -224,9 +227,21 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
         public HashSet<string> Views { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-        public static Catalogue Build(Compilation compilation)
+        /// <summary>Whether the compilation is a module, whose application's controllers are not known.</summary>
+        public bool IsModule { get; private set; }
+
+        public static Catalogue Build(Compilation compilation, bool isModule)
         {
-            var catalogue = new Catalogue();
+            var catalogue = new Catalogue { IsModule = isModule };
+
+            // The controllers of the modules this compilation references are known too
+            foreach (var module in RouteSymbols.ModuleControllers(compilation))
+            {
+                if (!catalogue.Controllers.TryGetValue(module.Name, out var known))
+                    catalogue.Controllers[module.Name] = known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                known.UnionWith(module.Actions);
+            }
+
             foreach (var type in RouteSymbols.AllTypes(compilation.Assembly.GlobalNamespace))
             {
                 if (RouteSymbols.ControllerName(type) is { } controller)

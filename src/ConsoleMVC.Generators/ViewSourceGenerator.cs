@@ -88,7 +88,9 @@ public class ViewSourceGenerator : IIncrementalGenerator
                 static (syntax, cancellationToken) => ControllerEntryFor((ClassDeclarationSyntax)syntax.Node, syntax.SemanticModel, cancellationToken))
             .Where(static entry => entry is not null)
             .Collect()
-            .Select(static (entries, _) => new RouteCatalogue(entries!));
+            .Combine(context.CompilationProvider.Combine(context.AnalyzerConfigOptionsProvider)
+                .Select(static (pair, _) => ModuleRoutes(pair.Left, pair.Right.GlobalOptions)))
+            .Select(static (pair, _) => new RouteCatalogue(pair.Left!.Concat(pair.Right.Controllers), pair.Right.IsModule));
 
         // The route table: controllers and hand-written views from the compilation, views from the .cvw files.
         // Each entry is a string of C#, so the table is only written again when a signature or a view changes.
@@ -139,6 +141,29 @@ public class ViewSourceGenerator : IIncrementalGenerator
             if (text is not null)
                 GenerateView(ctx, file.Path, text, rootNs, catalogue, routeCatalogue);
         });
+    }
+
+    /// <summary>
+    /// The controllers of the ConsoleMVC modules the compilation references (assemblies with a generated route table,
+    /// which <c>builder.AddModule</c> adds), so <c>nav="Billing/Invoices/Index"</c> is known; and whether the compilation
+    /// is itself a module (see <see cref="Analysis.RouteSymbols.IsModule"/>), which cannot see the controllers of the
+    /// application that adds it.
+    /// </summary>
+    private static ModuleRouteSet ModuleRoutes(Compilation compilation, Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions options) =>
+        new(Analysis.RouteSymbols.ModuleControllers(compilation).ToImmutableArray(), Analysis.RouteSymbols.IsModule(compilation, options));
+
+    /// <summary>The controllers of referenced modules, value-equal so the generator's cache holds while they do not change.</summary>
+    private sealed class ModuleRouteSet(ImmutableArray<ControllerEntry> controllers, bool isModule) : IEquatable<ModuleRouteSet>
+    {
+        public ImmutableArray<ControllerEntry> Controllers { get; } = controllers;
+
+        public bool IsModule { get; } = isModule;
+
+        public bool Equals(ModuleRouteSet? other) => other is not null && IsModule == other.IsModule && Controllers.SequenceEqual(other.Controllers);
+
+        public override bool Equals(object? obj) => Equals(obj as ModuleRouteSet);
+
+        public override int GetHashCode() => Controllers.Length;
     }
 
     /// <summary>Describes a controller the way the runtime router discovers it (see <see cref="RouteSymbols"/>).</summary>

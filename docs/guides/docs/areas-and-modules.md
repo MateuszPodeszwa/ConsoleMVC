@@ -76,4 +76,17 @@ builder.AddModule<BillingModule>();
 - `Configure` runs once, when the module is added; adding a module twice does nothing.
 - `builder.AddModule(assembly)` adds a library that has no module class.
 - Put a module's controllers in an area named after it (`[Area("Billing")]`), so its routes cannot collide with the
-  application's. A module can have its own `Views/Shared` partials for its views.
+  application's. Their views then live where an area's views do, in the library's `Areas/Billing/Views/{Controller}`
+  (`Areas/Billing/Views/Invoices/IndexView.cvw`); views in `Views/Invoices` are not found, and the library's build
+  warns about them with CVW121. A module can have its own `Views/Shared` partials for its views.
+- The build checks know both sides: the application's `nav`, `RedirectToAction` and `MapKey` routes may name the
+  modules' controllers (`nav="Billing/Invoices/Index"`), and a module may name the application's (`nav="Home/Index"`),
+  which it cannot see, so those are not reported as unknown; its own controllers' actions are still checked. A library
+  with an `IMvcModule` class is a module for these checks; one added with `AddModule(assembly)` says so in its project
+  file:
+
+  ```xml
+  <PropertyGroup>
+      <ConsoleMVCModule>true</ConsoleMVCModule>
+  </PropertyGroup>
+  ```

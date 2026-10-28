@@ -70,7 +70,11 @@ internal static class RouteChecker
             action = path.Substring(slash + 1);
         }
 
-        if (!routes.TryGetController(controller, out var actions))
+        // A module cannot see the controllers of the application that adds it
+        if (!routes.TryGetController(controller, out var actions) && routes.IsModule)
+            return null;
+
+        if (!routes.TryGetController(controller, out actions))
             return $"nav=\"{text}\": there is no controller '{controller}'.{Analysis.RouteSuggestions.DidYouMean(routes.ControllerNames, controller)} " +
                    $"Controllers: {Analysis.RouteSuggestions.List(routes.ControllerNames, controller)}.";
 

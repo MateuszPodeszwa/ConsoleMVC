@@ -9,6 +9,9 @@
     <!-- Expose RootNamespace to the source generator so it can use the consumer's namespace -->
     <ItemGroup>
         <CompilerVisibleProperty Include="RootNamespace" />
+        <!-- <ConsoleMVCModule>true</ConsoleMVCModule> in a module added with AddModule(assembly): the build checks then
+             do not report the application's controllers, which the module cannot see, as unknown -->
+        <CompilerVisibleProperty Include="ConsoleMVCModule" />
     </ItemGroup>
 
     <!-- dotnet watch: rebuild or hot reload when a .cvw view changes (views are AdditionalFiles, which it does not watch) -->

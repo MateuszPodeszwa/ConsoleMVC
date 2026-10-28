@@ -93,6 +93,11 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - Clicking a `<radio>` choice did nothing: a radio's choices are side by side, and only whole lines could be clicked.
   The mouse guide spoke of a "vertical `<radio>`", which does not exist. A long radio choice on a narrow terminal was
   cut off at the edge (`Large and extra wide choi`); it now wraps under its own text.
+- The build checks warned about navigation between an application and its modules: `nav="Billing/Invoices/Index"`
+  in the application (CVW119), and `nav="Home/Index"` or `RedirectToAction("Index", "Home")` in a module (CVW119,
+  CVW120), although both work. The application's checks now know the controllers of the modules it references, and a
+  module (a library with an `IMvcModule` class, or `<ConsoleMVCModule>true</ConsoleMVCModule>`) does not report the
+  application's controllers as unknown. The modules guide says where a module's area views live.
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).

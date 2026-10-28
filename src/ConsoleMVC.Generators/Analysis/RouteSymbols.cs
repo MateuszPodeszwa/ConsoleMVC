@@ -182,4 +182,51 @@ internal static class RouteSymbols
                 yield return deeper;
         }
     }
+
+    /// <summary>The attribute the generator puts on an assembly with a route table: a ConsoleMVC application or module.</summary>
+    public const string RouteTableAttributeType = "ConsoleMVC.Mvc.RouteTableAttribute";
+
+    /// <summary>
+    /// The controllers of the referenced assemblies that carry a generated route table (ConsoleMVC modules), with their
+    /// actions, named as the router names them (<c>Billing/Invoices</c> for an area).
+    /// </summary>
+    /// <param name="compilation">The compilation whose references are searched.</param>
+    /// <returns>The controllers.</returns>
+    /// <example><code>var known = RouteSymbols.ModuleControllers(compilation).Select(c => c.Name);</code></example>
+    public static IEnumerable<Emit.ControllerEntry> ModuleControllers(Compilation compilation)
+    {
+        foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
+        {
+            if (!assembly.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == RouteTableAttributeType))
+                continue;
+
+            foreach (var type in AllTypes(assembly.GlobalNamespace))
+            {
+                if (type.DeclaredAccessibility == Accessibility.Public && ControllerName(type) is { } name)
+                    yield return new Emit.ControllerEntry(name, ActionNames(type));
+            }
+        }
+    }
+
+    /// <summary>The interface of a module's set-up class (<c>builder.AddModule&lt;TModule&gt;()</c>).</summary>
+    public const string ModuleInterfaceType = "ConsoleMVC.Mvc.IMvcModule";
+
+    /// <summary>
+    /// Whether a compilation is a ConsoleMVC module, which the application adds with <c>builder.AddModule</c>: a class
+    /// library with an <c>IMvcModule</c> class, or one whose project sets <c>&lt;ConsoleMVCModule&gt;true&lt;/ConsoleMVCModule&gt;</c>
+    /// (for <c>AddModule(assembly)</c>). Its views and code may navigate to the application's controllers, which it
+    /// cannot see, so those are not reported as unknown.
+    /// </summary>
+    /// <param name="compilation">The compilation.</param>
+    /// <param name="options">The project's build properties.</param>
+    /// <returns><see langword="true"/> for a module.</returns>
+    /// <example><code>if (RouteSymbols.IsModule(compilation, options)) { /* unknown controllers are the application's */ }</code></example>
+    public static bool IsModule(Compilation compilation, Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions options)
+    {
+        if (options.TryGetValue("build_property.ConsoleMVCModule", out var flag) && string.Equals(flag?.Trim(), "true", System.StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return compilation.Options.OutputKind == OutputKind.DynamicallyLinkedLibrary
+               && AllTypes(compilation.Assembly.GlobalNamespace).Any(type => type.AllInterfaces.Any(i => i.ToDisplayString() == ModuleInterfaceType));
+    }
 }

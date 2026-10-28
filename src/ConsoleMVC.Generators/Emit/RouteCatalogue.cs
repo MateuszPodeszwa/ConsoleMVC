@@ -53,9 +53,14 @@ internal sealed class RouteCatalogue : IEquatable<RouteCatalogue>
     /// <summary>
     /// Creates a catalogue. Entries with the same name (the parts of a partial class) are merged.
     /// </summary>
-    /// <param name="entries">The controllers found.</param>
-    public RouteCatalogue(IEnumerable<ControllerEntry> entries)
+    /// <param name="entries">The controllers found, in the compilation and in the ConsoleMVC modules it references.</param>
+    /// <param name="isModule">
+    /// Whether the compilation is a module: the application that adds it has controllers the module cannot see, so a
+    /// controller it does not know is not reported.
+    /// </param>
+    public RouteCatalogue(IEnumerable<ControllerEntry> entries, bool isModule = false)
     {
+        IsModule = isModule;
         var merged = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in entries)
         {
@@ -68,6 +73,9 @@ internal sealed class RouteCatalogue : IEquatable<RouteCatalogue>
         foreach (var entry in _entries)
             _controllers[entry.Name] = new HashSet<string>(entry.Actions, StringComparer.OrdinalIgnoreCase);
     }
+
+    /// <summary>Gets whether the compilation is a module, whose application's controllers are not known.</summary>
+    public bool IsModule { get; }
 
     /// <summary>Gets a value indicating whether the compilation has any controller; without one nothing is checked.</summary>
     public bool IsEmpty => _entries.Length == 0;
@@ -94,7 +102,7 @@ internal sealed class RouteCatalogue : IEquatable<RouteCatalogue>
         _entries.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase))?.Actions ?? ImmutableArray<string>.Empty;
 
     /// <inheritdoc />
-    public bool Equals(RouteCatalogue? other) => other is not null && _entries.SequenceEqual(other._entries);
+    public bool Equals(RouteCatalogue? other) => other is not null && IsModule == other.IsModule && _entries.SequenceEqual(other._entries);
 
     /// <inheritdoc />
     public override bool Equals(object? obj) => Equals(obj as RouteCatalogue);
