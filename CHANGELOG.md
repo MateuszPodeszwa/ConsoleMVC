@@ -26,6 +26,13 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - CVW120 also checks the route of `app.MapKey(key, "Help/Index")`. CVW119, CVW120 and CVW121 suggest the closest name
   (`Did you mean 'Details'?`) and list the others closest first, saying how many more there are.
 
+- New build diagnostics: CVW011 (`@model` or `@using` without a type or namespace), CVW012 (a page view with neither a
+  `<menu>` nor a `return`, which was the C# error CS0161 at an unhelpful place) and CVW122 (`@if`, `@foreach`, `@{` or
+  `@(` written in the view's C#, where `@` is not needed). A bare `@refresh` is CVW010 and a bare `@layout` CVW117.
+- `MarkupValue.ToDecimal` and `ToDouble`: number attributes (`<number min max step>`, `<progress>`, `<bar>`,
+  `<bar-chart max>`, `<sparkline>`) accept an expression of any number type, nullable ones included (`@(3.5)` was a
+  CS0266 error for `<number>`).
+- Every attribute in `schema/cvw-schema.json` says whether it accepts an `expression`.
 - `ClickTarget.FromColumn` and `ToColumn` let several click targets share a line, and `IMarkupRenderer.KeysAt(row,
   column)` finds the one clicked (the default implementation calls `KeysAt(row)`, so existing renderers keep working).
 
@@ -98,6 +105,27 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   CVW120), although both work. The application's checks now know the controllers of the modules it references, and a
   module (a library with an `IMvcModule` class, or `<ConsoleMVCModule>true</ConsoleMVCModule>`) does not report the
   application's controllers as unknown. The modules guide says where a module's area views live.
+- Literal values that the runtime refuses now fail the build (CVW101, or CVW109 for a `<choice>`), as the guide
+  promised: a `<number>` `step` of 0 or less, `min` above `max`, or a `default` that is not a number, out of range or
+  with too many decimals (an empty answer then asked again for ever); a `<select>` or `<radio>` without choices, with
+  duplicate values or with a `default` that names no choice; duplicate `<menu>` keys (`q` and `Q`); a `<date>` whose
+  `min` is after its `max`; a `<box>` narrower than its border. The runtime also refuses such a `<number>` or choice
+  default, and an empty answer stores the choice's own value (`default="m"` stores `M`). Date literals accept exactly
+  what a typed date does (`tomorrow`, `+7`).
+- An attribute written with `=` and no value (`<box title=>`) was accepted silently for some attributes; it is CVW101
+  for every one.
+- `@inject` with a name of a view's own member (`Breadcrumbs`, `NavigationHistory`, `ShortcutHints`, `ShowScroll`,
+  `InjectServices`, `RequireService`, …) or of the view's class gave C# errors at a line that does not exist; every
+  such name is now CVW007, and the dependency injection guide lists them. `@inject System.String Foo Bar` is CVW007 at
+  the type.
+- The schema said a `<partial name>` could be an expression; it must be written literally.
+- `cvw-preview`:
+  - reports the build's own checks of partials, layouts and directives (CVW114 to CVW118, CVW103, CVW010 in partials,
+    CVW001 to CVW003, CVW009, …) at the build's line and column; route checks still need a build, as the guide says;
+  - draws the layout's part after `<body />` before the view's first prompt, as the application does, and draws
+    fields as a terminal first shows them (`checked`, `default` values, the select and radio frames);
+  - refuses a `--width` outside 20 to 500 with a clear message (it clamped silently), accepts `--option=value`, and
+    says a shared view over 1 MB is too large rather than not found.
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).
