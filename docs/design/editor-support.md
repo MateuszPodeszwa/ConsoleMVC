@@ -98,8 +98,11 @@ Output: html  → <pre> with a <span style> per run of one style, colours from C
         diagnostics → a list after the screen (html) or on stderr, with line and column
 ```
 
-- **Interactive elements** draw their prompt, as the first frame the user would see: `<menu>` its options and prompt,
-  `<input>` its label, `<select>` its choices, `<scroll>` all of its content.
+- **Interactive elements** are drawn by their own `Read` (fields) or `Choose` (`<menu>`) through `PreviewScreen`, a
+  renderer that can rewrite, with a terminal input that has already ended: they draw exactly the frame a terminal
+  shows when they first wait (a checked `<checkbox>` ticked, a `<number>` or `<date>` with its default, a `<select>`
+  or `<radio>` with its default highlighted, an `<input>` or `<menu>` with its prompt), and the prompt's line is
+  ended as Enter would. `<scroll>` shows all of its content.
 - **Safety**: the tool runs no user code and loads no assembly from the project. It reads only the view, the files in
   `Views/Shared` (and the area's) and nothing outside the project's `Views` folders; partial and layout names are
   checked to be plain identifiers before they become paths.

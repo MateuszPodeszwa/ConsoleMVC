@@ -63,6 +63,54 @@ public sealed partial class PreviewMatchesTheAppTests : IDisposable
     private void AssertPreviewIsTheApp(params (string Path, string Text)[] files) =>
         Assert.Equal(Lines(RealApp.Run(files)), Lines(Preview(files)));
 
+    // ------------------------------------------------------------------ fields, as a terminal first shows them
+
+    [Theory]
+    [InlineData("<checkbox name=\"News\" label=\"Send me news\" checked />")]
+    [InlineData("<checkbox name=\"News\" label=\"Send me news\" />")]
+    [InlineData("<number name=\"Count\" label=\"Count:\" default=\"1\" />")]
+    [InlineData("<number name=\"Count\" label=\"Count:\" />")]
+    [InlineData("<date name=\"Due\" label=\"Due:\" default=\"today+7\" />")]
+    [InlineData("<date name=\"Due\" label=\"Due:\" />")]
+    [InlineData("<select name=\"Colour\" label=\"Colour:\" default=\"g\"><choice value=\"r\">Red</choice><choice value=\"g\">Green</choice><choice value=\"b\">Blue</choice></select>")]
+    [InlineData("<select name=\"Colour\" label=\"Colour:\" multiple default=\"r,b\"><choice value=\"r\">Red</choice><choice value=\"g\">Green</choice><choice value=\"b\">Blue</choice></select>")]
+    [InlineData("<radio name=\"Size\" label=\"Size:\" default=\"M\"><choice>S</choice><choice>M</choice><choice>L</choice></radio>")]
+    [InlineData("<input name=\"Name\" label=\"Name: \" default=\"Ada\" />")]
+    [InlineData("<menu prompt=\"Pick:\"><option key=\"1\" nav=\"About\">About</option><option key=\"q\" quit>Quit</option></menu>")]
+    public void AField_IsDrawnAsTheApplicationFirstDrawsIt(string field)
+    {
+        AssertPreviewStartsLikeTheApp(View("<text>Form</text>\n" + field + Quit));
+    }
+
+    [Fact]
+    public void ADateWithAComputedDefault_IsDrawnWithToday()
+    {
+        // The model's date is unknown without running the action; the field is still drawn, as without a default
+        var preview = Lines(Preview([View("<date name=\"Due\" label=\"Due:\" default=\"@Model.Due\" min=\"@Model.From\" />" + Quit)]));
+        Assert.Equal(Lines(RealApp.Run([View("<date name=\"Due\" label=\"Due:\" />" + Quit)])), preview);
+    }
+
+    [Fact]
+    public void AField_HasTheApplicationsColours()
+    {
+        // The ANSI preview is the application's output, escape sequences included, up to where it waits
+        var files = new[] { View("<select name=\"C\" label=\"Colour:\" default=\"b\"><choice value=\"r\">Red</choice><choice value=\"b\">Blue</choice></select>" + Quit) };
+        Assert.Equal(RealApp.Run(files), Preview(files, PreviewFormat.Ansi).ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
+    public void EachField_IsDrawnAsItFirstWaits()
+    {
+        // The application waits at the first field; the preview shows every field as it will first be drawn
+        var preview = Lines(Preview(
+        [
+            View("<checkbox name=\"A\" label=\"First\" checked />\n<input name=\"B\" label=\"Name: \" />\n<checkbox name=\"C\" label=\"Third\" />" + Quit)
+        ]));
+        Assert.Equal(Lines(RealApp.Run([View("<checkbox name=\"A\" label=\"First\" checked />" + Quit)]))
+            .Concat(Lines(RealApp.Run([View("<input name=\"B\" label=\"Name: \" />" + Quit)])))
+            .Concat(Lines(RealApp.Run([View("<checkbox name=\"C\" label=\"Third\" />" + Quit)]))), preview);
+    }
+
     // ------------------------------------------------------------------ the layout's footer
 
     [Fact]

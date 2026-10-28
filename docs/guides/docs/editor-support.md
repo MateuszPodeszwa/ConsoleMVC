@@ -77,10 +77,32 @@ The tool reads markup, not C#, so a preview is a sketch of the screen rather tha
 | `<partial name="Header" />` | The partial view from `Views/Shared` (an area's own `Shared` folder first), drawn in place |
 | The view's layout (`_Layout`, or `@layout Name`) | The view is drawn inside it, as in the application: the part before `<body />` first, the part after it just before the view's first `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>` (or at the end when there is none). `@layout none` draws the view alone |
 | A view in `Views/Shared` | Drawn on its own; `<body />` shows as `[the page's content]` |
-| `<menu>`, `<input>`, `<select>`, `<radio>`, `<checkbox>` | The first frame the user would see: options and prompt, labels and choices |
+| `<menu>`, `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` | Exactly what the application draws in a terminal when the field first waits for its answer (see below) |
 | `<errors />` | A sample message, `{validation message}` |
 | `<breadcrumbs />`, `<shortcuts />` | Sample items |
 | `class="…"` | The [default theme](c-view-markup.md#themes-and-class) (or the high-contrast one) |
+
+Each field and menu is drawn by the framework's own code, as a terminal first shows it, before the user presses a key:
+
+```text
+Colour: (Up/Down, Enter)
+   Red
+ > Green
+   Blue
+[x] Send me news  (Space, Enter)
+Count: 1  (Up/Down, type a number, Enter)
+Due: 2026-11-04 Wed  (Left/Right, Up/Down, t today, Enter)
+Name:
+```
+
+- A `<select>` or `<radio>` highlights its `default` (ticks for `<select multiple>`), a `<checkbox checked>` is ticked,
+  and a `<number>` or `<date>` shows its `default`. A `<date>` without one, or whose `default` is an expression, shows
+  today.
+- An `<input>` shows its label and a `<menu>` its options and prompt, as in a terminal. The line ends after the prompt,
+  where the user would press Enter.
+- The application waits at its first field; the preview shows every field of the view, each as it is first drawn.
+- When the input is piped, or the console cannot move the cursor, the application asks differently (numbered choices,
+  `Choose 1-3 [Green]:`, `Send me news? [Y/n]:`); the preview always shows the terminal.
 
 Something the preview cannot draw, such as a partial view whose name is an expression, shows as a dim note in brackets.
 A partial view or layout that was not found, or an attribute value an element refuses, is also listed with the

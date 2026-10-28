@@ -94,11 +94,12 @@ internal static class CvwPreview
         };
 
         using var renderer = new MarkupRenderer(target, () => width);
+        var screen = new PreviewScreen(renderer, target);
         foreach (var element in elements)
         {
             try
             {
-                renderer.Render(element);
+                screen.Draw(element);
             }
             catch (Exception e) when (e is ArgumentException or InvalidOperationException or FormatException)
             {
@@ -107,6 +108,7 @@ internal static class CvwPreview
             }
         }
 
+        screen.Finish();
         html?.Finish();
         target.Flush();
         return new PreviewResult(output.ToString(), diagnostics, notes);

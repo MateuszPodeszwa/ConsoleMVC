@@ -103,14 +103,7 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
 
                 default:
                     if (BuildElement(node) is Element element)
-                    {
                         output.Add(element);
-
-                        // A menu waits for a choice: show its prompt, as the user would see it
-                        if (element is MenuElement menu)
-                            output.Add(Text(menu.Prompt));
-                    }
-
                     break;
             }
         }
@@ -203,6 +196,9 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
 
         if (element is ValidationErrorsElement errors)
             errors.Source = SampleErrors(errors.For);
+
+        if (element is DateElement date)
+            LeaveOutComputedDates(date);
 
         return element;
     }
@@ -337,10 +333,21 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
         return note;
     }
 
-    private static TextElement Text(string text)
+    /// <summary>
+    /// Leaves out a <c>&lt;date&gt;</c>'s <c>default</c>, <c>min</c> and <c>max</c> that are not dates: an
+    /// <c>@expression</c>'s placeholder, or a value the build reports as invalid. The field then shows today, as it does
+    /// without them, instead of not being drawn at all.
+    /// </summary>
+    private static void LeaveOutComputedDates(DateElement date)
     {
-        var element = new TextElement();
-        element.AppendText(text);
-        return element;
+        var today = DateOnly.FromDateTime(date.Clock.GetLocalNow().DateTime);
+        bool IsDate(string? value) => value is null || DateElement.TryParse(value, today, out _);
+
+        if (!IsDate(date.Default))
+            date.Default = null;
+        if (!IsDate(date.Min))
+            date.Min = null;
+        if (!IsDate(date.Max))
+            date.Max = null;
     }
 }
