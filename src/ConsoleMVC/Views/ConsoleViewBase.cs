@@ -189,6 +189,49 @@ public abstract class ConsoleViewBase
     }
 
     /// <summary>
+    /// Fills the view's <c>@inject</c> properties. Generated views override this with plain assignments, so no reflection
+    /// is needed (and trimmed applications keep working); it returns <see langword="false"/> by default, and the
+    /// framework then fills <see cref="InjectAttribute"/> properties by reflection.
+    /// </summary>
+    /// <param name="services">The services of the current navigation cycle.</param>
+    /// <returns><see langword="true"/> when the properties were filled.</returns>
+    /// <example>
+    /// <code>
+    /// // @inject IClock Clock generates:
+    /// protected override bool InjectServices(IServiceProvider services)
+    /// {
+    ///     this.Clock = RequireService(services, this.Clock, "Clock");
+    ///     return true;
+    /// }
+    /// </code>
+    /// </example>
+    protected virtual bool InjectServices(IServiceProvider services) => false;
+
+    /// <summary>Calls <see cref="InjectServices"/> for the framework.</summary>
+    internal bool TryInjectServices(IServiceProvider services) => InjectServices(services);
+
+    /// <summary>
+    /// Returns the service of type <typeparamref name="T"/> for an <c>@inject</c> property, or throws a message naming the
+    /// view and the property when it is not registered.
+    /// </summary>
+    /// <typeparam name="T">The service type, the type of the property.</typeparam>
+    /// <param name="services">The services.</param>
+    /// <param name="current">The property's current value; only its type is used, so the service type is written once.</param>
+    /// <param name="property">The property's name.</param>
+    /// <returns>The service.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no such service is registered.</exception>
+    /// <example><code>this.Clock = RequireService(services, this.Clock, "Clock");</code></example>
+    protected T RequireService<T>(IServiceProvider services, T current, string property)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        return services.GetService(typeof(T)) is T service
+            ? service
+            : throw new InvalidOperationException(
+                $"'{GetType().Name}' injects '{typeof(T).Name} {property}', but no service of type '{typeof(T).FullName}' is registered. " +
+                $"Register it with builder.Services, e.g. builder.Services.AddSingleton<{typeof(T).Name}, ...>();");
+    }
+
+    /// <summary>
     /// Called before this view, or a partial it renders, first waits for the user (an <c>&lt;input&gt;</c> or a
     /// <c>&lt;menu&gt;</c>). A view with a layout uses it to draw the layout's footer.
     /// </summary>

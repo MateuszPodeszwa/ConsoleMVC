@@ -91,6 +91,7 @@ public class HomeViewModel
 - **Validation**: posted forms are checked with DataAnnotations (`[Required]`, `[Range]`, `[EmailAddress]`, …) before the action runs; use `ModelState.IsValid`, `View("Form", model)` and `<errors />` as in ASP.NET Core MVC
 - **Dependency injection**: `builder.Services` (Microsoft.Extensions.DependencyInjection); constructor injection into controllers, `@inject Type Name` in views, one scope per screen
 - **Async actions and middleware**: `Task<ActionResult>` actions, `RunAsync(token)`, and `app.Use(...)` / `UseMiddleware<T>()` around every action
+- **Native AOT and trimming**: a generated route table (`IRouteTable`) replaces reflection, so `dotnet publish -p:PublishAot=true` works with no warnings
 - **Live reload**: `dotnet watch` applies `.cvw` and C# edits to the running app from the next screen; new pages are discovered automatically
 - **Form data posting**: Views collect user input via `Console.ReadLine()` and post it to controller actions using `NavigationResult.To("Controller", "Action", formData)`. The framework automatically binds the data to action method parameters, either as individual simple types (`int`, `string`, etc.) or as a complex model class with matching property names
 

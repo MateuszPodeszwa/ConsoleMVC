@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using ConsoleMVC.Rendering;
@@ -60,6 +61,8 @@ internal static class ModelValidator
     /// object-level checks (<see cref="IValidatableObject"/>) would compare the fallback value and report
     /// misleading errors, as ASP.NET Core also avoids.
     /// </remarks>
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types of actions are kept by the generated route table (DynamicDependency on their properties and constructors).")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Model types of actions are kept by the generated route table (DynamicDependency on their properties and constructors).")]
     public static bool ValidateModel(object model, ModelStateDictionary modelState, Func<Type, IStringLocalizer>? localizerFor = null)
     {
         if (localizerFor is not null)
@@ -102,6 +105,7 @@ internal static class ModelValidator
         return valid;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Simple parameters are validated with the attributes on the parameter itself.")]
     private static void ValidateParameter(ParameterInfo parameter, object? value, ModelStateDictionary modelState,
         IStringLocalizer? localizer)
     {
@@ -128,6 +132,8 @@ internal static class ModelValidator
     /// (property attributes, then the type's attributes, then <see cref="IValidatableObject"/>), translating each message
     /// and display name with <paramref name="localizer"/>.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types of actions are kept by the generated route table (DynamicDependency on their properties and constructors).")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Model types of actions are kept by the generated route table (DynamicDependency on their properties and constructors).")]
     private static bool ValidateLocalized(object model, ModelStateDictionary modelState, IStringLocalizer localizer)
     {
         var properties = model.GetType()

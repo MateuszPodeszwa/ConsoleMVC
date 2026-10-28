@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -70,6 +71,8 @@ internal static class ActionInvoker
         return null;
     }
 
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Only actions of scanned controllers are invoked by reflection; the generated route table calls actions directly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Only actions of scanned controllers are invoked by reflection; the generated route table calls actions directly.")]
     private static Func<object?, Task<ActionResult?>> CreateAdapter(MethodInfo method)
     {
         var returnType = method.ReturnType;

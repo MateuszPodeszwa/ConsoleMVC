@@ -2,6 +2,27 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.32.0]
+
+### Added
+
+- **Native AOT and trimming** ([design](docs/design/native-aot.md), [guide](docs/guides/docs/native-aot.md)): the
+  source generator writes a route table per assembly (`IRouteTable`, `ControllerRoute`, `ActionRoute`, `ViewRoute`,
+  `RouteTableAttribute`; `.cvw` views register with `GeneratedViewAttribute`) with typed controller and view factories,
+  typed action calls and `DynamicDependency` attributes for model types. `Router.Use(table)`; the router falls back to
+  scanning without a table and after a hot reload. Generated views fill `@inject` properties in `InjectServices`
+  (`ConsoleViewBase.RequireService`). The framework is analysed for trimming and AOT, and the template publishes as
+  Native AOT with no warnings (checked in CI).
+- Generic overloads `RedirectToAction<TRouteValues>`, `NavigationResult.To<TRouteValues>` and
+  `RouteValues.From<TValues>` keep route values' properties when trimming; the `object` overloads are
+  `[RequiresUnreferencedCode]`.
+- The template enables the configuration binding generator.
+
+### Changed
+
+- Controllers and views are found through the generated route table, and actions are called without reflection, which
+  also makes start-up faster.
+
 ## [1.31.0]
 
 ### Added

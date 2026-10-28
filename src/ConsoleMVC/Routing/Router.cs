@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -44,15 +45,85 @@ public class Router
     /// <summary>Names registered by more than one type, mapped to every such type, so lookups can report them.</summary>
     private readonly Dictionary<string, List<Type>> _ambiguous = new(StringComparer.OrdinalIgnoreCase);
 
+    // What a generated route table provides: typed factories and action invokers, so nothing is created or called by reflection
+    private readonly Dictionary<Type, Func<IServiceProvider, Controller>> _controllerFactories = [];
+    private readonly Dictionary<Type, Func<ConsoleView>> _viewFactories = [];
+    private readonly Dictionary<Type, Dictionary<string, ActionRoute?>> _tableActions = [];
+    private readonly Dictionary<MethodInfo, Func<Controller, object?[]?, Task<ActionResult?>>> _invokers = [];
+
+    /// <summary>
+    /// Registers the controllers, actions and views of a generated route table (see <see cref="IRouteTable"/>), so they
+    /// are found, created and called without reflection.
+    /// </summary>
+    /// <param name="table">The table.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="table"/> is <see langword="null"/>.</exception>
+    /// <example><code>router.Use(new ConsoleMVC.Generated.RouteTable());</code></example>
+    public void Use(IRouteTable table)
+    {
+        ArgumentNullException.ThrowIfNull(table);
+
+        foreach (var controller in table.Controllers)
+        {
+            Register(_controllers, "Controller", controller.Name, controller.Type);
+            if (controller.Create is not null)
+                _controllerFactories[controller.Type] = controller.Create;
+
+            var actions = new Dictionary<string, ActionRoute?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var action in controller.Actions)
+                actions[action.Name] = actions.ContainsKey(action.Name) ? null : action; // overloads: let ResolveAction report them
+            _tableActions[controller.Type] = actions;
+        }
+
+        foreach (var view in table.Views)
+        {
+            Register(_views, "View", view.Key, view.Type);
+            if (view.Create is not null)
+                _viewFactories[view.Type] = view.Create;
+        }
+    }
+
+    /// <summary>Registers a view the generator compiled from a <c>.cvw</c> file.</summary>
+    private void UseGeneratedView(GeneratedViewAttribute view)
+    {
+        Register(_views, "View", view.Key, view.ViewType);
+        _viewFactories[view.ViewType] = Factory(view.ViewType);
+
+        static Func<ConsoleView> Factory([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type type) =>
+            () => (ConsoleView)Activator.CreateInstance(type)!;
+    }
+
+    /// <summary>Returns the generated invoker of an action from a route table, or <see langword="null"/> to call it by reflection.</summary>
+    internal Func<Controller, object?[]?, Task<ActionResult?>>? InvokerFor(MethodInfo action) =>
+        _invokers.TryGetValue(action, out var invoker) ? invoker : null;
+
     /// <summary>
     /// Scans the specified assembly for all controllers and views, registering them
     /// for subsequent resolution.
     /// </summary>
     /// <param name="assembly">The assembly to scan, typically the entry assembly of the consuming application.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="assembly"/> is <see langword="null"/>.</exception>
-    public void DiscoverAll(Assembly assembly)
+    /// <remarks>
+    /// An assembly built with the ConsoleMVC source generator carries a <see cref="RouteTableAttribute"/>; its table is
+    /// used instead of scanning, which keeps the application working when it is trimmed or compiled with Native AOT.
+    /// </remarks>
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification =
+        "Assemblies built with the source generator use their route table, which preserves what it names; scanning only runs without one.")]
+    public void DiscoverAll(Assembly assembly) => DiscoverAll(assembly, useRouteTable: true);
+
+    /// <summary>Discovers with the assembly's route table when there is one and <paramref name="useRouteTable"/> allows it, else by scanning.</summary>
+    /// <remarks>After a hot reload the table may be out of date, so the application scans instead.</remarks>
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Scanning only runs without a route table; see DiscoverAll(Assembly).")]
+    internal void DiscoverAll(Assembly assembly, bool useRouteTable)
     {
         ArgumentNullException.ThrowIfNull(assembly);
+
+        if (useRouteTable && assembly.GetCustomAttribute<RouteTableAttribute>() is { } attribute)
+        {
+            Use((IRouteTable)Activator.CreateInstance(attribute.TableType)!);
+            foreach (var view in assembly.GetCustomAttributes<GeneratedViewAttribute>())
+                UseGeneratedView(view);
+            return;
+        }
 
         var types = GetLoadableTypes(assembly);
         DiscoverControllers(types);
@@ -67,6 +138,7 @@ public class Router
     /// <exception cref="InvalidOperationException">
     /// Thrown when no controller is registered with the given name.
     /// </exception>
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Controller types are kept by the route table or found by a scan.")]
     public Controller ResolveController(string controllerName) =>
         (Controller)Activator.CreateInstance(ControllerType(controllerName))!;
 
@@ -86,10 +158,15 @@ public class Router
     /// var controller = router.ResolveController("Home", scope.ServiceProvider);
     /// </code>
     /// </example>
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Controller types are kept by the route table (DynamicallyAccessedMembers on ControllerRoute.Type) or found by a scan.")]
     public Controller ResolveController(string controllerName, IServiceProvider services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        return (Controller)ActivatorUtilities.CreateInstance(services, ControllerType(controllerName));
+
+        var type = ControllerType(controllerName);
+        return _controllerFactories.TryGetValue(type, out var create)
+            ? create(services)
+            : (Controller)ActivatorUtilities.CreateInstance(services, type);
     }
 
     /// <summary>
@@ -101,10 +178,18 @@ public class Router
     /// <exception cref="InvalidOperationException">
     /// Thrown when no matching action exists, or when the action is overloaded.
     /// </exception>
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Controllers in a route table are resolved from it; the reflection lookup is for scanned controllers.")]
     public MethodInfo ResolveAction(Type controllerType, string actionName)
     {
         if (_actionCache.TryGetValue((controllerType, actionName), out var cached))
             return cached;
+
+        if (_tableActions.TryGetValue(controllerType, out var actions) && actions.TryGetValue(actionName, out var route) && route is not null)
+        {
+            _actionCache[(controllerType, actionName)] = route.Method;
+            _invokers[route.Method] = route.Invoke;
+            return route.Method;
+        }
 
         var candidates = controllerType
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -142,6 +227,7 @@ public class Router
     /// Views created this way do not receive <c>@inject</c> services; use
     /// <see cref="ResolveView(string, string, IServiceProvider)"/> for that.
     /// </remarks>
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "View types are kept by the route table or found by a scan.")]
     public ConsoleView ResolveView(string controllerName, string actionName) =>
         (ConsoleView)Activator.CreateInstance(ViewType(controllerName, actionName))!;
 
@@ -166,11 +252,16 @@ public class Router
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var view = (ConsoleView)ActivatorUtilities.CreateInstance(services, ViewType(controllerName, actionName));
+        var type = ViewType(controllerName, actionName);
+        var view = _viewFactories.TryGetValue(type, out var create) ? create() : CreateView(services, type);
         view.Services = services; // for the @inject properties of partials it renders
         ServiceInjector.InjectProperties(view, services);
         return view;
     }
+
+    /// <summary>Creates a view that has no generated factory, with its constructor's services.</summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "View types are kept by the route table (DynamicallyAccessedMembers on ViewRoute.Type) or found by a scan.")]
+    private static ConsoleView CreateView(IServiceProvider services, Type type) => (ConsoleView)ActivatorUtilities.CreateInstance(services, type);
 
     /// <summary>
     /// Returns the controller type registered under <paramref name="controllerName"/>.
@@ -324,6 +415,7 @@ public class Router
     /// Returns the types of <paramref name="assembly"/> that could be loaded. When some types depend on
     /// assemblies that are missing at run time, the remaining types are still usable.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Scanning only runs for assemblies without a generated route table.")]
     private static Type[] GetLoadableTypes(Assembly assembly)
     {
         try

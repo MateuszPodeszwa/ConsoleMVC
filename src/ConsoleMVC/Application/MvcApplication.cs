@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using ConsoleMVC.Rendering;
@@ -276,7 +277,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <returns>This application, for chaining.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the application is already running.</exception>
     /// <example><code>app.UseMiddleware&lt;RequireSignInMiddleware&gt;();</code></example>
-    public MvcApplication UseMiddleware<TMiddleware>() where TMiddleware : IActionMiddleware =>
+    public MvcApplication UseMiddleware<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TMiddleware>()
+        where TMiddleware : IActionMiddleware =>
         Use((context, next) =>
         {
             // A registered middleware belongs to the container; one created here is disposed with the cycle
@@ -435,10 +437,12 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <summary>Discovers controllers and views into a fresh router, so stale cached actions are dropped.</summary>
     private void Discover(Assembly assembly)
     {
+        // The generated route tables describe the assemblies as built; after a hot reload they may be out of date
+        var useRouteTables = DiscoveryCount == 0;
         var router = new Router();
-        router.DiscoverAll(assembly);
+        router.DiscoverAll(assembly, useRouteTables);
         foreach (var module in _modules.Where(m => m != assembly))
-            router.DiscoverAll(module);
+            router.DiscoverAll(module, useRouteTables);
         _router = router;
         DiscoveryCount++;
     }
@@ -594,7 +598,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         controller.ValidationLocalizer = _localization.LocalizeValidation ? ValidationLocalizer : null;
         context.ModelState = modelState;
 
-        context.Result = await ActionInvoker.InvokeAsync(actionMethod, controller, args).ConfigureAwait(false);
+        // A generated route table calls the action directly; otherwise it is called by reflection
+        var invoker = _router.InvokerFor(actionMethod);
+        context.Result = invoker is not null
+            ? await invoker(controller, args).ConfigureAwait(false)
+            : await ActionInvoker.InvokeAsync(actionMethod, controller, args).ConfigureAwait(false);
     }
 
     /// <summary>Passes the run's token to every <see cref="CancellationToken"/> parameter of the action.</summary>

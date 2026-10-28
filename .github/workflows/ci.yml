@@ -68,3 +68,11 @@ jobs:
           dotnet new consolemvc -n Shop --tests
           dotnet build Shop/Shop.csproj -warnaserror
           dotnet test Shop/Shop.Tests
+
+      - name: Publish the template as Native AOT and run it
+        run: |
+          cd "$RUNNER_TEMP/generated"
+          dotnet publish Shop/Shop.csproj --configuration Release -p:PublishAot=true -p:TrimmerSingleWarn=false --output "$RUNNER_TEMP/aot" | tee publish.log
+          if grep -E "warning IL|error" publish.log; then echo "Native AOT publishing reported warnings"; exit 1; fi
+          printf '4\n3\nq\n' | "$RUNNER_TEMP/aot/Shop" --ConsoleMVC:ScreenReader=true | tee run.log
+          grep -q "Admin: settings" run.log

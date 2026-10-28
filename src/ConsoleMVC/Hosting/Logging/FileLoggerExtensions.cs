@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ConsoleMVC.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -33,6 +34,9 @@ public static class FileLoggerExtensions
     /// <returns>The logging builder, for chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when an argument is <see langword="null"/>.</exception>
     /// <example><code>builder.Logging.AddFile(o => { o.Path = "logs/shop.log"; o.MaxFileSizeBytes = 1_048_576; });</code></example>
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "FileLoggerOptions has only simple properties, kept by the DynamicDependency on this method.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "FileLoggerOptions has only simple properties, kept by the DynamicDependency on this method.")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FileLoggerOptions))]
     public static ILoggingBuilder AddFile(this ILoggingBuilder builder, Action<FileLoggerOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(builder);

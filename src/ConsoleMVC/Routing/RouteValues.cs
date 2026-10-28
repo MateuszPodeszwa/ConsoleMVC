@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 
@@ -24,7 +25,23 @@ public static class RouteValues
     /// <param name="values">The values, or <see langword="null"/> for none.</param>
     /// <returns>A new case-insensitive dictionary.</returns>
     /// <example><code>RouteValues.From(new { id = 42, when = DateOnly.FromDateTime(DateTime.Today) });</code></example>
-    public static Dictionary<string, string> From(object? values)
+[RequiresUnreferencedCode("Reads the public properties of the object's run-time type, which trimming may remove. Pass the values with their own type (an anonymous object or a class), or a dictionary.")]
+    public static Dictionary<string, string> From(object? values) => FromCore(values, values?.GetType());
+
+    /// <summary>
+    /// Converts route values to a dictionary, reading the public properties of <typeparamref name="TValues"/>. Calls with an
+    /// anonymous object or a class pick this overload, and trimming and Native AOT keep those properties.
+    /// </summary>
+    /// <typeparam name="TValues">The values' type: a dictionary, or a type whose public properties are the values.</typeparam>
+    /// <param name="values">The values, or <see langword="null"/> for none.</param>
+    /// <returns>A new case-insensitive dictionary.</returns>
+    /// <example><code>RouteValues.From(new { id = 42 }); // { "id": "42" }</code></example>
+    public static Dictionary<string, string> From<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TValues>(TValues values) =>
+        FromCore(values, typeof(TValues));
+
+    /// <summary>Copies a dictionary, or reads the public properties of <paramref name="propertySource"/> from <paramref name="values"/>.</summary>
+    private static Dictionary<string, string> FromCore(object? values,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type? propertySource)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         switch (values)
@@ -43,7 +60,7 @@ public static class RouteValues
                 break;
 
             default:
-                foreach (var property in values.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                foreach (var property in (propertySource ?? typeof(object)).GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 {
                     if (property.GetIndexParameters().Length == 0)
                         Add(result, property.Name, property.GetValue(values));

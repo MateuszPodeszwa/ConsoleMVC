@@ -89,6 +89,38 @@ public class ViewSourceGenerator : IIncrementalGenerator
             .Collect()
             .Select(static (entries, _) => new RouteCatalogue(entries!));
 
+        // The route table: controllers and hand-written views from the compilation, views from the .cvw files.
+        // Each entry is a string of C#, so the table is only written again when a signature or a view changes.
+        var tableControllers = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is ClassDeclarationSyntax c && c.Identifier.ValueText.EndsWith("Controller", StringComparison.Ordinal),
+                static (syntax, cancellationToken) => syntax.SemanticModel.GetDeclaredSymbol((ClassDeclarationSyntax)syntax.Node, cancellationToken) is INamedTypeSymbol type
+                    ? RouteTableEmitter.ForController(type)
+                    : null)
+            .Where(static entry => entry is not null)
+            .Collect();
+
+        var tableViews = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is ClassDeclarationSyntax c && c.Identifier.ValueText.EndsWith("View", StringComparison.Ordinal),
+                static (syntax, cancellationToken) => syntax.SemanticModel.GetDeclaredSymbol((ClassDeclarationSyntax)syntax.Node, cancellationToken) is INamedTypeSymbol type
+                    ? RouteTableEmitter.ForView(type)
+                    : null)
+            .Where(static entry => entry is not null)
+            .Collect();
+
+        // Views compiled from .cvw files register themselves (a GeneratedView attribute in their own file), so only
+        // views that compiled are listed; the table is still written for a project that has nothing but .cvw files
+        var anyViewFiles = viewFiles.Collect().Select(static (files, _) => files.Length > 0);
+
+        var table = tableControllers.Combine(tableViews).Combine(anyViewFiles);
+        context.RegisterSourceOutput(table, static (ctx, pair) =>
+        {
+            var ((controllers, views), hasViewFiles) = pair;
+            if (RouteTableEmitter.Emit(controllers!, views!, hasViewFiles) is { } source)
+                ctx.AddSource(RouteTableEmitter.HintName, SourceText.From(source, System.Text.Encoding.UTF8));
+        });
+
         var inputs = viewFiles.Combine(rootNamespace).Combine(duplicates).Combine(partials).Combine(routes);
         context.RegisterSourceOutput(inputs, static (ctx, pair) =>
         {
