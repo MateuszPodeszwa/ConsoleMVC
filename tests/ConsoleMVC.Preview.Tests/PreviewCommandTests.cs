@@ -46,7 +46,7 @@ public sealed class PreviewCommandTests : IDisposable
     public void TheWidth_IsUsed()
     {
         Run("<separator />", "--stdin", "--width", "30");
-        Assert.Equal(30, _output.ToString().TrimEnd('\n').Length);
+        Assert.Equal(30, _output.ToString().ReplaceLineEndings("\n").TrimEnd('\n').Length);
     }
 
     [Fact]

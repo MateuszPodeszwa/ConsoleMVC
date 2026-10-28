@@ -93,6 +93,6 @@ public sealed class ProjectViewFilesTests : IDisposable
         Write("Views/Shared/Header.cvw", "<text>Header</text>");
         var path = Write("Views/Home/IndexView.cvw", "<partial name=\"Header\" />");
         var output = CvwPreview.Render(File.ReadAllText(path), ProjectViewFiles.ForView(path), new PreviewOptions()).Output;
-        Assert.Equal(["Top", "Header"], output.TrimEnd('\n').Split('\n').Select(l => l.TrimEnd()));
+        Assert.Equal(["Top", "Header"], output.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n').Select(l => l.TrimEnd()));
     }
 }

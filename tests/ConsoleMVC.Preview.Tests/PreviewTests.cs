@@ -12,7 +12,8 @@ public class PreviewTests
     private static string Text(string view, int width = 40) =>
         CvwPreview.Render(view, NoFiles, new PreviewOptions(Width: width)).Output;
 
-    private static string[] Lines(string output) => output.TrimEnd('\n').Split('\n');
+    // Text output ends lines as the system does (\r\n on Windows), as a terminal expects
+    private static string[] Lines(string output) => output.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n');
 
     [Fact]
     public void Text_IsDrawn()
@@ -318,7 +319,7 @@ public class PreviewTests
     public void TheWidth_IsClamped(int asked, int drawn)
     {
         var output = CvwPreview.Render("<separator />", NoFiles, new PreviewOptions(Width: asked)).Output;
-        Assert.Equal(drawn, output.TrimEnd('\n').Length);
+        Assert.Equal(drawn, output.ReplaceLineEndings("\n").TrimEnd('\n').Length);
     }
 
     [Fact]
