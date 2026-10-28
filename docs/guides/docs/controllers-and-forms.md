@@ -62,6 +62,33 @@ A view ends by returning a `NavigationResult`, or with a `<menu>`, which returns
 
 The framework remembers the screens shown (up to 50). `Back()` and `<option key="b" back>Back</option>` return to the previous one, running its action again without form data; showing the same screen twice in a row (a form after validation fails) counts once. Views read the trail from `NavigationHistory` and show it with `<breadcrumbs />`. See the [design](https://github.com/MateuszPodeszwa/ConsoleMVC/blob/main/docs/design/navigation-history.md).
 
+## Keyboard shortcuts
+
+Map keys that work on every screen in `Program.cs`, after `Build()`:
+
+```csharp
+using var app = builder.Build();
+
+app.MapKey(ConsoleKey.F1, "Help/Index", "Help");                                // a route
+app.MapKey(new KeyGesture(ConsoleKey.Escape), NavigationResult.Back(), "Back"); // any NavigationResult
+app.MapKey(KeyGesture.Parse("Ctrl+X"), NavigationResult.Quit(), "Quit");
+app.MapKey(new KeyGesture(ConsoleKey.F5), () => NavigationResult.ToAction("Index")); // decided when pressed
+```
+
+Pressing the key while a screen waits for the user (a menu, a text field or an arrow-key field) leaves the screen at
+once and follows the navigation. The description is optional; shortcuts with one are listed by `<shortcuts />`.
+
+- Shortcuts can use F1 to F24, Esc, Insert, or any key with Ctrl or Alt. Keys needed for typing are refused, and so are
+  Ctrl+C, Ctrl+D, Ctrl+Z and Ctrl+Q and Ctrl+S (terminals keep the last two for flow control).
+- With shortcuts mapped, lines are read key by key so shortcuts work in menus and text fields; typing, Backspace,
+  Delete, Left, Right, Home and End work as usual.
+- With piped input there are no keys to read, so shortcuts are not available.
+- A view that catches every exception around a prompt (`catch (Exception)`) would also catch the shortcut; catch
+  specific exceptions instead.
+
+In tests, press a shortcut with `new ScriptedInput().Keys(ConsoleKey.F1)` and map it with
+`host.ConfigureApplication = app => app.MapKey(...)` (see [Testing](testing.md)).
+
 ## Route values
 
 Pass the values an action needs in the navigation itself, like a query string, instead of building a form:

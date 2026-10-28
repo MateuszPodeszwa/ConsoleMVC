@@ -12,7 +12,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="ConsoleMVC.Framework" Version="1.22.0" />
+        <PackageReference Include="ConsoleMVC.Framework" Version="1.23.0" />
     </ItemGroup>
 
     <!-- builder.Configuration reads these from the application's folder -->

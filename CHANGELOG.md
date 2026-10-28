@@ -2,6 +2,23 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.23.0]
+
+### Added
+
+- **Keyboard shortcuts** ([design](docs/design/shortcuts.md), [guide](docs/guides/docs/controllers-and-forms.md#keyboard-shortcuts)):
+  `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")`, `app.MapKey(KeyGesture, NavigationResult | Func<NavigationResult>, description)`
+  work while any screen waits for input: menus, text fields and arrow-key fields. `KeyGesture` (`Parse("Ctrl+X")`),
+  `KeyShortcut`, `MvcApplication.Shortcuts`. Keys needed for typing and terminal control keys are refused.
+- **`<shortcuts />`** (`ShortcutsElement`, `ShortcutHint`, `ConsoleViewBase.ShortcutHints`) lists the described shortcuts.
+- `MvcTestHost.ConfigureApplication` configures the built application (shortcuts, middleware) in tests.
+- The template maps Esc to Back and Ctrl+X to Quit and lists them in the layout.
+
+### Changed
+
+- With shortcuts mapped, lines are read key by key (typing, Backspace, Delete, Left, Right, Home, End), so shortcuts
+  work in menus and text fields; without shortcuts, input is unchanged.
+
 ## [1.22.0]
 
 ### Added

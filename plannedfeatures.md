@@ -18,6 +18,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 
 - [C-View Markup 1.0](docs/guides/docs/c-view-markup.md): text, boxes, tables, column layouts that stack on narrow terminals, themes with `class="…"`, inputs, menus and validation messages
 - [Partial views](docs/design/partial-views.md) and [layouts](docs/design/layout-views.md): reusable markup in `Views/Shared`, checked at build time
+- [Keyboard shortcuts](docs/design/shortcuts.md): `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` on every screen, listed by `<shortcuts />`
 - [Navigation history](docs/design/navigation-history.md): Back options and `<breadcrumbs />`; [route values](docs/design/route-values.md) such as `nav="Orders/Details?id=@order.Id"`
 - [Responsive screens](docs/design/responsive-redraw.md) that redraw when the terminal is resized
 - [Compile-time route checks](docs/design/route-checks.md): a typo in `nav`, `RedirectToAction`, `NavigationResult.To` or `View("…")` is a build warning (CVW119 to CVW121), with a fix that creates a missing view
@@ -45,7 +46,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 - [ ] **Live elements**: `<progress>` and `<spinner>` that update while an async action runs, and views that refresh on a timer
 - [ ] **Charts**: `<bar-chart>` and `<sparkline>` for dashboards
 - [ ] **`<markdown>`**: render Markdown (headings, lists, emphasis, code) inside a view
-- [ ] **Keyboard shortcuts**: application-wide keys such as F1 for help or Esc for back (`app.MapKey(...)`)
 - [ ] **Localisation**: resource-based strings in views and validation messages, with culture-aware formatting where wanted
 - [ ] **Accessibility**: a screen-reader friendly mode without box drawing, and a high-contrast theme
 

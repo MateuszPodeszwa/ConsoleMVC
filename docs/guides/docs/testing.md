@@ -51,6 +51,7 @@ you want them. Each `Run` builds a fresh application, so tests do not share stat
 | `Width` | 80 | The terminal width screens are laid out to |
 | `MaxScreens` | 100 | Fails a run that keeps navigating without waiting for input, instead of hanging |
 | `EnvironmentName` | `Testing` | `builder.Environment`, so `appsettings.Testing.json` is read when it is copied to the test output |
+| `ConfigureApplication` | none | Configures the built application as `Program.cs` does after `Build()`: `app.Use(...)` middleware, `app.MapKey(...)` shortcuts |
 
 `TestRun` holds what the run produced:
 
