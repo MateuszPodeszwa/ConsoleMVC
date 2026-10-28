@@ -132,7 +132,7 @@ public class InteractiveMarkupTests
 
         var (output, navigation) = ViewHarness.RenderWithNavigation(view, input: ["", "Ada", "", "s"]);
 
-        Assert.Equal("Name: This field is required.\nName: Colour: [s] Submit\n> ", output);
+        Assert.Equal("Name: This field is required.\nName: Colour: [blue] [s] Submit\n> ", output); // the default is shown: Enter keeps it
         Assert.Equal("Ada", navigation.FormData!["Name"]);
         Assert.Equal("blue", navigation.FormData["Colour"]);
     }

@@ -1,0 +1,5 @@
+bin/
+obj/
+logs/
+# Snapshot output from failed tests (ConsoleMVC.Testing): compare, then delete or accept
+*.received.txt

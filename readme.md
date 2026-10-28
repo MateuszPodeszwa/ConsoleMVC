@@ -75,12 +75,15 @@ MyApp/
   SharedResource.cs             # Names Resources/SharedResource.resx (English) and .pl.resx (Polish)
   Resources/                    # SharedResource.resx and SharedResource.pl.resx
   appsettings.json              # Settings read by builder.Configuration
+  appsettings.Development.json  # Debug logging when DOTNET_ENVIRONMENT=Development
+  .gitignore                    # Build output, logs and *.received.txt snapshot files
   MyApp.Tests/                  # Only with --tests: xUnit tests using ConsoleMVC.Testing
   Areas/Admin/                  # An area: Controllers/SettingsController.cs and Views/Settings/IndexView.cvw
   Controllers/
     HomeController.cs
     GreetController.cs          # Form posting with model binding
     CalcController.cs           # Form posting with simple parameter binding
+    BookingController.cs        # <date>, <select filter>, <select multiple>, a masked PIN; ILogger
   Models/
     HomeViewModel.cs
     FeaturesViewModel.cs        # Rows for the <table> on the feature tour page
@@ -88,6 +91,7 @@ MyApp/
     GreetFormModel.cs           # Bound from form data (complex model)
     GreetResultModel.cs
     CalcResultModel.cs
+    BookingFormModel.cs         # [Range] and [RegularExpression] validation
   Services/
     IGreetingService.cs         # Registered in Program.cs, injected into GreetController and a view
     GreetingService.cs
@@ -104,6 +108,9 @@ MyApp/
     Calc/
       IndexView.cvw             # <number> and <radio> fields, posts the Form
       ResultView.cvw
+    Booking/
+      IndexView.cvw             # The richer fields, and a theme class of the app's own
+      ConfirmedView.cvw         # <markdown> built from the model
     Shared/
       _Layout.cvw               # Frames every view: breadcrumbs, app name, separator
       PageHeader.cvw            # A partial view, used with <partial>
@@ -937,7 +944,8 @@ ConsoleMVC/
       .template.config/template.json      #   Template engine configuration
       ConsoleMVC.App.csproj               #   sourceName replaced with user's project name
       Program.cs
-      appsettings.json                    #   Settings read by builder.Configuration
+      appsettings.json                    #   Settings read by builder.Configuration (and appsettings.Development.json)
+      .gitignore                          #   Build output, logs and *.received.txt
       SharedResource.cs Resources/        #   Localisation resources (English and Polish)
       Areas/                              #   The Admin area
       Controllers/

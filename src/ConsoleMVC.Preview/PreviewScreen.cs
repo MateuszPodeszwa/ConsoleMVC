@@ -41,6 +41,9 @@ internal sealed class PreviewScreen(IMarkupRenderer renderer, IRenderTarget targ
     {
         ArgumentNullException.ThrowIfNull(element);
 
+        // The previous field's prompt line ends here, as when the user pressed Enter; one field may write several
+        // prompts on its line (a label, then the value Enter keeps)
+        EndPrompt();
         switch (element)
         {
             case IFormField field:
@@ -72,7 +75,6 @@ internal sealed class PreviewScreen(IMarkupRenderer renderer, IRenderTarget targ
     /// <inheritdoc />
     public void WritePrompt(string text, TextStyle style)
     {
-        EndPrompt();
         renderer.WritePrompt(text, style);
         _prompting = true;
     }

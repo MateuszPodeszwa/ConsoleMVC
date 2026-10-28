@@ -37,6 +37,13 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   error; they used to build and then fail when navigated to.
 - A route starting with `/` names the application's controller from inside an area: `nav="/Home/Index"` leaves an
   area that has its own Home for the application's (it was CVW101, and no route could reach it).
+- The template has a table booking form (`BookingController`): `<date>`, a `<number>` checked by `[Range]`,
+  `<select filter size>`, `<select multiple>` and a masked `<input>` checked by `[RegularExpression]`, logged with
+  `ILogger<T>`, in a box with a theme class of the application's own. F1 opens the help on every screen. It has an
+  `appsettings.Development.json`, a `.gitignore`, a quote and a link in the about page's Markdown, and its tests set the
+  application up as `Program.cs` does (theme, mouse, shortcuts) and cover the booking form, F1 and a mouse click.
+- An `<input>` with a default (or an answer kept from a form shown again) shows it after the label, `Name: [Ada]`, so
+  the user knows Enter keeps it. A masked field never shows one.
 - `ClickTarget.FromColumn` and `ToColumn` let several click targets share a line, and `IMarkupRenderer.KeysAt(row,
   column)` finds the one clicked (the default implementation calls `KeysAt(row)`, so existing renderers keep working).
 
@@ -149,6 +156,8 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - A form shown again after validation failed lost every answer (the greeting form went back to its first colour and an
   empty name). Fields without an error now start from the answer posted, as ASP.NET Core forms do, so Enter keeps it;
   fields with an error, and masked fields, are asked afresh.
+- The template: the greeting counter is thread-safe (remote sessions share the singleton), the calculator's numbers
+  are required (an empty answer was taken as 0), and `GreetController.Result`'s comment says what it does.
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).

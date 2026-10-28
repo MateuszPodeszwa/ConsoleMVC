@@ -2,6 +2,8 @@ using System.Globalization;
 using ConsoleMVC.App;
 using ConsoleMVC.App.Controllers;
 using ConsoleMVC.App.Services;
+using ConsoleMVC.Mvc;
+using ConsoleMVC.Rendering;
 using ConsoleMVC.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,19 +15,37 @@ namespace ConsoleMVC.App.Tests;
 /// </summary>
 public class AppTests
 {
-    /// <summary>The application with the services Program.cs registers; replace any of them with a fake here.</summary>
-    private static MvcTestHost Host(string? culture = null) => MvcTestHost.For<HomeController>(builder =>
+    /// <summary>
+    /// The application as Program.cs sets it up (services, theme, mouse, shortcuts), in a fixed culture so the tests read
+    /// the same everywhere; replace any service with a fake here.
+    /// </summary>
+    private static MvcTestHost Host(string? culture = null)
     {
-        builder.Services.AddSingleton<IGreetingService, GreetingService>();
-        builder.Services.Configure<GreetingOptions>(options => options.Salutation = "Hello");
+        var host = MvcTestHost.For<HomeController>(builder =>
+        {
+            builder.Services.AddSingleton<IGreetingService, GreetingService>();
+            builder.Services.Configure<GreetingOptions>(options => options.Salutation = "Hello");
 
-        // The localisation set up in Program.cs, in a fixed culture so the tests read the same everywhere
-        builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-        builder.Localization.Culture = CultureInfo.GetCultureInfo(culture ?? "en-GB");
-        builder.Localization.FrameworkTextResource = typeof(SharedResource);
-        builder.Localization.LocalizeValidation = true;
-        builder.Localization.ValidationResource = typeof(SharedResource);
-    });
+            // The localisation set up in Program.cs, in a fixed culture so the tests read the same everywhere
+            builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+            builder.Localization.Culture = CultureInfo.GetCultureInfo(culture ?? "en-GB");
+            builder.Localization.FrameworkTextResource = typeof(SharedResource);
+            builder.Localization.LocalizeValidation = true;
+            builder.Localization.ValidationResource = typeof(SharedResource);
+
+            builder.Theme.Set("brand", new ThemeStyle { BorderColour = Colour.Magenta, TitleColour = Colour.Magenta, Bold = true });
+            builder.Mouse = true;
+        });
+
+        // The shortcuts Program.cs maps after Build()
+        host.ConfigureApplication = app =>
+        {
+            app.MapKey(ConsoleKey.F1, "Home/About", "Help");
+            app.MapKey(new KeyGesture(ConsoleKey.Escape), NavigationResult.Back(), "Back");
+            app.MapKey(KeyGesture.Parse("Ctrl+X"), NavigationResult.Quit(), "Quit");
+        };
+        return host;
+    }
 
     [Fact]
     public void HomeMenu_MatchesTheSnapshot()
@@ -105,5 +125,48 @@ public class AppTests
         Assert.Equal(["Home/Index", "Home/Features", "Admin/Settings/Index", "Home/Index"], run.Routes);
         Assert.Contains("Admin: settings", run.Screens[2]);
         Assert.Contains("en-GB", run.Screens[2]);
+    }
+
+    [Fact]
+    public void Booking_ConfirmsATable()
+    {
+        // Typed answers, as with piped input: the day as +3, the fourth table, two extras, a PIN
+        var run = Host().Run("5", "Ada", "+3", "4", "4", "1,2", "4821", "q");
+
+        Assert.Equal(["Home/Index", "Booking/Index", "Booking/Confirm"], run.Routes);
+        Assert.Contains("Booked", run.LastScreen);
+        Assert.Contains("garden-2 for 4", run.LastScreen);
+        Assert.Contains("Extras: cake, flowers", run.LastScreen);
+        Assert.DoesNotContain("4821", run.Output);                     // the PIN is masked
+    }
+
+    [Fact]
+    public void Booking_AsksAgainForAWrongPin_AndKeepsTheOtherAnswers()
+    {
+        var run = Host().Run("5", "Ada", "+3", "4", "4", "", "12",      // a PIN of two digits
+                             "", "", "", "", "", "4821", "q");          // Enter keeps each valid answer
+
+        Assert.Contains("The PIN must be four digits.", run.Screens[2]);
+        Assert.Contains("Booked", run.LastScreen);
+        Assert.Contains("Ada", run.LastScreen);
+        Assert.Contains("garden-2 for 4", run.LastScreen);
+    }
+
+    [Fact]
+    public void F1_OpensTheHelp_FromAnyScreen()
+    {
+        var run = Host().Run(new ScriptedInput("2").Keys(ConsoleKey.F1).Line("q"));
+
+        Assert.Equal(["Home/Index", "Greet/Index", "Home/About"], run.Routes);
+    }
+
+    [Fact]
+    public void ClickingAMenuOption_ChoosesIt()
+    {
+        // The home screen: the app bar, the header box (three rows), a blank line, the separator, the shortcuts, then
+        // the options; row 7 is "[1] About"
+        var run = Host().Run(new ScriptedInput().Click(2, 7).Line("q"));
+
+        Assert.Equal("Home/About", run.Routes[1]);
     }
 }

@@ -12,8 +12,9 @@ dotnet run
 ```
 
 This creates a working application with a home menu, a greeting form (text input, a `<select>` and a `<checkbox>`), a
-calculator, a feature tour with tables and columns, a shared layout and partial view, a service registered for
-dependency injection, and settings in `appsettings.json`.
+calculator, a table booking form (a date, a filtered list, several choices and a masked PIN), a feature tour with
+tables and columns, a shared layout and partial view, a service registered for dependency injection, keyboard
+shortcuts (F1, Esc, Ctrl+X), and settings in `appsettings.json`.
 
 Add `--tests` to get a test project as well, `MyApp/MyApp.Tests`, which runs the application with scripted input and
 checks a snapshot of the home menu (see [Testing](testing.md)):

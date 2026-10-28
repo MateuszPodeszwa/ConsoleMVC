@@ -11,12 +11,16 @@ namespace ConsoleMVC.App.Services;
 public sealed class GreetingService(IOptions<GreetingOptions> options) : IGreetingService
 {
     /// <inheritdoc />
-    public int Count { get; private set; }
+    public int Count => Volatile.Read(ref _count);
+
+    /// <summary>The greetings so far, counted with <see cref="Interlocked"/>.</summary>
+    private int _count;
 
     /// <inheritdoc />
     public string Greet(string name, string? colour)
     {
-        Count++;
+        // Thread-safe: with remote sessions, several users greet at once through this one singleton
+        Interlocked.Increment(ref _count);
 
         var greeting = $"{options.Value.Salutation}, {name}!";
         if (!string.IsNullOrWhiteSpace(colour))

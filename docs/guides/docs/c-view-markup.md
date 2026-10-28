@@ -214,7 +214,7 @@ return NavigationResult.ToAction("Result", Form);
 |---|---|---|
 | `name` | **required**: the key in `Form` (matched case-insensitively when binding) | |
 | `label` | the prompt written before reading | none |
-| `default` | used when the user enters nothing | empty |
+| `default` | used when the user enters nothing; shown after the label in brackets (`Favourite colour: [blue] `) so the user knows Enter keeps it (never for a masked field) | empty |
 | `required` | flag: ask again until a value is entered | off |
 | `masked` | flag: hide typed characters (shows one `*` per character); for passwords and other secrets. Backspace works, and Ctrl+D (or Ctrl+Z on Windows) on an empty line ends the input | off |
 | `color` / `colour` | label colour | terminal default |

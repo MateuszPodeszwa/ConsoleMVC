@@ -25,7 +25,7 @@ dotnet test MyApp/MyApp.Tests
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--tests` | off | Adds `MyApp.Tests`, an xUnit project that runs the application with [ConsoleMVC.Testing](https://www.nuget.org/packages/ConsoleMVC.Testing): a snapshot of the home menu (`__snapshots__/home-menu.txt`) and the greeting form driven with typed lines and arrow keys |
+| `--tests` | off | Adds `MyApp.Tests`, an xUnit project that runs the application with [ConsoleMVC.Testing](https://www.nuget.org/packages/ConsoleMVC.Testing), set up as `Program.cs` sets it up (services, theme, mouse, shortcuts): a snapshot of the home menu (`__snapshots__/home-menu.txt`), the greeting form and the booking form driven with typed lines, arrow keys and a mouse click, and a shortcut |
 
 ## What You Get
 
@@ -36,7 +36,8 @@ A ready-to-run console application structured with the MVC pattern:
 - **Views/**: `.cvw` views using C-View Markup (`<box>`, `<text>`, `<table>`, `<columns>`, `<input>`, `<select>`, `<checkbox>`, `<menu>`, `<progress>`, `<spinner>`, `<bar-chart>`, `<sparkline>`, `<markdown>`, `<scroll>`) and C#, compiled at build time; `Views/Shared` holds the layout and a partial view
 - **Models/**: ViewModel DTOs passed from controllers to views
 - **Services/**: an `IGreetingService` registered with `builder.Services` in `Program.cs`, configured by `GreetingOptions`
-- **appsettings.json**: settings read by `builder.Configuration` (environment variables and command-line arguments override them)
+- **appsettings.json**: settings read by `builder.Configuration` (environment variables and command-line arguments override them); **appsettings.Development.json** adds debug logging when `DOTNET_ENVIRONMENT=Development`
+- **.gitignore**: build output, logs and the snapshot files failed tests leave (`*.received.txt`)
 
 The template includes working examples of:
 
@@ -55,8 +56,11 @@ The template includes working examples of:
 - **Remote sessions**: `dotnet run -- --ConsoleMVC:Serve=2323`, then `telnet localhost 2323` from other terminals: every user gets their own session, and the live status page shows which one (`ITerminalSession` in `HomeController`)
 - **Native AOT**: `dotnet publish -c Release -p:PublishAot=true` makes a native executable that starts in milliseconds (the project enables the configuration binding generator for it)
 - **Mouse**: `builder.Mouse = true` in `Program.cs`: click menu options, the colour choices and the checkbox
-- **Keyboard shortcuts**: Esc goes back and Ctrl+X quits on every screen (`app.MapKey` in `Program.cs`), listed by `<shortcuts />` in the layout
+- **Keyboard shortcuts**: F1 opens the help, Esc goes back and Ctrl+X quits on every screen (`app.MapKey` in `Program.cs`), listed by `<shortcuts />` in the layout
 - **Dependency injection**: `GreetController` receives `IGreetingService` through its constructor and the result view reads it with `@inject`
+- **Richer form fields**: the booking form (`BookingController`) has a `<date>` (Up/Down move the day, `t` is today; typed: `2026-10-27`, `tomorrow` or `+7`), a `<number>` of guests checked by `[Range(1, 12)]`, a `<select filter size="4">` that narrows the tables as you type, a `<select multiple>` of extras, and a masked `<input>` for a PIN checked by `[RegularExpression]`. When validation fails, the valid answers stay filled in (Enter keeps them) and the PIN is asked again. The booking is logged with `ILogger<BookingController>`, and its title box uses a theme class of the application's own (`builder.Theme.Set("brand", …)`)
+- **Help shortcut**: F1 opens the about page from any screen (`app.MapKey(ConsoleKey.F1, "Home/About", "Help")`), a route the build checks like a `nav` attribute
+- **Editor support**: preview any view without running the app, with `dotnet tool install -g ConsoleMVC.Preview` and `cvw-preview Views/Home/IndexView.cvw`; the VS Code and Rider extensions use it for live previews and the build's own checks
 - **Form data posting with simple parameters**: a calculator with two `<number>` fields and a `<radio>` for the operator, posting individual values (`int a`, `int b`, `string op`) directly to action method parameters
 
 ## IDE Support

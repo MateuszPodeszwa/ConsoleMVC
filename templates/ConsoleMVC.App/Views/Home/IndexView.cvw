@@ -9,5 +9,6 @@
     <option key="2" nav="Greet/Index">Greeting form</option>
     <option key="3" nav="Calc/Index">Calculator</option>
     <option key="4" nav="Home/Features">Feature tour (tables)</option>
+    <option key="5" nav="Booking/Index">Book a table (dates, filters, a PIN)</option>
     <option key="q" quit>Exit</option>
 </menu>
