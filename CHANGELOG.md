@@ -33,6 +33,8 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   `<bar-chart max>`, `<sparkline>`) accept an expression of any number type, nullable ones included (`@(3.5)` was a
   CS0266 error for `<number>`).
 - Every attribute in `schema/cvw-schema.json` says whether it accepts an `expression`.
+- CVW123: two actions of a controller with the same name (overloads, or names differing only in case) are a build
+  error; they used to build and then fail when navigated to.
 - A route starting with `/` names the application's controller from inside an area: `nav="/Home/Index"` leaves an
   area that has its own Home for the application's (it was CVW101, and no route could reach it).
 - `ClickTarget.FromColumn` and `ToColumn` let several click targets share a line, and `IMarkupRenderer.KeysAt(row,

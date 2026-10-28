@@ -23,3 +23,4 @@ CVW121 | ConsoleMVC.Views | Warning | View not found
 CVW011 | ConsoleMVC.Views | Error | Directive without a value
 CVW012 | ConsoleMVC.Views | Error | View returns no result
 CVW122 | ConsoleMVC.Views | Error | '@' before C# code
+CVW123 | ConsoleMVC.Views | Error | Two actions with the same name

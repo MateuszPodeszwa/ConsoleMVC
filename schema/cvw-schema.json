@@ -2812,6 +2812,11 @@
       "id": "CVW122",
       "severity": "error",
       "title": "'@' before C# code"
+    },
+    {
+      "id": "CVW123",
+      "severity": "error",
+      "title": "Two actions with the same name"
     }
   ]
 }

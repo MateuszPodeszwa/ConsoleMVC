@@ -197,6 +197,15 @@ internal static class CvwDiagnostics
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
     /// <summary>
+    /// CVW123: a controller has two actions of the same name (overloads, or names differing only in case). Actions are
+    /// found by name, so navigating to it would fail at run time.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DuplicateAction = new(
+        "CVW123", "Two actions with the same name",
+        "{0}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>
     /// CVW119: a literal <c>nav</c> target names a controller or action that does not exist. A warning, because the
     /// controllers may be loaded from elsewhere at run time; raise it with <c>dotnet_diagnostic.CVW119.severity = error</c>.
     /// </summary>

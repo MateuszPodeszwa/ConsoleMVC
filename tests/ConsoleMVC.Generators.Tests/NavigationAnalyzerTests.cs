@@ -128,6 +128,25 @@ public class NavigationAnalyzerTests
         Assert.StartsWith(message, diagnostic.GetMessage());
     }
 
+    [Theory]
+    [InlineData("public ActionResult Q() => View(\"List\"); public ActionResult Q(int id) => View(\"List\");")]
+    [InlineData("public ActionResult Report() => View(\"List\"); public ActionResult report() => View(\"List\");")]
+    [InlineData("public ActionResult Index(int page) => View(\"List\");")]   // a second Index, beside the controller's own
+    public void TwoActionsWithTheSameName_AreCVW123(string actions)
+    {
+        var diagnostic = Assert.Single(Analyze(actions), d => d.Id == "CVW123");
+
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("actions named", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public void AnActionAndANonActionHelper_WithTheSameName_AreFine()
+    {
+        Assert.DoesNotContain(Analyze("[NonAction] public ActionResult Report() => View(\"List\"); public ActionResult Report(int id) => View(\"List\");"),
+            d => d.Id == "CVW123");
+    }
+
     [Fact]
     public void ACorrectMapKeyTarget_HasNoWarning()
     {

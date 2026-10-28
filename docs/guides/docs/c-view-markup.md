@@ -779,6 +779,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW119 | **Warning**: a literal `nav` target names a controller or action that does not exist (lists the ones that do) |
 | CVW120 | **Warning**: `RedirectToAction`, `NavigationResult.To` or `NavigationResult.ToAction` in C# names a controller or action that does not exist |
 | CVW121 | **Warning**: `View("Name")`, or `View()` in an action, has no view; the IDE offers **Create view Views/{Controller}/{Name}View.cvw** |
+| CVW123 | A controller has two actions with the same name (overloads, or names differing only in case); rename one or mark a helper `[NonAction]` |
 | CVW122 | Razor-style `@if`, `@foreach`, `@{` or `@(` where the view is already C# (at the top level, or inside a C# block); write the C# without `@` |
 
 ## Resizing the terminal

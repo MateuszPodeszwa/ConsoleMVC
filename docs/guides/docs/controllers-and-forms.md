@@ -18,7 +18,7 @@ public class HomeController(IGreetingService greetings) : Controller
 }
 ```
 
-- `HomeController` is reached as `Home`; action names are matched case-insensitively and must be unique (no overloads).
+- `HomeController` is reached as `Home`; action names are matched case-insensitively and must be unique (no overloads): two actions with the same name are build error CVW123.
 - Constructor parameters come from `builder.Services` (see [Dependency Injection](dependency-injection.md)).
 
 | Method | Result |

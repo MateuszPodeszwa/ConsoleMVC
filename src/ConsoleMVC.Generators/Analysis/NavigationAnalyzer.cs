@@ -32,7 +32,7 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-        [CvwDiagnostics.UnknownCodeRoute, CvwDiagnostics.MissingView];
+        [CvwDiagnostics.UnknownCodeRoute, CvwDiagnostics.MissingView, CvwDiagnostics.DuplicateAction];
 
     /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
@@ -41,6 +41,9 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
         // Views generated from .cvw files are generated code; their C# is the user's, so it is checked too
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics);
+
+        // Overloaded actions fail when they are navigated to; say so at build time (CVW123)
+        context.RegisterSymbolAction(CheckDuplicateActions, SymbolKind.NamedType);
 
         context.RegisterCompilationStartAction(start =>
         {
@@ -113,6 +116,49 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
                 RouteSymbols.Qualify(path.Substring(0, slash), current, catalogue.Controllers.ContainsKey), path.Substring(slash + 1));
         else if (current is not null)
             Report(context, catalogue, target.Syntax.GetLocation(), call, current, path);
+    }
+
+    /// <summary>
+    /// Reports CVW123 for every action of a controller after the first with the same name (in any casing), as the
+    /// router finds them: public instance methods returning an action result, on the controller and its base classes,
+    /// an override counting once.
+    /// </summary>
+    private static void CheckDuplicateActions(SymbolAnalysisContext context)
+    {
+        if (context.Symbol is not INamedTypeSymbol type || RouteSymbols.ControllerName(type) is not { } controller)
+            return;
+
+        var overridden = new HashSet<IMethodSymbol>(SymbolEqualityComparer.Default);
+        var actions = new List<IMethodSymbol>();
+        for (var current = type; current is not null && current.ToDisplayString() != RouteSymbols.ControllerType; current = current.BaseType)
+        {
+            foreach (var method in current.GetMembers().OfType<IMethodSymbol>())
+            {
+                if (overridden.Contains(method.OriginalDefinition) || !RouteSymbols.IsAction(method))
+                    continue;
+
+                for (var hidden = method.OverriddenMethod; hidden is not null; hidden = hidden.OverriddenMethod)
+                    overridden.Add(hidden.OriginalDefinition);
+                actions.Add(method);
+            }
+        }
+
+        foreach (var group in actions.GroupBy(m => m.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+        {
+            // Reported on the methods declared in this class: after the first when they all are, else all of them (one
+            // in a base class makes every one here a duplicate)
+            var here = group.Where(m => SymbolEqualityComparer.Default.Equals(m.ContainingType, type)).ToList();
+            foreach (var method in here.Count == group.Count() ? here.Skip(1) : here)
+            {
+                var location = method.Locations.FirstOrDefault(l => l.IsInSource);
+                if (location is null)
+                    continue;
+
+                context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.DuplicateAction, location,
+                    $"'{controller}' has {group.Count()} actions named '{group.Key}'. Actions are found by name, so navigating " +
+                    "to it would fail when the application runs: rename one, or mark a helper [NonAction]."));
+            }
+        }
     }
 
     /// <summary>Checks a controller argument (or the current controller when it is absent or null) and an action argument.</summary>
