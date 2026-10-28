@@ -34,7 +34,7 @@ internal static class MarkupDocumentation
         ["choice"] = "One choice of a <select> or <radio>: its text is shown and its 'value' (or text) is posted.",
         ["checkbox"] = "A yes or no field, posted as true or false.",
         ["number"] = "A number field, checked against 'min', 'max', 'step' and 'decimals'.",
-        ["date"] = "A date field; 'min', 'max' and 'default' accept yyyy-MM-dd, today, today+N or today-N.",
+        ["date"] = "A date field; 'min', 'max' and 'default' accept yyyy-MM-dd, today, tomorrow, yesterday, today+N or today-N.",
         ["errors"] = "The validation messages of the view's ModelState: every field's, or one field's with 'for'.",
         ["breadcrumbs"] = "The navigation history as a trail, such as Home › Orders › Details.",
         ["shortcuts"] = "The application's keyboard shortcuts with their descriptions, such as 'Esc Back  Ctrl+X Quit'.",
@@ -78,7 +78,7 @@ internal static class MarkupDocumentation
         ["Prompt"] = "The prompt written before the user types a choice.",
         ["ErrorMessage"] = "The message shown when the user types a key that no option has.",
         ["KeyColour"] = "The colour of the keys, such as [1].",
-        ["Key"] = "What the user types to choose this option, such as 1 or q.",
+        ["Key"] = "What the user types to choose this option, such as 1 or q; no two options may share one, ignoring case.",
         ["Target"] = "Where the option goes: Controller/Action or Action, optionally with ?key=value route values.",
         ["Quit"] = "Ends the application.",
         ["Back"] = "Goes back to the previous screen.",
@@ -97,7 +97,7 @@ internal static class MarkupDocumentation
         ["Checked"] = "Starts ticked.",
         ["Min"] = "The smallest value accepted.",
         ["Max"] = "The largest value accepted.",
-        ["Step"] = "The amount the arrow keys add or take away.",
+        ["Step"] = "The amount the arrow keys add or take away; more than 0.",
         ["Decimals"] = "How many decimal places are accepted.",
         ["For"] = "Shows only this field's messages (case-insensitive).",
         ["Separator"] = "The text between items.",
@@ -141,6 +141,9 @@ internal static class MarkupDocumentation
         ["column.Width"] = "The column's width: auto, a number of columns, a percentage or * for the rest.",
         ["partial.Name"] = "The partial view's name: Views/Shared/{name}.cvw.",
         ["breadcrumbs.Separator"] = "The text between screens; › by default.",
+        ["number.Default"] = "The answer to an empty line and the starting value; a number the field accepts.",
+        ["select.Default"] = "The value chosen for an empty answer and highlighted first; for 'multiple', values separated by commas.",
+        ["radio.Default"] = "The value chosen for an empty answer and highlighted first; it must be a choice's value.",
         ["shortcuts.Separator"] = "The text between shortcuts; two spaces by default."
     };
 

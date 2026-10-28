@@ -65,8 +65,10 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
     /// <summary>
     /// Gets or sets the value chosen when the user enters nothing, and the highlighted choice in arrow-key mode. For
-    /// several answers, separate the values with commas.
+    /// several answers, separate the values with commas. Each must be a choice's value (ignoring case), or
+    /// <see cref="Read"/> throws; an empty answer stores the choice's own value.
     /// </summary>
+    /// <example><code>var size = new RadioElement { Name = "Size", Default = "m" }; // an empty answer stores "M"</code></example>
     public string? Default { get; set; }
 
     /// <summary>Gets or sets whether an empty answer is rejected and the field asked again.</summary>
@@ -144,7 +146,8 @@ public abstract class ChoiceFieldElement : Element, IFormField
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when an argument is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when the field has no choices, or when several answers are allowed and a value contains a comma.
+    /// Thrown when the field has no choices, when several answers are allowed and a value contains a comma, or when
+    /// <see cref="Default"/> names a value that no choice has.
     /// </exception>
     public string? Read(IMarkupRenderer renderer, ITextInput input)
     {
@@ -157,6 +160,11 @@ public abstract class ChoiceFieldElement : Element, IFormField
         if (AllowsSeveral && _choices.Any(c => c.EffectiveValue.Contains(ValueSeparator)))
             throw new InvalidOperationException(
                 $"{ElementName} '{Name}' allows several answers, so its choice values cannot contain '{ValueSeparator}'.");
+
+        // An empty answer takes the default, which must therefore be a choice
+        if (DefaultTokens().FirstOrDefault(t => FindValue(t) < 0) is { } unknown)
+            throw new InvalidOperationException(
+                $"{ElementName} '{Name}' has default '{unknown}', which is not the value of any of its choices ({string.Join(", ", _choices.Select(c => c.EffectiveValue))}).");
 
         return input.CanReadKeys && renderer.CanRewrite ? ReadWithKeys(renderer, input) : ReadTyped(renderer, input);
     }
@@ -184,9 +192,10 @@ public abstract class ChoiceFieldElement : Element, IFormField
             var answer = line.Trim();
             if (answer.Length == 0)
             {
-                var fallback = Default?.Trim() ?? "";
-                if (!Required || fallback.Length > 0)
-                    return fallback;
+                // The default's choices, as a typed answer naming them would be stored
+                var defaults = DefaultIndices();
+                if (!Required || defaults.Count > 0)
+                    return string.Join(ValueSeparator, defaults.Select(i => _choices[i].EffectiveValue));
 
                 ShowError(renderer, FrameworkText.Current.Required);
                 continue;
@@ -434,16 +443,22 @@ public abstract class ChoiceFieldElement : Element, IFormField
         AllowsSeveral ? Enumerable.Range(0, _choices.Count).Where(i => _ticked[i]).ToList() : [_cursor];
 
     /// <summary>The choices named by <see cref="Default"/>, matched like typed answers.</summary>
-    private List<int> DefaultIndices()
+    private List<int> DefaultIndices() =>
+        DefaultTokens().Select(FindValue).Where(i => i >= 0).Distinct().Order().ToList();
+
+    /// <summary>The values <see cref="Default"/> names: one, or several separated by commas when several answers are allowed.</summary>
+    private IEnumerable<string> DefaultTokens()
     {
         if (string.IsNullOrWhiteSpace(Default))
             return [];
 
         var tokens = AllowsSeveral ? Default.Split(ValueSeparator) : [Default];
-        return tokens.Select(t => t.Trim()).Where(t => t.Length > 0)
-            .Select(t => _choices.FindIndex(c => string.Equals(c.EffectiveValue, t, StringComparison.OrdinalIgnoreCase)))
-            .Where(i => i >= 0).Distinct().Order().ToList();
+        return tokens.Select(t => t.Trim()).Where(t => t.Length > 0);
     }
+
+    /// <summary>The choice whose value is <paramref name="value"/>, ignoring case; -1 when none is.</summary>
+    private int FindValue(string value) =>
+        _choices.FindIndex(c => string.Equals(c.EffectiveValue, value, StringComparison.OrdinalIgnoreCase));
 
     // ------------------------------------------------------------------ layout
 

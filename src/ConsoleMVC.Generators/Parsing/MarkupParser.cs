@@ -202,7 +202,10 @@ internal sealed class MarkupParser
         _depth++;
         try
         {
-            return ParseElementCore();
+            // Rules over several attributes and the children, now that both are known (ElementRules)
+            var element = ParseElementCore();
+            ElementRules.Check(element, _diagnostics);
+            return element;
         }
         finally
         {

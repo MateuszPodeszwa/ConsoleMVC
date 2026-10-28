@@ -751,7 +751,7 @@
         },
         {
           "name": "key",
-          "description": "What the user types to choose this option, such as 1 or q.",
+          "description": "What the user types to choose this option, such as 1 or q; no two options may share one, ignoring case.",
           "required": true,
           "kind": "text",
           "accepts": "text",
@@ -904,7 +904,7 @@
         },
         {
           "name": "default",
-          "description": "The value used when the user enters nothing.",
+          "description": "The value chosen for an empty answer and highlighted first; for 'multiple', values separated by commas.",
           "required": false,
           "kind": "text",
           "accepts": "text",
@@ -1022,7 +1022,7 @@
         },
         {
           "name": "default",
-          "description": "The value used when the user enters nothing.",
+          "description": "The value chosen for an empty answer and highlighted first; it must be a choice's value.",
           "required": false,
           "kind": "text",
           "accepts": "text",
@@ -1295,7 +1295,7 @@
         },
         {
           "name": "default",
-          "description": "The value used when the user enters nothing.",
+          "description": "The answer to an empty line and the starting value; a number the field accepts.",
           "required": false,
           "kind": "text",
           "accepts": "text",
@@ -1372,7 +1372,7 @@
         },
         {
           "name": "step",
-          "description": "The amount the arrow keys add or take away.",
+          "description": "The amount the arrow keys add or take away; more than 0.",
           "required": false,
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
@@ -1394,7 +1394,7 @@
     },
     {
       "name": "date",
-      "description": "A date field; 'min', 'max' and 'default' accept yyyy-MM-dd, today, today+N or today-N.",
+      "description": "A date field; 'min', 'max' and 'default' accept yyyy-MM-dd, today, tomorrow, yesterday, today+N or today-N.",
       "content": "void",
       "topLevelOnly": true,
       "parents": null,
@@ -1423,10 +1423,10 @@
           "description": "The value used when the user enters nothing.",
           "required": false,
           "kind": "date",
-          "accepts": "a date such as 2026-10-27, today, today+7 or today-30",
+          "accepts": "a date such as 2026-10-27, today, tomorrow, yesterday, today+7 or today-30",
           "flag": false,
           "interpolation": true,
-          "values": ["today"]
+          "values": ["today", "tomorrow", "yesterday"]
         },
         {
           "name": "required",
@@ -1483,20 +1483,20 @@
           "description": "The smallest value accepted.",
           "required": false,
           "kind": "date",
-          "accepts": "a date such as 2026-10-27, today, today+7 or today-30",
+          "accepts": "a date such as 2026-10-27, today, tomorrow, yesterday, today+7 or today-30",
           "flag": false,
           "interpolation": true,
-          "values": ["today"]
+          "values": ["today", "tomorrow", "yesterday"]
         },
         {
           "name": "max",
           "description": "The largest value accepted.",
           "required": false,
           "kind": "date",
-          "accepts": "a date such as 2026-10-27, today, today+7 or today-30",
+          "accepts": "a date such as 2026-10-27, today, tomorrow, yesterday, today+7 or today-30",
           "flag": false,
           "interpolation": true,
-          "values": ["today"]
+          "values": ["today", "tomorrow", "yesterday"]
         }
       ]
     },
