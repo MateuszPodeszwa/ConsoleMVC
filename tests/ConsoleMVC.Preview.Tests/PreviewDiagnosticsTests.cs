@@ -45,9 +45,10 @@ public sealed class PreviewDiagnosticsTests : IDisposable
         WriteAll(files);
         var result = Preview(path, files.Single(f => f.Path == path).Text);
 
-        // A message naming the file (CVW001) names it where the preview found it
+        // A message naming the file (CVW001) names it where the preview found it, with the system's separators (the
+        // build was given RealApp's '/' paths)
         var previewed = result.Diagnostics
-            .Select(d => d with { Message = d.Message.Replace(_project, RealApp.Project, StringComparison.Ordinal) })
+            .Select(d => d with { Message = d.Message.Replace(_project, RealApp.Project, StringComparison.Ordinal).Replace('\\', '/') })
             .OrderBy(d => d.Line).ThenBy(d => d.Column).ThenBy(d => d.Id, StringComparer.Ordinal);
         Assert.Equal(built, previewed);
         return result;

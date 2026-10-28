@@ -54,10 +54,25 @@ public sealed class ProjectViewFilesTests : IDisposable
     }
 
     [Fact]
-    public void AName_IsMatchedInAnyCase_AndTheFirstFileByPathWins()
+    public void AName_IsMatchedInAnyCase()
+    {
+        Write("Views/Shared/Header.cvw", "header");
+        var files = ProjectViewFiles.ForView(Write("Views/Home/IndexView.cvw", ""));
+        Assert.Equal("header", files.ReadShared("HEADER")?.Text);
+        Assert.Equal("Header", files.ReadShared("header")?.Name);
+    }
+
+    [Fact]
+    public void TwoNamesDifferingOnlyInCase_TheFirstFileByPathWins()
     {
         Write("Views/Shared/Header.cvw", "upper");
-        Write("Views/Shared/header.cvw", "lower"); // a second file only where names are case-sensitive
+        Write("Views/Shared/header.cvw", "lower");
+
+        // On Windows and macOS file names ignore case, so the second write replaced the first: there is one file, and
+        // nothing to choose between
+        if (Directory.GetFiles(Path.Combine(_project, "Views", "Shared")).Length < 2)
+            return;
+
         var files = ProjectViewFiles.ForView(Write("Views/Home/IndexView.cvw", ""));
         Assert.Equal("upper", files.ReadShared("HEADER")?.Text);
         Assert.Equal("Header", files.ReadShared("header")?.Name);
@@ -80,7 +95,7 @@ public sealed class ProjectViewFilesTests : IDisposable
         Write("Shared/Header.cvw", "header");
         var path = Write("Other/IndexView.cvw", "");
         var files = ProjectViewFiles.ForView(path);
-        Assert.Equal(path, files.ViewPath);
+        Assert.Equal(Path.GetFullPath(path), files.ViewPath);   // the full path, with the system's separators
         Assert.Empty(files.SharedNames);
         Assert.Null(files.ReadShared("Header"));
     }
