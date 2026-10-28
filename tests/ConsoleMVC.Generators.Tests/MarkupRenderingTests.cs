@@ -166,7 +166,7 @@ public class MarkupRenderingTests
     [Fact]
     public void ModelData_IsSanitised()
     {
-        Assert.Equal("Bob[2J\n", ViewHarness.Render("@model string\n<text>@Model</text>" + Quit, "\"Bob\\u001b[2J\""));
+        Assert.Equal("Bob\n", ViewHarness.Render("@model string\n<text>@Model</text>" + Quit, "\"Bob\\u001b[2J\""));
     }
 
     [Fact]

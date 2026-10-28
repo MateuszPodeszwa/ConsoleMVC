@@ -75,14 +75,17 @@ builder.Services.AddOptions<ShopOptions>()
 `builder.Environment` (and `app.Environment`, or an injected `IHostEnvironment`) tells where the application runs:
 
 ```csharp
+using Microsoft.Extensions.Hosting;   // IsDevelopment()
+using Microsoft.Extensions.Logging;   // LogLevel
+
 if (builder.Environment.IsDevelopment())
-    builder.Logging.SetMinimumLevel(LogLevel.Debug);
+    builder.Logging.AddFilter("ConsoleMVC", LogLevel.Debug); // a filter in code: the Logging section's levels override SetMinimumLevel
 ```
 
 | Property | Value |
 |---|---|
 | `EnvironmentName` | `DOTNET_ENVIRONMENT`, or `Production` when it is not set |
-| `ContentRootPath` | where configuration files are read from: the application's folder |
+| `ContentRootPath` | where configuration files and relative log paths are read from: the application's folder (`bin/Debug/net10.0` under `dotnet run`); an absolute path |
 | `ApplicationName` | the entry assembly's name |
 
 Choose them in code with `MvcApplicationOptions`, for example in tests:
@@ -144,7 +147,7 @@ the configuration, which `AddFile()` reads from `Logging:File`:
 
 | Option | Default | Purpose |
 |---|---|---|
-| `Path` | `logs/app.log` | The file, relative to the content root |
+| `Path` | `logs/app.log` | The file, relative to the content root (the application's folder, `bin/Debug/net10.0/logs/app.log` under `dotnet run`). When it cannot be written (no permission, a full disk, a folder that cannot be created) the application keeps running without the log |
 | `MaxFileSizeBytes` | 10 MB | Roll over at this size; 0 never rolls over |
 | `RetainedFileCount` | 5 | Rolled-over files kept besides the current one |
 | `QueueLength` | 10 000 | Entries waiting to be written; when the disk cannot keep up, newer ones are dropped and counted |

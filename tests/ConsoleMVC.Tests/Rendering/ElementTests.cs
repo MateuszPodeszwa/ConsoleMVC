@@ -48,7 +48,7 @@ public class ElementTests
         text.AppendValue("\u001b[31mred");
         text.AppendValue(null);
 
-        Assert.Equal(["Count: 42 [31mred"], Plain(text.Layout(80)));
+        Assert.Equal(["Count: 42 red"], Plain(text.Layout(80)));
     }
 
     [Fact]

@@ -46,7 +46,8 @@ A constructor parameter that cannot be resolved fails with an `InvalidOperationE
 
 `@inject Type Name` declares a property called `Name` that the framework fills before the view renders. It sits with
 `@model` and `@using` at the top of the file, in any order. Generic types are fine:
-`@inject IOptions<Dictionary<string, int>> Limits`.
+`@inject IOptions<Dictionary<string, int>> Limits` (with `@using Microsoft.Extensions.Options`, or the full name
+`Microsoft.Extensions.Options.IOptions<…>`).
 
 The name must be a valid C# identifier and cannot be one the view already has: `Model` (the model parameter); the
 view's own class name (such as `IndexView`); the members of the view base classes, `ViewData`, `ModelState`,

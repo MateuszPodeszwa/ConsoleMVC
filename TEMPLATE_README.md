@@ -44,7 +44,7 @@ The template includes working examples of:
 - **Tables, columns and themes**: a feature tour page with a `<table>` generated from the model, `<columns>` that stack on narrow terminals, and theme classes (`class="panel"`)
 - **Partial views and layouts**: the home and about pages share `Views/Shared/PageHeader.cvw` through `<partial>`, and `Views/Shared/_Layout.cvw` adds an app bar (breadcrumbs on the left, the app name on the right) and a separator above every menu
 - **Form data posting with model binding**: a greeting form with a text `<input>`, a colour `<select>` (arrow keys in a terminal) and a `<checkbox>`, posted to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
-- **Logging**: `Program.cs` sends logs to `logs/app.log` with `builder.Logging.AddFile`, since the console shows the application
+- **Logging**: `Program.cs` sends logs to `logs/app.log` beside the application (`bin/Debug/net10.0/logs/app.log` under `dotnet run`) with `builder.Logging.AddFile`, since the console shows the application
 - **Configuration**: the greeting's salutation comes from the `Greeting` section of `appsettings.json` through `IOptions<GreetingOptions>`; try `dotnet run -- --Greeting:Salutation=Hi`
 - **Areas**: the feature tour's settings page is in the Admin area, `Areas/Admin/Controllers/SettingsController.cs` and `Areas/Admin/Views/Settings/IndexView.cvw`, reached with `nav="Admin/Settings/Index"`
 - **Localisation**: the greeting form's text comes from `Resources/SharedResource.resx`, with a Polish translation (including the framework's prompts and the validation messages): try `dotnet run -- --ConsoleMVC:Culture=pl-PL`

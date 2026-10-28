@@ -9,7 +9,7 @@ dotnet publish -c Release -r linux-x64 -p:PublishAot=true
 ```
 
 Use `win-x64`, `osx-arm64` or another runtime identifier for other systems. The template's first screen appears in
-about 18 ms as Native AOT, against about 280 ms with the JIT, from a 7 MB executable.
+about 18 ms as Native AOT, against about 280 ms with the JIT, from an executable of about 10 MB on Linux x64.
 
 ## What makes it work
 

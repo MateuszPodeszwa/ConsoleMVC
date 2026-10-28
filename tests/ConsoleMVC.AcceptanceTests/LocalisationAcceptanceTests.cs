@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using ConsoleMVC.Mvc;
 using ConsoleMVC.Rendering;
 using ConsoleMVC.Testing;
@@ -51,5 +52,37 @@ public class LocalisationAcceptanceTests
         Assert.Contains("(Spacja, Enter)", consent.LastScreen);
         Assert.Contains("(Góra/Dół, Enter)", quantity.LastScreen);
         Assert.Contains("(pisz, Enter)", colour.LastScreen);
+    }
+}
+
+/// <summary>
+/// Validation messages without an <c>ErrorMessage</c>, translated in resources, as docs/guides/docs/localisation.md
+/// describes: as a whole, or by the attribute's English template.
+/// </summary>
+public class ValidationTranslationAcceptanceTests
+{
+    private static MvcTestHost Polish() => MvcTestHost.For<Controllers.HomeController>(builder =>
+    {
+        builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+        builder.Localization.Culture = System.Globalization.CultureInfo.GetCultureInfo("pl-PL");
+        builder.Localization.LocalizeValidation = true;
+        builder.Localization.ValidationResource = typeof(AcceptanceText);
+    });
+
+    [Fact]
+    public void TheAttributesTemplate_IsTranslated_AndFormattedForTheField()
+    {
+        var run = Polish().Run("1", "", "36", "", "Ada", "36", "", "q");
+
+        Assert.Contains("Pole Name jest wymagane.", run.Screens[2]);
+        Assert.DoesNotContain("{0}", run.Screens[2]);
+    }
+
+    [Fact]
+    public void AWholeMessage_IsTranslatedAsItIs()
+    {
+        var run = Polish().Run("1", "Ada", "36", "nope", "Ada", "36", "", "q");
+
+        Assert.Contains("Adres e-mail jest nieprawidłowy.", run.Screens[2]);
     }
 }

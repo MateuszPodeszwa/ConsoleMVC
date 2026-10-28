@@ -133,6 +133,18 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - With piped input `<shortcuts />` still listed shortcuts, which do nothing there; it now lists none.
 - A route typed in another case (`admin/users/index`) kept that case in `RouteContext` and the breadcrumbs
   (`Area` was `admin`); routes now read as the controller is declared.
+- Validation messages without an `ErrorMessage` can be translated once for every field: a resource named after the
+  attribute's English template (`The {0} field is required.`) is formatted like the original. A resource with the
+  whole message still wins.
+- `ViewResult.RefreshEvery` refuses an interval over 24 hours, like `@refresh` (`ViewResult.MaximumRefreshInterval`),
+  and says the range it accepts. The file log says "1 entry was dropped".
+- The sanitiser removes whole escape sequences: `Bob\u001b[2J` became `Bob[2J`, and now becomes `Bob`, as the guide
+  says.
+- Guides corrected where their samples did not work as written: the hosting guide's development logging (the
+  `Logging` section overrode `SetMinimumLevel`; it now uses `AddFilter`, with its `using` directives), `@inject
+  IOptions<…>` (needs `@using Microsoft.Extensions.Options`), `@Model.Total` formatting in Polish, the sparkline
+  sample's bars, the Native AOT executable size, and where relative log paths go (the application's folder, also in
+  the template's readme).
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).

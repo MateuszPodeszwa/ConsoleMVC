@@ -144,7 +144,7 @@ public class InteractionTests
 
         new InputElement { Name = "x", Label = "\u001b[2JName: " }.Read(renderer, new ScriptedInput("a"));
 
-        Assert.Equal("[2JName: ", output.ToString());
+        Assert.Equal("Name: ", output.ToString());
     }
 
     // --- Renderer prompt ---
@@ -166,8 +166,8 @@ public class InteractionTests
         var option = Option("\u001b[31mX", "Red", "A");
         var menu = Menu(option);
 
-        Assert.Same(option, menu.Choose(renderer, new ScriptedInput("[31mX")));
-        Assert.StartsWith("[[31mX] Red", output.ToString());
+        Assert.Same(option, menu.Choose(renderer, new ScriptedInput("X")));   // the escape sequence is removed whole
+        Assert.StartsWith("[X] Red", output.ToString());
     }
 
     [Fact]

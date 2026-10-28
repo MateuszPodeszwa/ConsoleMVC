@@ -68,7 +68,7 @@ Text inside `<text>` follows HTML rules: runs of spaces and new lines collapse i
 
 ### Security
 
-Every value inserted into the screen is sanitised. Control characters, ANSI escape sequences and Unicode bidirectional overrides are removed, so model data typed by users cannot clear the screen, recolour the terminal or disguise text.
+Every value inserted into the screen is sanitised. Control characters, whole ANSI escape sequences (so `\u001b[2J` leaves nothing behind) and Unicode bidirectional overrides are removed, so model data typed by users cannot clear the screen, recolour the terminal or disguise text.
 
 ## Elements
 
@@ -530,7 +530,7 @@ are shown.
 
 ```
 <sparkline label="Queue " values="@Model.QueueHistory" show-last />     Queue ▁▂▂▃▅▇█▆▄▃▂▁ 3
-<sparkline values="3, 5, 2, 8" />                                       ▃▄▁█
+<sparkline values="3, 5, 2, 8" />                                       ▂▅▁█
 ```
 
 | Attribute | Values | Default |
