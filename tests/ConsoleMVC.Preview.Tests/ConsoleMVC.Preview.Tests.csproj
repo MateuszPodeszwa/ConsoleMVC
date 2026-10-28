@@ -18,6 +18,12 @@
     <ProjectReference Include="../../src/ConsoleMVC.Preview/ConsoleMVC.Preview.csproj" />
   </ItemGroup>
 
+  <!-- The generator tests' harness builds and runs a view with the real generator and runtime, so a preview can be
+       compared with what the application really reports and draws -->
+  <ItemGroup>
+    <Compile Include="../ConsoleMVC.Generators.Tests/Infrastructure/ViewHarness.cs" Link="Infrastructure/ViewHarness.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>

@@ -9,7 +9,9 @@ namespace ConsoleMVC.Preview
     /// <summary>
     /// The <c>cvw-preview</c> command line: <c>cvw-preview &lt;file.cvw&gt; [--width 80] [--format text|ansi|html]
     /// [--stdin] [--high-contrast]</c>. With <c>--stdin</c> the view's text is read from standard input (an editor's
-    /// unsaved buffer) and the file only says where it lives, for its partial views and layout.
+    /// unsaved buffer) and the file only says where it lives, for its partial views and layout. A value may follow its
+    /// option or be joined to it with <c>=</c> (<c>--width=100</c>); a width outside <see cref="CvwPreview.MinimumWidth"/>
+    /// to <see cref="CvwPreview.MaximumWidth"/> or an unknown format is a <see cref="UsageError"/>.
     /// </summary>
     /// <example><code>cvw-preview Views/Home/IndexView.cvw --width 100 --format html</code></example>
     internal static class PreviewCommand
@@ -25,7 +27,8 @@ namespace ConsoleMVC.Preview
 
         private const string Usage =
             "Usage: cvw-preview <file.cvw> [--width 80] [--format text|ansi|html] [--stdin] [--high-contrast]\n" +
-            "Draws a ConsoleMVC view without building the application. --stdin reads the view's text from standard input.";
+            "Draws a ConsoleMVC view without building the application. --stdin reads the view's text from standard input.\n" +
+            "--width takes a whole number from 20 to 500. A value may also be joined with '=': --width=100, --format=html.";
 
         /// <summary>Runs the command.</summary>
         /// <param name="args">The arguments.</param>
@@ -41,25 +44,34 @@ namespace ConsoleMVC.Preview
 
             for (var i = 0; i < args.Length; i++)
             {
-                switch (args[i])
+                // An option's value follows it (--width 80) or is joined to it with '=' (--width=80)
+                var argument = args[i];
+                string? joined = null;
+                var equals = argument.IndexOf('=');
+                if (argument.StartsWith("--", StringComparison.Ordinal) && equals > 2)
                 {
-                    case "--width" when i + 1 < args.Length
-                                        && int.TryParse(args[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out var width):
-                        options = options with { Width = width };
-                        i++;
+                    joined = argument[(equals + 1)..];
+                    argument = argument[..equals];
+                }
+
+                switch (argument)
+                {
+                    case "--width" or "--format":
+                        var value = joined ?? (i + 1 < args.Length ? args[++i] : null);
+                        if (SetOption(argument, value, ref options) is { } problem)
+                        {
+                            error.WriteLine($"cvw-preview: {problem}\n{Usage}");
+                            return UsageError;
+                        }
+
                         break;
-                    case "--format" when i + 1 < args.Length && Enum.TryParse<PreviewFormat>(args[i + 1], ignoreCase: true, out var format)
-                                                             && Enum.IsDefined(format):
-                        options = options with { Format = format };
-                        i++;
-                        break;
-                    case "--stdin":
+                    case "--stdin" when joined is null:
                         fromInput = true;
                         break;
-                    case "--high-contrast":
+                    case "--high-contrast" when joined is null:
                         options = options with { HighContrast = true };
                         break;
-                    case "--help" or "-h":
+                    case "--help" or "-h" when joined is null:
                         output.WriteLine(Usage);
                         return Success;
                     default:
@@ -101,6 +113,43 @@ namespace ConsoleMVC.Preview
                 WriteProblems(result, error);
 
             return Success;
+        }
+
+        /// <summary>Sets the value of <c>--width</c> or <c>--format</c>.</summary>
+        /// <param name="option">The option, <c>--width</c> or <c>--format</c>.</param>
+        /// <param name="value">Its value, or <see langword="null"/> when the arguments end after the option.</param>
+        /// <param name="options">The options to change.</param>
+        /// <returns>What is wrong with the value, or <see langword="null"/> when it was set.</returns>
+        private static string? SetOption(string option, string? value, ref PreviewOptions options)
+        {
+            if (option == "--width")
+            {
+                var allowed = $"--width needs a whole number from {CvwPreview.MinimumWidth} to {CvwPreview.MaximumWidth}";
+                if (value is null)
+                    return allowed + ".";
+
+                if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var width)
+                    || width is < CvwPreview.MinimumWidth or > CvwPreview.MaximumWidth)
+                    return $"{allowed}, not '{value}'.";
+
+                options = options with { Width = width };
+                return null;
+            }
+
+            const string formats = "--format needs text, ansi or html";
+            if (value is null)
+                return formats + ".";
+
+            // The names only: Enum.TryParse would also accept a number such as "1"
+            var format = Enum.GetValues<PreviewFormat>()
+                .Where(f => string.Equals(f.ToString(), value, StringComparison.OrdinalIgnoreCase))
+                .Select(f => (PreviewFormat?)f)
+                .FirstOrDefault();
+            if (format is null)
+                return $"{formats}, not '{value}'.";
+
+            options = options with { Format = format.Value };
+            return null;
         }
 
         private static void WriteProblems(PreviewResult result, TextWriter error)

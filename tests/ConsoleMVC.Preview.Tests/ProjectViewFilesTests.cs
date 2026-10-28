@@ -24,7 +24,7 @@ public sealed class ProjectViewFilesTests : IDisposable
     {
         Write("Views/Shared/Header.cvw", "header");
         var files = ProjectViewFiles.ForView(Write("Views/Home/IndexView.cvw", ""));
-        Assert.Equal("header", files.ReadShared("Header"));
+        Assert.Equal("header", files.ReadShared("Header")?.Text);
         Assert.False(files.IsShared);
     }
 
@@ -35,22 +35,53 @@ public sealed class ProjectViewFilesTests : IDisposable
     }
 
     [Fact]
-    public void AnAreaView_PrefersTheAreasSharedFolder_ThenTheProjects()
+    public void AnAreaView_ReadsTheProjectsSharedFolder_NotTheAreas()
     {
+        // As in the build (PreviewDiagnosticsTests compares it): an area's Views/Shared holds views, not partials
         Write("Views/Shared/Header.cvw", "project header");
-        Write("Views/Shared/Footer.cvw", "project footer");
         Write("Areas/Admin/Views/Shared/Header.cvw", "admin header");
+        Write("Areas/Admin/Views/Shared/Footer.cvw", "admin footer");
         var files = ProjectViewFiles.ForView(Write("Areas/Admin/Views/Settings/IndexView.cvw", ""));
-        Assert.Equal("admin header", files.ReadShared("Header"));
-        Assert.Equal("project footer", files.ReadShared("Footer"));
+        Assert.Equal("project header", files.ReadShared("Header")?.Text);
+        Assert.Null(files.ReadShared("Footer"));
+        Assert.Equal(["Header"], files.SharedNames);
+    }
+
+    [Fact]
+    public void AViewInAnAreasSharedFolder_IsNotASharedView()
+    {
+        Assert.False(ProjectViewFiles.ForView(Write("Areas/Admin/Views/Shared/MenuView.cvw", "")).IsShared);
+    }
+
+    [Fact]
+    public void AName_IsMatchedInAnyCase_AndTheFirstFileByPathWins()
+    {
+        Write("Views/Shared/Header.cvw", "upper");
+        Write("Views/Shared/header.cvw", "lower"); // a second file only where names are case-sensitive
+        var files = ProjectViewFiles.ForView(Write("Views/Home/IndexView.cvw", ""));
+        Assert.Equal("upper", files.ReadShared("HEADER")?.Text);
+        Assert.Equal("Header", files.ReadShared("header")?.Name);
+    }
+
+    [Fact]
+    public void OnlyCvwFilesDirectlyInTheSharedFolder_AreSharedViews()
+    {
+        Write("Views/Shared/Header.cvw", "");
+        Write("Views/Shared/Notes.txt", "");
+        Write("Views/Shared/Sub/Nested.cvw", "");
+        Write("Views/Shared/not-a-name.cvw", "");
+        var files = ProjectViewFiles.ForView(Write("Views/Home/IndexView.cvw", ""));
+        Assert.Equal(["Header"], files.SharedNames);
     }
 
     [Fact]
     public void AViewOutsideAViewsFolder_HasNoSharedViews()
     {
         Write("Shared/Header.cvw", "header");
-        var files = ProjectViewFiles.ForView(Write("Other/IndexView.cvw", ""));
-        Assert.Same(ProjectViewFiles.None, files);
+        var path = Write("Other/IndexView.cvw", "");
+        var files = ProjectViewFiles.ForView(path);
+        Assert.Equal(path, files.ViewPath);
+        Assert.Empty(files.SharedNames);
         Assert.Null(files.ReadShared("Header"));
     }
 
@@ -79,11 +110,54 @@ public sealed class ProjectViewFilesTests : IDisposable
     }
 
     [Fact]
-    public void AFileOverTheSizeLimit_IsTreatedAsMissing()
+    public void AFileOverTheSizeLimit_IsNotRead()
     {
         Write("Views/Shared/Huge.cvw", new string('x', (int)ProjectViewFiles.MaxFileSize + 1));
         var files = ProjectViewFiles.ForView(Write("Views/Home/IndexView.cvw", ""));
-        Assert.Null(files.ReadShared("Huge"));
+        var huge = files.ReadShared("Huge");
+        Assert.NotNull(huge);
+        Assert.True(huge.IsTooLarge);
+        Assert.Null(huge.Text);
+    }
+
+    /// <summary>A shared view one byte over the limit: real markup followed by spaces.</summary>
+    private string WriteHugeShared(string name, string markup) =>
+        Write($"Views/Shared/{name}.cvw", markup + new string(' ', (int)ProjectViewFiles.MaxFileSize + 1 - markup.Length));
+
+    private PreviewResult Preview(string view)
+    {
+        var path = Write("Views/Home/IndexView.cvw", view);
+        return CvwPreview.Render(view, ProjectViewFiles.ForView(path), new PreviewOptions());
+    }
+
+    [Fact]
+    public void APartialOverTheSizeLimit_IsSaidToBeTooLarge_NotMissing()
+    {
+        WriteHugeShared("Big", "<text>Big</text>");
+        var result = Preview("<partial name=\"Big\" />");
+        Assert.DoesNotContain(result.Notes, n => n.Contains("not found"));
+        Assert.Contains("The partial view 'Big' is larger than 1 MB, so the preview does not read it.", result.Notes);
+        Assert.Contains("[partial view Big]", result.Output);
+    }
+
+    [Fact]
+    public void ANamedLayoutOverTheSizeLimit_IsSaidToBeTooLarge_NotMissing()
+    {
+        WriteHugeShared("Big", "<text>Top</text><body />");
+        var result = Preview("@layout Big\n<text>Page</text>");
+        Assert.DoesNotContain(result.Notes, n => n.Contains("not found"));
+        Assert.Contains("The layout 'Big' is larger than 1 MB, so the preview does not read it; the view is shown without it.", result.Notes);
+        Assert.Equal("Page", result.Output.TrimEnd());
+    }
+
+    [Fact]
+    public void TheDefaultLayoutOverTheSizeLimit_IsSaidToBeTooLarge()
+    {
+        // Without the note the view would silently be shown without the layout every screen of the application has
+        WriteHugeShared("_Layout", "<text>Top</text><body />");
+        var result = Preview("<text>Page</text>");
+        Assert.DoesNotContain(result.Notes, n => n.Contains("not found"));
+        Assert.Contains("The layout '_Layout' is larger than 1 MB, so the preview does not read it; the view is shown without it.", result.Notes);
     }
 
     [Fact]

@@ -31,17 +31,22 @@ Home › Page                                                 ConsoleMVC
 │  {Model.Message}  │
 ╰───────────────────╯
 
-[1] About
-[2] Greeting form
-[q] Exit
-Select an option:
 ──────────────────────────────────────────────────────────────────────
 Esc Back  Ctrl+X Quit
+[1] About
+[2] Greeting form
+[3] Calculator
+[4] Feature tour (tables)
+[q] Exit
+Select an option:
 ```
+
+The layout's separator and shortcuts come before the menu, as in the application: the part of a layout after
+`<body />` is drawn just before the view first waits for the user.
 
 | Option | Meaning |
 |---|---|
-| `--width N` | The width in columns, from 20 to 500 (default 80) |
+| `--width N` | The width in columns: a whole number from 20 to 500 (default 80). Any other value is an error |
 | `--format text` | Plain text (the default) |
 | `--format ansi` | Text with colours, for a terminal |
 | `--format html` | An HTML fragment: a `<pre class="cvw-screen">` with a styled `<span>` per run of one style, followed by a `<ul class="cvw-problems">` when there are problems |
@@ -49,8 +54,15 @@ Esc Back  Ctrl+X Quit
 | `--high-contrast` | Draws with the [high-contrast theme](accessibility.md) |
 | `--help` | Shows the usage |
 
+A value can follow its option or be joined to it with `=`: `--width 100` and `--width=100` are the same, and so are
+`--format html` and `--format=html`. Options are written in lower case.
+
 The exit code is 0 when the view was drawn (even with diagnostics), 1 for wrong arguments and 2 when the file cannot
-be read.
+be read. Wrong arguments are explained on standard error, followed by the usage:
+
+```text
+cvw-preview: --width needs a whole number from 20 to 500, not '5000'.
+```
 
 ### What the preview shows
 
@@ -62,13 +74,35 @@ The tool reads markup, not C#, so a preview is a sketch of the screen rather tha
 | `title="Order @Model.Id"` | The text with a placeholder: `Order {Model.Id}` |
 | `@foreach`, `@if`, `@{ … }` | The code is skipped; elements inside loops are drawn once, and both branches of an `if` are drawn |
 | `values="@Model.Load"` on a chart, `value="@…"` on `<progress>` or `<bar>` | Sample numbers, so the chart or bar is visible |
-| `<partial name="Header" />` | The partial view from `Views/Shared` (an area's own `Shared` folder first), drawn in place |
-| The view's layout (`_Layout`, or `@layout Name`) | The view is drawn inside it, at `<body />`; `@layout none` draws the view alone |
+| `<partial name="Header" />` | The partial view from the project's `Views/Shared`, drawn in place. As in the build, the name may be written in any case, and an area's views use the project's `Views/Shared` too (an `Areas/{Area}/Views/Shared` folder holds ordinary views) |
+| The view's layout (`_Layout`, or `@layout Name`) | The view is drawn inside it, as in the application: the part before `<body />` first, the part after it just before the view's first `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>` (or at the end when there is none). `@layout none` draws the view alone |
 | A view in `Views/Shared` | Drawn on its own; `<body />` shows as `[the page's content]` |
-| `<menu>`, `<input>`, `<select>`, `<radio>`, `<checkbox>` | The first frame the user would see: options and prompt, labels and choices |
+| `<menu>`, `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` | Exactly what the application draws in a terminal when the field first waits for its answer (see below) |
 | `<errors />` | A sample message, `{validation message}` |
 | `<breadcrumbs />`, `<shortcuts />` | Sample items |
 | `class="…"` | The [default theme](c-view-markup.md#themes-and-class) (or the high-contrast one) |
+
+Each field and menu is drawn by the framework's own code, as a terminal first shows it, before the user presses a key:
+
+```text
+Colour: (Up/Down, Enter)
+   Red
+ > Green
+   Blue
+[x] Send me news  (Space, Enter)
+Count: 1  (Up/Down, type a number, Enter)
+Due: 2026-11-04 Wed  (Left/Right, Up/Down, t today, Enter)
+Name:
+```
+
+- A `<select>` or `<radio>` highlights its `default` (ticks for `<select multiple>`), a `<checkbox checked>` is ticked,
+  and a `<number>` or `<date>` shows its `default`. A `<date>` without one, or whose `default` is an expression, shows
+  today.
+- An `<input>` shows its label and a `<menu>` its options and prompt, as in a terminal. The line ends after the prompt,
+  where the user would press Enter.
+- The application waits at its first field; the preview shows every field of the view, each as it is first drawn.
+- When the input is piped, or the console cannot move the cursor, the application asks differently (numbered choices,
+  `Choose 1-3 [Green]:`, `Send me news? [Y/n]:`); the preview always shows the terminal.
 
 Something the preview cannot draw, such as a partial view whose name is an expression, shows as a dim note in brackets.
 A partial view or layout that was not found, or an attribute value an element refuses, is also listed with the
@@ -76,22 +110,49 @@ problems.
 
 ### Diagnostics
 
-The view is parsed by the generator's own parser, so the preview reports exactly the markup errors the build would,
-with their line and column:
+The preview checks the view with the generator's own code, and reports the diagnostics the build reports for it, with
+the same message, line and column:
 
 ```text
 3:3: error CVW105: Unknown element <blink>. Known elements: <text>, <box>, …
 ```
 
 In text and ANSI output they go to standard error; in HTML they follow the screen as
-`<li class="cvw-error" data-line="3" data-column="3">`. C# errors are not checked, since no C# is compiled.
+`<li class="cvw-error" data-line="3" data-column="3">`.
+
+These are reported, as the build reports them:
+
+- The markup's own diagnostics: CVW006, CVW007, CVW008, CVW010 (an invalid or repeated `@refresh`) and CVW100 to
+  CVW113.
+- The checks that need the project's partial views and layouts, the `.cvw` files directly in its `Views/Shared`:
+  CVW010 (`@refresh` in a partial view or a layout), CVW103 (`<menu>` in a partial view) and CVW114 to CVW118 (an
+  unknown partial or one named by an expression, a partial's missing model, a partial that renders itself, a misplaced
+  `<body />` or an invalid layout, an unknown `@layout`).
+- The checks of the file's place and name: CVW001, CVW002, CVW003 and CVW009.
+
+As in the build, the checks that need the project wait until the markup has no errors, and a file the build skips
+(CVW001, CVW002 or CVW009) has no other diagnostics. A view that is a shared view is checked with its unsaved text.
+
+These are not reported, because only a build can know them:
+
+- CVW119, CVW120 and CVW121: `nav` targets, navigation in C# and the views actions ask for are checked against the
+  project's controllers, which only the compiler knows. Build the project to see them.
+- CVW004 (two views that generate the same class) and CVW005 (an invalid `RootNamespace`), which depend on the other
+  views and on the project file.
+- Errors in the view's C#, since no C# is compiled.
+
+With `--stdin` and no file name, where the view lives is unknown, so only the markup's own diagnostics are reported.
+When a shared view is larger than 1 MB, or `Views/Shared` holds more than 1000 views, the checks that need the shared
+views are left out and a note says so.
 
 ### Safety
 
-The tool runs no code from the project and loads none of its assemblies. It reads the view, and only the shared views
-it names in `Views/Shared` (and the area's `Views/Shared`). Partial and layout names must be plain names (letters,
-digits and underscores), so a view cannot make the tool read another file, and shared views larger than 1 MB are
-ignored. All text in the HTML output is encoded, so a view cannot add markup to an editor's preview panel.
+The tool runs no code from the project and loads none of its assemblies. It reads the view and the `.cvw` files
+directly in the project's `Views/Shared` (the `Shared` folder of the `Views` folder the view is in, or of the
+project's `Views` folder for a view in an area), to draw partial views and layouts and to check them as the build does. Partial and layout names must be
+plain names (letters, digits and underscores), so a view cannot make the tool read another file, and a shared view
+larger than 1 MB is not read: the preview draws a note in its place and says that the file is too large. All text in
+the HTML output is encoded, so a view cannot add markup to an editor's preview panel.
 
 ## The markup schema
 

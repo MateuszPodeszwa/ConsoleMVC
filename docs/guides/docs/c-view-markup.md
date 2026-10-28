@@ -655,7 +655,7 @@ A layout frames every screen. It is a `.cvw` file in `Views/Shared` with a `<bod
 ```
 
 * `Views/Shared/_Layout.cvw` is used by every view. A view picks another with `@layout Plain`, or none with `@layout none`.
-* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
+* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`, its partials' included), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
 * A layout shares the view's `ViewData`, `ModelState`, `Form`, theme and services, and may use C# and `@inject`. It runs before the view's own code, so it sees `ViewData` set by the controller. It has no `@model`.
 * `<body />` appears once, at the top level of the layout, not inside an element or a C# block. Partials have no layout, and layouts cannot nest.
 

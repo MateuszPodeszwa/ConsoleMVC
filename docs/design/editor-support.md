@@ -88,19 +88,36 @@ Build(nodes):
                                             number (30, 50, 20, …), so charts and bars are visible
         inline content                    → AppendText, with "{expression}" for each @expression; <br /> → AppendLineBreak
         block content                     → children; runs of text become an implicit <text> (as the emitter does)
-    <partial name="X" />                  → Views/Shared/X.cvw (or the area's Shared folder), built in place (depth ≤ 8)
-    the view                              → drawn inside @layout's (or _Layout's) layout at its <body />
+    <partial name="X" />                  → the project's Views/Shared/X.cvw (any case, the first file by path, as the
+                                            build finds it; an area's views use it too), built in place (depth ≤ 8)
+    the view                              → drawn inside @layout's (or _Layout's) layout: the part before <body />,
+                                            then the view, with the part after <body /> just before the view's first
+                                            field or menu (or at the end), as ConsoleView.UseLayout draws it
 Render: Theme.CreateDefault() (or high contrast), MarkupRenderer at --width, one element after another
 Output: html  → <pre> with a <span style> per run of one style, colours from ConsolePalette
         text  → plain lines;  ansi → AnsiRenderTarget
         diagnostics → a list after the screen (html) or on stderr, with line and column
+Check (ViewChecks): ViewSourceGenerator.CheckFile(path)   → CVW001, CVW002, CVW003, CVW009
+                    ViewSourceGenerator.CheckMarkup(document, view, partials, no routes)
+                                                          → the parser's diagnostics, then CVW010, CVW103, CVW114 to CVW118
+                    partials: ViewSourceGenerator.PartialEntryFor(each Views/Shared file; the view's unsaved text for itself)
 ```
 
-- **Interactive elements** draw their prompt, as the first frame the user would see: `<menu>` its options and prompt,
-  `<input>` its label, `<select>` its choices, `<scroll>` all of its content.
-- **Safety**: the tool runs no user code and loads no assembly from the project. It reads only the view, the files in
-  `Views/Shared` (and the area's) and nothing outside the project's `Views` folders; partial and layout names are
-  checked to be plain identifiers before they become paths.
+- **Diagnostics** come from the generator's own methods, which the build calls too, so they cannot drift apart. Route
+  checks (CVW119 to CVW121) are left out: they need the project's controllers from a compilation, and compiling the
+  project's C# without MSBuild is slow (about half a second per preview) and wrong whenever the project relies on
+  generated code such as implicit usings. CVW004 and CVW005 need the other views and the project file. A shared view
+  over the size limit, or more than 1000 of them, leaves the checks that need them out, with a note, rather than
+  guessing.
+
+- **Interactive elements** are drawn by their own `Read` (fields) or `Choose` (`<menu>`) through `PreviewScreen`, a
+  renderer that can rewrite, with a terminal input that has already ended: they draw exactly the frame a terminal
+  shows when they first wait (a checked `<checkbox>` ticked, a `<number>` or `<date>` with its default, a `<select>`
+  or `<radio>` with its default highlighted, an `<input>` or `<menu>` with its prompt), and the prompt's line is
+  ended as Enter would. `<scroll>` shows all of its content.
+- **Safety**: the tool runs no user code and loads no assembly from the project. It reads only the view and the
+  `.cvw` files directly in the project's `Views/Shared`; partial and layout names are checked to be plain identifiers
+  before they are looked up.
 - The tool is a `dotnet tool` (`dotnet tool install -g ConsoleMVC.Preview`), released with the framework at the same
   version. It references the generator's parser through `InternalsVisibleTo`, so it parses exactly as the build does.
 
@@ -116,3 +133,6 @@ the Rider plugin (lexer, highlighting, completion, annotator and a preview tool 
 - `PreviewTests`: each kind of attribute value, inline and block content, implicit text, expressions as placeholders,
   code skipped, partials and layouts resolved (and refused outside the project), interactive elements, the HTML output's
   colours and escaping, diagnostics, and the command line.
+- `PreviewMatchesTheAppTests` and `PreviewDiagnosticsTests`: the same views are compiled and run with the real
+  generator and runtime (the generator tests' `ViewHarness`), and the preview must draw what a terminal shows and report
+  what the build reports.

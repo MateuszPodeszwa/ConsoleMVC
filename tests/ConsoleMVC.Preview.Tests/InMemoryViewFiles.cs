@@ -15,12 +15,19 @@ internal sealed class InMemoryViewFiles(Dictionary<string, string> shared, bool 
     public List<string> Requested { get; } = [];
 
     /// <inheritdoc />
+    /// <remarks>Unknown, so only the markup is checked, as for text from standard input.</remarks>
+    public string? ViewPath => null;
+
+    /// <inheritdoc />
     public bool IsShared { get; } = isShared;
 
     /// <inheritdoc />
-    public string? ReadShared(string name)
+    public IReadOnlyList<string> SharedNames => shared.Keys.Order(StringComparer.Ordinal).ToList();
+
+    /// <inheritdoc />
+    public SharedView? ReadShared(string name)
     {
         Requested.Add(name);
-        return shared.GetValueOrDefault(name);
+        return shared.TryGetValue(name, out var text) ? new SharedView(name, text) : null;
     }
 }

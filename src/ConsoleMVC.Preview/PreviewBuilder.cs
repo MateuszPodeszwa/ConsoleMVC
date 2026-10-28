@@ -41,36 +41,60 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
     public IReadOnlyList<Element> BuildView(CvwDocument document)
     {
         var page = new List<Element>();
-        BuildTopLevel(document.Body, page, body: null);
+        BuildTopLevel(document.Body, page);
 
         if (files.IsShared)
             return page;
 
         var layoutName = document.Layout?.Value ?? PartialChecker.DefaultLayout;
-        if (layoutName == PartialChecker.NoLayout || LoadShared(layoutName) is not { } layout || !layout.HasBodyPlaceholder)
+        if (layoutName == PartialChecker.NoLayout)
+            return page;
+
+        var file = ReadShared(layoutName);
+        if (file is { IsTooLarge: true })
         {
-            if (document.Layout is not null && layoutName != PartialChecker.NoLayout)
+            problems.Add($"The layout '{file.Name}' is {TooLarge}; the view is shown without it.");
+            return page;
+        }
+
+        if (Parse(file) is not { } layout || !layout.HasBodyPlaceholder)
+        {
+            if (document.Layout is not null)
                 problems.Add($"The layout '{layoutName}' was not found in Views/Shared, so the view is shown without it.");
             return page;
         }
 
+        // The part before <body /> is drawn first; the part after it just before the view first waits for the user
+        // (its first field or menu, its partials' included), or at the end when it never waits, as ConsoleView.UseLayout does
+        var split = layout.Body.ToList().FindIndex(n => n is ElementNode { Schema.Tag: MarkupSchema.BodyTag });
         var framed = new List<Element>();
-        BuildTopLevel(layout.Body, framed, body: page);
+        BuildTopLevel(layout.Body.Take(split).ToList(), framed);
+
+        var footer = new List<Element>();
+        BuildTopLevel(layout.Body.Skip(split + 1).ToList(), footer);
+
+        var prompt = page.FindIndex(IsPrompt);
+        framed.AddRange(prompt < 0 ? [.. page, .. footer] : [.. page.Take(prompt), .. footer, .. page.Skip(prompt)]);
         return framed;
     }
 
-    /// <summary>Builds top-level nodes: elements, partials and the layout's body; C# is skipped.</summary>
+    /// <summary>Whether drawing <paramref name="element"/> waits for the user: a form field or a menu.</summary>
+    /// <param name="element">A top-level element.</param>
+    /// <returns><see langword="true"/> for <see cref="IFormField"/>s and <see cref="MenuElement"/>s.</returns>
+    /// <example><code>var first = elements.ToList().FindIndex(PreviewBuilder.IsPrompt);</code></example>
+    public static bool IsPrompt(Element element) => element is IFormField or MenuElement;
+
+    /// <summary>Builds top-level nodes: elements, partials and a shared view's <c>&lt;body /&gt;</c>; C# is skipped.</summary>
     /// <param name="nodes">The nodes.</param>
     /// <param name="output">Receives the elements.</param>
-    /// <param name="body">The page drawn at a layout's <c>&lt;body /&gt;</c>, or <see langword="null"/>.</param>
-    private void BuildTopLevel(IReadOnlyList<Node> nodes, List<Element> output, IReadOnlyList<Element>? body)
+    private void BuildTopLevel(IReadOnlyList<Node> nodes, List<Element> output)
     {
         foreach (var node in nodes.OfType<ElementNode>())
         {
             switch (node.Schema.Tag)
             {
                 case MarkupSchema.BodyTag:
-                    output.AddRange(body ?? [Note("the page's content")]);
+                    output.Add(Note("the page's content"));
                     break;
 
                 case MarkupSchema.PartialTag:
@@ -79,14 +103,7 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
 
                 default:
                     if (BuildElement(node) is Element element)
-                    {
                         output.Add(element);
-
-                        // A menu waits for a choice: show its prompt, as the user would see it
-                        if (element is MenuElement menu)
-                            output.Add(Text(menu.Prompt));
-                    }
-
                     break;
             }
         }
@@ -111,20 +128,28 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
             return;
         }
 
-        if (LoadShared(name) is not { } partial)
+        var file = ReadShared(name);
+        if (Parse(file) is not { } partial)
         {
-            problems.Add($"The partial view '{name}' was not found in Views/Shared.");
+            problems.Add(file is { IsTooLarge: true }
+                ? $"The partial view '{file.Name}' is {TooLarge}."
+                : $"The partial view '{name}' was not found in Views/Shared.");
             output.Add(Note($"partial view {name}"));
             return;
         }
 
         _partials.Push(name);
-        BuildTopLevel(partial.Body, output, body: null);
+        BuildTopLevel(partial.Body, output);
         _partials.Pop();
     }
 
-    private CvwDocument? LoadShared(string name) =>
-        ProjectViewFiles.IsPlainName(name) && files.ReadShared(name) is { } text ? CvwDocumentParser.Parse(text, MarkupSchema.Default) : null;
+    /// <summary>Why a shared view over the size limit is not drawn, after its name.</summary>
+    private static readonly string TooLarge = $"larger than {ProjectViewFiles.MaxFileSize / (1024 * 1024)} MB, so the preview does not read it";
+
+    private SharedView? ReadShared(string name) => ProjectViewFiles.IsPlainName(name) ? files.ReadShared(name) : null;
+
+    private static CvwDocument? Parse(SharedView? file) =>
+        file?.Text is { } text ? CvwDocumentParser.Parse(text, MarkupSchema.Default) : null;
 
     /// <summary>
     /// Creates the runtime object of an element node with its attributes and content: usually an <see cref="Element"/>,
@@ -171,6 +196,9 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
 
         if (element is ValidationErrorsElement errors)
             errors.Source = SampleErrors(errors.For);
+
+        if (element is DateElement date)
+            LeaveOutComputedDates(date);
 
         return element;
     }
@@ -305,10 +333,21 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
         return note;
     }
 
-    private static TextElement Text(string text)
+    /// <summary>
+    /// Leaves out a <c>&lt;date&gt;</c>'s <c>default</c>, <c>min</c> and <c>max</c> that are not dates: an
+    /// <c>@expression</c>'s placeholder, or a value the build reports as invalid. The field then shows today, as it does
+    /// without them, instead of not being drawn at all.
+    /// </summary>
+    private static void LeaveOutComputedDates(DateElement date)
     {
-        var element = new TextElement();
-        element.AppendText(text);
-        return element;
+        var today = DateOnly.FromDateTime(date.Clock.GetLocalNow().DateTime);
+        bool IsDate(string? value) => value is null || DateElement.TryParse(value, today, out _);
+
+        if (!IsDate(date.Default))
+            date.Default = null;
+        if (!IsDate(date.Min))
+            date.Min = null;
+        if (!IsDate(date.Max))
+            date.Max = null;
     }
 }

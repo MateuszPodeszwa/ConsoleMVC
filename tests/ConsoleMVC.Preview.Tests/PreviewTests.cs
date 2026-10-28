@@ -172,11 +172,20 @@ public class PreviewTests
     }
 
     [Fact]
-    public void ASelect_ShowsItsChoices()
+    public void ASelect_ShowsItsChoices_WithTheFirstHighlighted()
     {
-        var output = Text("<select name=\"C\" label=\"Colour\"><choice value=\"r\">Red</choice><choice value=\"b\">Blue</choice></select>");
-        Assert.Contains("1) Red", output);
-        Assert.Contains("2) Blue", output);
+        // As a terminal shows it (PreviewMatchesTheAppTests compares it with the application)
+        var output = Lines(Text("<select name=\"C\" label=\"Colour\"><choice value=\"r\">Red</choice><choice value=\"b\">Blue</choice></select>"));
+        Assert.Equal(["Colour (Up/Down, Enter)", " > Red", "   Blue"], output.Select(l => l.TrimEnd()));
+    }
+
+    [Fact]
+    public void ASelectWithoutChoices_IsANote_NotACrash()
+    {
+        var result = CvwPreview.Render("<text>Before</text><select name=\"C\" label=\"Colour\"></select><text>After</text>", NoFiles,
+            new PreviewOptions());
+        Assert.Equal(["Before", "After"], Lines(result.Output).Select(l => l.TrimEnd()));
+        Assert.Contains(result.Notes, n => n.Contains("has no choices"));
     }
 
     [Fact]
