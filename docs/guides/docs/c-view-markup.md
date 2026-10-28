@@ -711,7 +711,7 @@ builder.Theme = Theme.Empty; // or start with no classes at all
 
 ## Attribute values
 
-* **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute.
+* **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute. So is an `=` with nothing after it (`<box title=>`), for every attribute: write `title=""` for an empty value.
 * **Expressions** (`width=@Model.Width`, `title="@Model.Name's account"`) are type-checked by the C# compiler. Expressions can be mixed with text only in text attributes such as `title`.
 * **Number attributes** (`<number>` `min`, `max` and `step`; `<progress>` `value` and `max`; `<bar>` `value`; `<bar-chart>` `max`; `<sparkline>` `min` and `max`) take an expression of any number type: `int`, `long`, `short`, `byte`, `float`, `double`, `decimal` and the other .NET number types, converted to the element's own type, so `<number min="@(0.5)">` and `<progress value="@Model.Total">` with a `decimal` total both work. A nullable number (`double?`) is accepted where the attribute may be left out (`min` and `max` of `<number>` and `<sparkline>`, `max` of `<bar-chart>`), and `null` means not set. A value that is not a number, such as a `string`, is a compile error at the attribute; a number too large for a `decimal` throws an `OverflowException`.
 

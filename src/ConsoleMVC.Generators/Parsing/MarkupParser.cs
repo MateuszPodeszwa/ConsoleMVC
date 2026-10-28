@@ -350,6 +350,15 @@ internal sealed class MarkupParser
             {
                 _position++;
                 SkipWhitespace();
+
+                // title=> or title=/>: nothing follows the '=', which is a mistake for every attribute, not an empty value
+                if (_position >= _text.Length || Peek() == '>' || (Peek() == '/' && Peek(1) == '>'))
+                {
+                    Report(CvwDiagnostics.InvalidAttributeValue, new SourceSpan(attributeStart, name.Length), "", name,
+                        $"a value is required after '='; write {name}=\"\" for an empty value");
+                    continue;
+                }
+
                 parts = ParseAttributeValue();
             }
 
