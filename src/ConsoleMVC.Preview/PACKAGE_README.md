@@ -20,6 +20,9 @@ A value may also be joined to its option with `=`, as in `--width=100`. Wrong ar
 is wrong.
 
 No C# runs: every element is drawn once (the body of a loop appears once, both branches of an `if` appear), and each
-`@expression` shows as a placeholder such as `{Model.Title}`. Partial views and the layout are read from `Views/Shared`
-(and the area's), and nothing else is read. The markup's diagnostics are written to standard error, or listed after
-the screen in HTML.
+`@expression` shows as a placeholder such as `{Model.Title}`. Fields and menus look as a terminal first shows them.
+Partial views and the layout are read from the project's `Views/Shared`, and nothing else is read.
+
+The build's diagnostics for the view are written to standard error, or listed after the screen in HTML: the markup's
+own, and the checks of partial views and layouts (CVW114 to CVW118, CVW103, CVW010) and of the file's name (CVW001 to
+CVW003, CVW009). Checks that need the compiled project (CVW004, CVW005, CVW119 to CVW121, and C# errors) need a build.

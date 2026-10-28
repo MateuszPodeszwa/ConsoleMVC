@@ -35,22 +35,53 @@ public sealed class ProjectViewFilesTests : IDisposable
     }
 
     [Fact]
-    public void AnAreaView_PrefersTheAreasSharedFolder_ThenTheProjects()
+    public void AnAreaView_ReadsTheProjectsSharedFolder_NotTheAreas()
     {
+        // As in the build (PreviewDiagnosticsTests compares it): an area's Views/Shared holds views, not partials
         Write("Views/Shared/Header.cvw", "project header");
-        Write("Views/Shared/Footer.cvw", "project footer");
         Write("Areas/Admin/Views/Shared/Header.cvw", "admin header");
+        Write("Areas/Admin/Views/Shared/Footer.cvw", "admin footer");
         var files = ProjectViewFiles.ForView(Write("Areas/Admin/Views/Settings/IndexView.cvw", ""));
-        Assert.Equal("admin header", files.ReadShared("Header")?.Text);
-        Assert.Equal("project footer", files.ReadShared("Footer")?.Text);
+        Assert.Equal("project header", files.ReadShared("Header")?.Text);
+        Assert.Null(files.ReadShared("Footer"));
+        Assert.Equal(["Header"], files.SharedNames);
+    }
+
+    [Fact]
+    public void AViewInAnAreasSharedFolder_IsNotASharedView()
+    {
+        Assert.False(ProjectViewFiles.ForView(Write("Areas/Admin/Views/Shared/MenuView.cvw", "")).IsShared);
+    }
+
+    [Fact]
+    public void AName_IsMatchedInAnyCase_AndTheFirstFileByPathWins()
+    {
+        Write("Views/Shared/Header.cvw", "upper");
+        Write("Views/Shared/header.cvw", "lower"); // a second file only where names are case-sensitive
+        var files = ProjectViewFiles.ForView(Write("Views/Home/IndexView.cvw", ""));
+        Assert.Equal("upper", files.ReadShared("HEADER")?.Text);
+        Assert.Equal("Header", files.ReadShared("header")?.Name);
+    }
+
+    [Fact]
+    public void OnlyCvwFilesDirectlyInTheSharedFolder_AreSharedViews()
+    {
+        Write("Views/Shared/Header.cvw", "");
+        Write("Views/Shared/Notes.txt", "");
+        Write("Views/Shared/Sub/Nested.cvw", "");
+        Write("Views/Shared/not-a-name.cvw", "");
+        var files = ProjectViewFiles.ForView(Write("Views/Home/IndexView.cvw", ""));
+        Assert.Equal(["Header"], files.SharedNames);
     }
 
     [Fact]
     public void AViewOutsideAViewsFolder_HasNoSharedViews()
     {
         Write("Shared/Header.cvw", "header");
-        var files = ProjectViewFiles.ForView(Write("Other/IndexView.cvw", ""));
-        Assert.Same(ProjectViewFiles.None, files);
+        var path = Write("Other/IndexView.cvw", "");
+        var files = ProjectViewFiles.ForView(path);
+        Assert.Equal(path, files.ViewPath);
+        Assert.Empty(files.SharedNames);
         Assert.Null(files.ReadShared("Header"));
     }
 
@@ -104,8 +135,8 @@ public sealed class ProjectViewFilesTests : IDisposable
     {
         WriteHugeShared("Big", "<text>Big</text>");
         var result = Preview("<partial name=\"Big\" />");
-        var note = Assert.Single(result.Notes);
-        Assert.Equal("The partial view 'Big' is larger than 1 MB, so the preview does not read it.", note);
+        Assert.DoesNotContain(result.Notes, n => n.Contains("not found"));
+        Assert.Contains("The partial view 'Big' is larger than 1 MB, so the preview does not read it.", result.Notes);
         Assert.Contains("[partial view Big]", result.Output);
     }
 
@@ -114,8 +145,8 @@ public sealed class ProjectViewFilesTests : IDisposable
     {
         WriteHugeShared("Big", "<text>Top</text><body />");
         var result = Preview("@layout Big\n<text>Page</text>");
-        var note = Assert.Single(result.Notes);
-        Assert.Equal("The layout 'Big' is larger than 1 MB, so the preview does not read it; the view is shown without it.", note);
+        Assert.DoesNotContain(result.Notes, n => n.Contains("not found"));
+        Assert.Contains("The layout 'Big' is larger than 1 MB, so the preview does not read it; the view is shown without it.", result.Notes);
         Assert.Equal("Page", result.Output.TrimEnd());
     }
 
@@ -125,8 +156,8 @@ public sealed class ProjectViewFilesTests : IDisposable
         // Without the note the view would silently be shown without the layout every screen of the application has
         WriteHugeShared("_Layout", "<text>Top</text><body />");
         var result = Preview("<text>Page</text>");
-        var note = Assert.Single(result.Notes);
-        Assert.Equal("The layout '_Layout' is larger than 1 MB, so the preview does not read it; the view is shown without it.", note);
+        Assert.DoesNotContain(result.Notes, n => n.Contains("not found"));
+        Assert.Contains("The layout '_Layout' is larger than 1 MB, so the preview does not read it; the view is shown without it.", result.Notes);
     }
 
     [Fact]

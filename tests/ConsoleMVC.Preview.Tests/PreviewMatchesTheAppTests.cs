@@ -21,8 +21,8 @@ public sealed partial class PreviewMatchesTheAppTests : IDisposable
 
     private static (string, string) Shared(string name, string text) => ($"{RealApp.Project}/Views/Shared/{name}.cvw", text);
 
-    /// <summary>Previews the view at <see cref="RealApp.ViewPath"/> with the files written to a project on disk.</summary>
-    private string Preview((string Path, string Text)[] files, PreviewFormat format = PreviewFormat.Text)
+    /// <summary>Previews the view at <paramref name="view"/> with the files written to a project on disk.</summary>
+    private string Preview((string Path, string Text)[] files, PreviewFormat format = PreviewFormat.Text, string view = RealApp.ViewPath)
     {
         string? viewPath = null;
         foreach (var (path, text) in files)
@@ -30,7 +30,7 @@ public sealed partial class PreviewMatchesTheAppTests : IDisposable
             var local = Path.Combine(_project, Path.GetRelativePath(RealApp.Project, path));
             Directory.CreateDirectory(Path.GetDirectoryName(local)!);
             File.WriteAllText(local, text);
-            if (path == RealApp.ViewPath)
+            if (path == view)
                 viewPath = local;
         }
 
@@ -142,6 +142,14 @@ public sealed partial class PreviewMatchesTheAppTests : IDisposable
     public void TheFooter_IsDrawnAtTheEnd_WhenTheViewNeverWaits()
     {
         AssertPreviewIsTheApp(View("<text>content</text>\n<text>more</text>" + Quit), Shared("_Layout", Layout));
+    }
+
+    [Fact]
+    public void AViewInAnAreasSharedFolder_IsAnOrdinaryView_DrawnInTheLayout()
+    {
+        const string view = RealApp.Project + "/Areas/Admin/Views/Shared/HelpView.cvw";
+        (string, string)[] files = [(view, "<text>help</text>" + Quit), Shared("_Layout", Layout)];
+        Assert.Equal(Lines(RealApp.Run(files, view)), Lines(Preview(files, view: view)));
     }
 
     [Fact]

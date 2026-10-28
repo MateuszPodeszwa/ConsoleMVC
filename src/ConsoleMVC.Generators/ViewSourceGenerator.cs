@@ -7,6 +7,7 @@ using ConsoleMVC.Generators.Diagnostics;
 using ConsoleMVC.Generators.Emit;
 using ConsoleMVC.Generators.Parsing;
 using ConsoleMVC.Generators.Schema;
+using ConsoleMVC.Generators.Syntax;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -156,16 +157,30 @@ public class ViewSourceGenerator : IIncrementalGenerator
     /// Returns the catalogue entry for a partial view file, or <see langword="null"/> when the file is not in
     /// <c>Views/Shared</c>.
     /// </summary>
-    private static PartialEntry? PartialEntryFor(AdditionalText file, string rootNamespace, System.Threading.CancellationToken cancellationToken)
+    private static PartialEntry? PartialEntryFor(AdditionalText file, string rootNamespace, System.Threading.CancellationToken cancellationToken) =>
+        ViewInfo.TryCreate(file.Path, rootNamespace, out var info) && info.IsPartial
+            ? PartialEntryFor(file.Path, file.GetText(cancellationToken)?.ToString() ?? "", rootNamespace)
+            : null;
+
+    /// <summary>
+    /// Returns the catalogue entry for the shared view at <paramref name="path"/> (a partial view or a layout), or
+    /// <see langword="null"/> when the file is not in <c>Views/Shared</c> or is not generated. The <c>cvw-preview</c> tool
+    /// builds its catalogue with this too, so it checks <c>&lt;partial&gt;</c> and <c>@layout</c> as the build does.
+    /// </summary>
+    /// <param name="path">The file's path.</param>
+    /// <param name="text">The file's text.</param>
+    /// <param name="rootNamespace">The project's root namespace.</param>
+    /// <returns>The entry, or <see langword="null"/>.</returns>
+    /// <example><code>var header = ViewSourceGenerator.PartialEntryFor("/app/Views/Shared/Header.cvw", "&lt;text&gt;Shop&lt;/text&gt;", "MyApp");</code></example>
+    internal static PartialEntry? PartialEntryFor(string path, string text, string rootNamespace)
     {
         // Only partials that GenerateView will emit, so <partial> never refers to a class that does not exist
-        if (!ViewInfo.TryCreate(file.Path, rootNamespace, out var info) || !info.IsPartial
+        if (!ViewInfo.TryCreate(path, rootNamespace, out var info) || !info.IsPartial
             || !IsValidNamespace(rootNamespace) || !IsValidName(info.ClassName) || info.ClassName == ReservedPartialName)
             return null;
 
-        var text = file.GetText(cancellationToken)?.ToString() ?? "";
         var document = CvwDocumentParser.Parse(text, MarkupSchema.Default);
-        return new PartialEntry(info.ClassName, info.FullClassName, document.Model?.Value, file.Path, document.HasErrors,
+        return new PartialEntry(info.ClassName, info.FullClassName, document.Model?.Value, path, document.HasErrors,
             document.HasBodyPlaceholder);
     }
 
@@ -218,53 +233,17 @@ public class ViewSourceGenerator : IIncrementalGenerator
     private static void GenerateView(SourceProductionContext context, string path, SourceText text, string rootNamespace,
         PartialCatalogue partials, RouteCatalogue routes)
     {
-        if (!ViewInfo.TryCreate(path, rootNamespace, out var info))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.MisplacedView, Location.Create(path, default, default), path));
-            return;
-        }
+        var problems = CheckFile(path, rootNamespace, out var info);
+        foreach (var problem in problems)
+            context.ReportDiagnostic(Diagnostic.Create(problem.Descriptor, Location.Create(path, default, default), problem.Arguments));
 
-        if (!IsValidNamespace(rootNamespace))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidRootNamespace, Location.Create(path, default, default), rootNamespace));
+        if (info is null)
             return;
-        }
-
-        if (info.Area is { } area && !IsValidName(area))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), area, "area folder"));
-            return;
-        }
-
-        if (!IsValidName(info.ControllerFolder))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ControllerFolder, "controller folder"));
-            return;
-        }
-
-        if (!IsValidName(info.ClassName))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ClassName, "view"));
-            return;
-        }
-
-        if (info.IsPartial && info.ClassName == ReservedPartialName)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.ReservedPartialName, Location.Create(path, default, default), info.ClassName));
-            return;
-        }
-
-        if (!info.IsPartial && !info.ClassName.EndsWith("View", StringComparison.Ordinal))
-            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.ViewNameSuffix, Location.Create(path, default, default), info.ClassName));
 
         var document = CvwDocumentParser.Parse(text.ToString(), MarkupSchema.Default);
+        var diagnostics = CheckMarkup(document, info, partials, routes);
 
-        IReadOnlyList<ParseDiagnostic> compositionErrors = document.HasErrors ? [] : PartialChecker.Check(document, info, partials);
-
-        // Warnings only: the view is still generated
-        IReadOnlyList<ParseDiagnostic> routeWarnings = document.HasErrors ? [] : RouteChecker.Check(document, info, routes);
-
-        foreach (var diagnostic in document.Diagnostics.Concat(compositionErrors).Concat(routeWarnings))
+        foreach (var diagnostic in diagnostics)
         {
             var span = TextSpan.FromBounds(
                 Math.Min(diagnostic.Span.Start, text.Length),
@@ -273,10 +252,73 @@ public class ViewSourceGenerator : IIncrementalGenerator
             context.ReportDiagnostic(Diagnostic.Create(diagnostic.Descriptor, location, diagnostic.Arguments));
         }
 
-        if (document.HasErrors || compositionErrors.Count > 0)
+        if (diagnostics.Any(d => d.IsError))
             return;
 
         context.AddSource(info.HintName, ViewEmitter.Emit(document, info, partials));
+    }
+
+    /// <summary>
+    /// Checks where a view file is and what it is called, before it is read: CVW001, CVW002, CVW003, CVW005 and CVW009,
+    /// all reported at the start of the file. The <c>cvw-preview</c> tool calls this too, so it reports them as the build
+    /// does.
+    /// </summary>
+    /// <param name="path">The file's path.</param>
+    /// <param name="rootNamespace">The project's root namespace.</param>
+    /// <param name="view">The view, or <see langword="null"/> when it is not generated (and so its markup is not checked).</param>
+    /// <returns>The diagnostics, at offset 0.</returns>
+    /// <example>
+    /// <code>
+    /// var problems = ViewSourceGenerator.CheckFile("/app/Views/Home/Index.cvw", "MyApp", out var view);
+    /// // CVW003: the name does not end with View; view is not null, so the markup is checked as well
+    /// </code>
+    /// </example>
+    internal static IReadOnlyList<ParseDiagnostic> CheckFile(string path, string rootNamespace, out ViewInfo? view)
+    {
+        view = null;
+        var start = new SourceSpan(0, 0);
+        if (!ViewInfo.TryCreate(path, rootNamespace, out var info))
+            return [new ParseDiagnostic(CvwDiagnostics.MisplacedView, start, path)];
+
+        if (!IsValidNamespace(rootNamespace))
+            return [new ParseDiagnostic(CvwDiagnostics.InvalidRootNamespace, start, rootNamespace)];
+
+        if (info.Area is { } area && !IsValidName(area))
+            return [new ParseDiagnostic(CvwDiagnostics.InvalidIdentifier, start, area, "area folder")];
+
+        if (!IsValidName(info.ControllerFolder))
+            return [new ParseDiagnostic(CvwDiagnostics.InvalidIdentifier, start, info.ControllerFolder, "controller folder")];
+
+        if (!IsValidName(info.ClassName))
+            return [new ParseDiagnostic(CvwDiagnostics.InvalidIdentifier, start, info.ClassName, "view")];
+
+        if (info.IsPartial && info.ClassName == ReservedPartialName)
+            return [new ParseDiagnostic(CvwDiagnostics.ReservedPartialName, start, info.ClassName)];
+
+        view = info;
+        return !info.IsPartial && !info.ClassName.EndsWith("View", StringComparison.Ordinal)
+            ? [new ParseDiagnostic(CvwDiagnostics.ViewNameSuffix, start, info.ClassName)]
+            : [];
+    }
+
+    /// <summary>
+    /// Returns every diagnostic of a parsed view: the parser's, then, when it has no errors, the checks that need the
+    /// project (partials and layouts, CVW010, CVW103 and CVW114 to CVW118, and literal <c>nav</c> targets, CVW119). The
+    /// view is generated only when none is an error. The <c>cvw-preview</c> tool calls this too, without controllers.
+    /// </summary>
+    /// <param name="document">The parsed view.</param>
+    /// <param name="view">Where the view lives.</param>
+    /// <param name="partials">The project's partial views and layouts.</param>
+    /// <param name="routes">The project's controllers; without any, <c>nav</c> targets are not checked.</param>
+    /// <returns>The diagnostics, in the order they are reported.</returns>
+    /// <example><code>var diagnostics = ViewSourceGenerator.CheckMarkup(document, view, partials, new RouteCatalogue([]));</code></example>
+    internal static IReadOnlyList<ParseDiagnostic> CheckMarkup(CvwDocument document, ViewInfo view, PartialCatalogue partials, RouteCatalogue routes)
+    {
+        if (document.HasErrors)
+            return document.Diagnostics;
+
+        // Route warnings come last: they never stop the view from being generated
+        return [.. document.Diagnostics, .. PartialChecker.Check(document, view, partials), .. RouteChecker.Check(document, view, routes)];
     }
 
     /// <summary>A name usable as a C# identifier: valid characters and not a reserved keyword such as <c>class</c>.</summary>

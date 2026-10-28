@@ -35,8 +35,9 @@ internal sealed record PreviewDiagnostic(string Id, bool IsError, int Line, int 
 
 /// <summary>A drawn preview.</summary>
 /// <param name="Output">The screen, in the chosen format.</param>
-/// <param name="Diagnostics">The markup's diagnostics, as the build reports them.</param>
-/// <param name="Notes">What the preview could not show, such as a partial view that was not found.</param>
+/// <param name="Diagnostics">The build's diagnostics for the view that can be found without a build (<see cref="ViewChecks"/>).</param>
+/// <param name="Notes">What the preview could not show or check, such as a partial view that was not found.</param>
+/// <example><code>if (result.Diagnostics.Any(d => d.IsError)) Console.Error.WriteLine("the build would fail");</code></example>
 internal sealed record PreviewResult(string Output, IReadOnlyList<PreviewDiagnostic> Diagnostics, IReadOnlyList<string> Notes);
 
 /// <summary>
@@ -70,8 +71,9 @@ internal static class CvwPreview
         ArgumentNullException.ThrowIfNull(options);
 
         var document = CvwDocumentParser.Parse(text, MarkupSchema.Default);
+        var notes = new List<string>();
         var lines = new LineIndex(text);
-        var diagnostics = document.Diagnostics
+        var diagnostics = ViewChecks.Check(text, document, files, notes)
             .Select(d =>
             {
                 var (line, column) = lines.Locate(d.Span.Start);
@@ -79,7 +81,6 @@ internal static class CvwPreview
             })
             .ToList();
 
-        var notes = new List<string>();
         var theme = options.HighContrast ? Theme.CreateHighContrast() : Theme.CreateDefault();
         var elements = new PreviewBuilder(theme, files, notes).BuildView(document);
 

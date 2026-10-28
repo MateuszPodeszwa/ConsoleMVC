@@ -74,7 +74,7 @@ The tool reads markup, not C#, so a preview is a sketch of the screen rather tha
 | `title="Order @Model.Id"` | The text with a placeholder: `Order {Model.Id}` |
 | `@foreach`, `@if`, `@{ … }` | The code is skipped; elements inside loops are drawn once, and both branches of an `if` are drawn |
 | `values="@Model.Load"` on a chart, `value="@…"` on `<progress>` or `<bar>` | Sample numbers, so the chart or bar is visible |
-| `<partial name="Header" />` | The partial view from `Views/Shared` (an area's own `Shared` folder first), drawn in place |
+| `<partial name="Header" />` | The partial view from the project's `Views/Shared`, drawn in place. As in the build, the name may be written in any case, and an area's views use the project's `Views/Shared` too (an `Areas/{Area}/Views/Shared` folder holds ordinary views) |
 | The view's layout (`_Layout`, or `@layout Name`) | The view is drawn inside it, as in the application: the part before `<body />` first, the part after it just before the view's first `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>` (or at the end when there is none). `@layout none` draws the view alone |
 | A view in `Views/Shared` | Drawn on its own; `<body />` shows as `[the page's content]` |
 | `<menu>`, `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` | Exactly what the application draws in a terminal when the field first waits for its answer (see below) |
@@ -110,22 +110,49 @@ problems.
 
 ### Diagnostics
 
-The view is parsed by the generator's own parser, so the preview reports exactly the markup errors the build would,
-with their line and column:
+The preview checks the view with the generator's own code, and reports the diagnostics the build reports for it, with
+the same message, line and column:
 
 ```text
 3:3: error CVW105: Unknown element <blink>. Known elements: <text>, <box>, …
 ```
 
 In text and ANSI output they go to standard error; in HTML they follow the screen as
-`<li class="cvw-error" data-line="3" data-column="3">`. C# errors are not checked, since no C# is compiled.
+`<li class="cvw-error" data-line="3" data-column="3">`.
+
+These are reported, as the build reports them:
+
+- The markup's own diagnostics: CVW006, CVW007, CVW008, CVW010 (an invalid or repeated `@refresh`) and CVW100 to
+  CVW113.
+- The checks that need the project's partial views and layouts, the `.cvw` files directly in its `Views/Shared`:
+  CVW010 (`@refresh` in a partial view or a layout), CVW103 (`<menu>` in a partial view) and CVW114 to CVW118 (an
+  unknown partial or one named by an expression, a partial's missing model, a partial that renders itself, a misplaced
+  `<body />` or an invalid layout, an unknown `@layout`).
+- The checks of the file's place and name: CVW001, CVW002, CVW003 and CVW009.
+
+As in the build, the checks that need the project wait until the markup has no errors, and a file the build skips
+(CVW001, CVW002 or CVW009) has no other diagnostics. A view that is a shared view is checked with its unsaved text.
+
+These are not reported, because only a build can know them:
+
+- CVW119, CVW120 and CVW121: `nav` targets, navigation in C# and the views actions ask for are checked against the
+  project's controllers, which only the compiler knows. Build the project to see them.
+- CVW004 (two views that generate the same class) and CVW005 (an invalid `RootNamespace`), which depend on the other
+  views and on the project file.
+- Errors in the view's C#, since no C# is compiled.
+
+With `--stdin` and no file name, where the view lives is unknown, so only the markup's own diagnostics are reported.
+When a shared view is larger than 1 MB, or `Views/Shared` holds more than 1000 views, the checks that need the shared
+views are left out and a note says so.
 
 ### Safety
 
-The tool runs no code from the project and loads none of its assemblies. It reads the view, and only the shared views
-it names in `Views/Shared` (and the area's `Views/Shared`). Partial and layout names must be plain names (letters,
-digits and underscores), so a view cannot make the tool read another file, and a shared view larger than 1 MB is not
-read: the preview draws a note in its place and says that the file is too large. All text in the HTML output is encoded, so a view cannot add markup to an editor's preview panel.
+The tool runs no code from the project and loads none of its assemblies. It reads the view and the `.cvw` files
+directly in the project's `Views/Shared` (the `Shared` folder of the `Views` folder the view is in, or of the
+project's `Views` folder for a view in an area), to draw partial views and layouts and to check them as the build does. Partial and layout names must be
+plain names (letters, digits and underscores), so a view cannot make the tool read another file, and a shared view
+larger than 1 MB is not read: the preview draws a note in its place and says that the file is too large. All text in
+the HTML output is encoded, so a view cannot add markup to an editor's preview panel.
 
 ## The markup schema
 
