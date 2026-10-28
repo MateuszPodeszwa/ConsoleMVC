@@ -19,6 +19,9 @@
     <!-- Expose internals to the generator unit tests -->
     <ItemGroup>
         <InternalsVisibleTo Include="ConsoleMVC.Generators.Tests" />
+        <!-- The preview tool parses views with the same parser and schema as the build -->
+        <InternalsVisibleTo Include="ConsoleMVC.Preview" />
+        <InternalsVisibleTo Include="ConsoleMVC.Preview.Tests" />
     </ItemGroup>
 
     <ItemGroup>

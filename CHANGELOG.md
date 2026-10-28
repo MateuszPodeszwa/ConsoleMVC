@@ -2,6 +2,24 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.34.0]
+
+### Added
+
+- **Editor support** ([design](docs/design/editor-support.md), [guide](docs/guides/docs/editor-support.md)): the
+  `ConsoleMVC.Preview` .NET tool (`dotnet tool install -g ConsoleMVC.Preview`, command `cvw-preview`) draws a `.cvw`
+  view with the real rendering engine without building or running the application, as text, ANSI or HTML
+  (`--width`, `--format`, `--stdin` for an editor's unsaved text, `--high-contrast`). Expressions show as
+  placeholders, code is skipped, partial views and the layout are read from `Views/Shared`, and the markup's
+  diagnostics are reported with their line and column. It runs no project code and reads only shared views by plain
+  name.
+- `schema/cvw-schema.json` describes every element, attribute (kind, accepted values, range), directive, construct and
+  diagnostic of C-View Markup with documentation, for editor plugins. It is written from the generator's schema
+  (`MarkupSchemaExport`, `MarkupDocumentation`), and a test fails when it is out of date
+  (`UPDATE_SCHEMA=1 dotnet test` rewrites it).
+- CI installs the packed tool and previews the template's views; the publish workflow releases `ConsoleMVC.Preview`
+  with the other packages.
+
 ## [1.33.0]
 
 ### Added

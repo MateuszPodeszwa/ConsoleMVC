@@ -37,6 +37,16 @@ internal static class ConsolePalette
     /// <param name="colour">The console colour.</param>
     public static int ForegroundCode(ConsoleColor colour) => Entries[(int)colour].Ansi;
 
+    /// <summary>Returns the red, green and blue values the palette gives a console colour.</summary>
+    /// <param name="colour">The console colour.</param>
+    /// <returns>The colour's components, each 0 to 255.</returns>
+    /// <example><code>var (r, g, b) = ConsolePalette.Rgb(ConsoleColor.Cyan); // (0, 255, 255)</code></example>
+    public static (byte R, byte G, byte B) Rgb(ConsoleColor colour)
+    {
+        var entry = Entries[(int)colour];
+        return (entry.R, entry.G, entry.B);
+    }
+
     /// <summary>
     /// Finds the console colour closest to an RGB value, using squared Euclidean distance.
     /// </summary>

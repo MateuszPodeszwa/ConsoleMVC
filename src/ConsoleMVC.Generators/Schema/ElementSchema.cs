@@ -74,7 +74,9 @@ internal sealed class ElementSchema
     public const string RenderStatement = "this.Renderer.Render({0});";
 
     private readonly Dictionary<string, AttributeSchema> _attributes;
+    private readonly AttributeSchema[] _attributeList;
     private readonly HashSet<string>? _allowedChildren;
+    private readonly string[]? _allowedChildList;
     private readonly Func<IReadOnlyList<AttributeNode>, string?>? _validator;
     private readonly string[] _initialisers;
     private readonly string _parentList;
@@ -107,8 +109,10 @@ internal sealed class ElementSchema
         Tag = tag;
         RuntimeType = runtimeType;
         Content = content;
-        _attributes = attributes.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
-        _allowedChildren = allowedChildren is null ? null : new HashSet<string>(allowedChildren, StringComparer.Ordinal);
+        _attributeList = attributes.ToArray();
+        _attributes = _attributeList.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
+        _allowedChildList = allowedChildren?.ToArray();
+        _allowedChildren = _allowedChildList is null ? null : new HashSet<string>(_allowedChildList, StringComparer.Ordinal);
         RequiredParents = requiredParents?.ToArray() ?? (requiredParent is null ? null : [requiredParent]);
         _parentList = RequiredParents is null ? "" : string.Join(" or ", RequiredParents.Select(t => "<" + t + ">"));
         TopLevelOnly = topLevelOnly;
@@ -147,6 +151,15 @@ internal sealed class ElementSchema
 
     /// <summary>Gets the property assignments emitted when the element is created (see the constructor).</summary>
     public IReadOnlyList<string> Initialisers => _initialisers;
+
+    /// <summary>Gets every attribute, in the order they were declared, aliases included.</summary>
+    public IReadOnlyList<AttributeSchema> Attributes => _attributeList;
+
+    /// <summary>
+    /// Gets the tags allowed as children of a <see cref="ContentModel.Elements"/> element, in declared order, or
+    /// <see langword="null"/> when the content model decides.
+    /// </summary>
+    public IReadOnlyList<string>? AllowedChildren => _allowedChildList;
 
     /// <summary>Gets the attributes that must be present (one per property).</summary>
     public IReadOnlyList<AttributeSchema> RequiredAttributes { get; }

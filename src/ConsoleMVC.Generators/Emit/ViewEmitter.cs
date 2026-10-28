@@ -389,7 +389,9 @@ internal sealed class ViewEmitter
     /// Applies HTML-like whitespace rules to inline content: whitespace runs collapse to a single space, and
     /// whitespace at the start, the end and around line breaks is removed. Empty text items are dropped.
     /// </summary>
-    private static List<Node> NormaliseInline(IReadOnlyList<Node> nodes)
+    /// <param name="nodes">The inline nodes: text, expressions and line breaks.</param>
+    /// <returns>The nodes to emit, with whitespace normalised and empty text removed.</returns>
+    internal static List<Node> NormaliseInline(IReadOnlyList<Node> nodes)
     {
         var items = new List<Node>();
         foreach (var node in nodes)

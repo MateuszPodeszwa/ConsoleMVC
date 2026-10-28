@@ -1,6 +1,7 @@
 name: Publish packages
 
-# Publishes ConsoleMVC.Framework, ConsoleMVC.Testing and ConsoleMVC.Template to NuGet.org and GitHub Packages.
+# Publishes ConsoleMVC.Framework, ConsoleMVC.Testing, ConsoleMVC.Template and the ConsoleMVC.Preview tool to NuGet.org
+# and GitHub Packages.
 #
 # Runs automatically when a version bump reaches main: if the <Version> in the .csproj files has no vX.Y.Z tag yet, the
 # packages are built, tested, published, and a GitHub release vX.Y.Z is created with the notes from CHANGELOG.md.
@@ -10,7 +11,8 @@ name: Publish packages
 # short-lived OIDC token, which NuGet/login exchanges for an API key valid for one hour. No API key is stored.
 # One-time setup on nuget.org: your profile → Trusted Publishing → add a policy with
 #   Repository Owner: MateuszPodeszwa   Repository: ConsoleMVC   Workflow File: publish.yml   Environment: release
-#   Packages: the glob ConsoleMVC.* (covers ConsoleMVC.Framework, ConsoleMVC.Testing and ConsoleMVC.Template)
+#   Packages: the glob ConsoleMVC.* (covers ConsoleMVC.Framework, ConsoleMVC.Testing, ConsoleMVC.Template and
+#   ConsoleMVC.Preview)
 # GitHub Packages uses the built-in GITHUB_TOKEN.
 
 on:
@@ -20,6 +22,7 @@ on:
       - src/ConsoleMVC/ConsoleMVC.csproj
       - src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj
       - ConsoleMVC.Template.csproj
+      - src/ConsoleMVC.Preview/ConsoleMVC.Preview.csproj
       - .github/workflows/publish.yml   # so the first merge of this workflow publishes the current version
   release:
     types: [published]
@@ -54,7 +57,7 @@ jobs:
           declared() { sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$1" | head -n 1; }
           version=$(declared src/ConsoleMVC/ConsoleMVC.csproj)
 
-          for project in ConsoleMVC.Template.csproj src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj; do
+          for project in ConsoleMVC.Template.csproj src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj src/ConsoleMVC.Preview/ConsoleMVC.Preview.csproj; do
             if [ "$(declared "$project")" != "$version" ]; then
               echo "::error::$project and ConsoleMVC.csproj declare different versions"
               exit 1
@@ -118,6 +121,7 @@ jobs:
         run: |
           dotnet pack src/ConsoleMVC/ConsoleMVC.csproj --configuration Release --no-build --output nupkg
           dotnet pack src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj --configuration Release --no-build --output nupkg
+          dotnet pack src/ConsoleMVC.Preview/ConsoleMVC.Preview.csproj --configuration Release --no-build --output nupkg
           dotnet pack ConsoleMVC.Template.csproj --configuration Release --output nupkg
 
       # Requested just before the push: the temporary key is valid for one hour and each token gives one key

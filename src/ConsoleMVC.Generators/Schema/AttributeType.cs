@@ -21,6 +21,22 @@ internal abstract class AttributeType
     /// <summary>Gets a short human-readable description, used in error messages (e.g. "a colour").</summary>
     public abstract string Description { get; }
 
+    /// <summary>
+    /// Gets the kind of value, for tools that read the exported schema (<c>schema/cvw-schema.json</c>): <c>text</c>,
+    /// <c>integer</c>, <c>number</c>, <c>number-list</c>, <c>date</c>, <c>boolean</c>, <c>colour</c>, <c>length</c>,
+    /// <c>choice</c>, <c>route</c> or <c>model</c>.
+    /// </summary>
+    public abstract string Kind { get; }
+
+    /// <summary>Gets the keywords the value may be, for completion in editors; empty when it is not a fixed set.</summary>
+    public virtual IReadOnlyList<string> Values => Array.Empty<string>();
+
+    /// <summary>Gets the smallest value accepted, for whole numbers; otherwise <see langword="null"/>.</summary>
+    public virtual int? Minimum => null;
+
+    /// <summary>Gets the largest value accepted, for whole numbers; otherwise <see langword="null"/>.</summary>
+    public virtual int? Maximum => null;
+
     /// <summary>Gets a value indicating whether the attribute may be written without a value (<c>&lt;text bold&gt;</c>).</summary>
     public virtual bool AllowsFlag => false;
 
@@ -50,6 +66,9 @@ internal sealed class StringAttributeType : AttributeType
 {
     /// <inheritdoc />
     public override string Description => "text";
+
+    /// <inheritdoc />
+    public override string Kind => "text";
 
     /// <inheritdoc />
     public override bool AllowsInterpolation => true;
@@ -88,6 +107,15 @@ internal sealed class IntegerAttributeType : AttributeType
     public override string Description => $"a whole number from {_minimum} to {_maximum}";
 
     /// <inheritdoc />
+    public override string Kind => "integer";
+
+    /// <inheritdoc />
+    public override int? Minimum => _minimum;
+
+    /// <inheritdoc />
+    public override int? Maximum => _maximum;
+
+    /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         code = "";
@@ -123,6 +151,9 @@ internal sealed class DecimalAttributeType : AttributeType
     public override string Description => "a number such as 0, -5 or 2.5";
 
     /// <inheritdoc />
+    public override string Kind => "number";
+
+    /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         code = "";
@@ -145,6 +176,9 @@ internal sealed class NumberListAttributeType : AttributeType
 {
     /// <inheritdoc />
     public override string Description => "numbers separated by commas or spaces, e.g. '3, 5, 2', or an expression such as @Model.Values";
+
+    /// <inheritdoc />
+    public override string Kind => "number-list";
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
@@ -182,6 +216,12 @@ internal sealed class DateAttributeType : AttributeType
     public override string Description => "a date such as 2026-10-27, today, today+7 or today-30";
 
     /// <inheritdoc />
+    public override string Kind => "date";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Values { get; } = ["today"];
+
+    /// <inheritdoc />
     public override bool AllowsInterpolation => true;
 
     /// <inheritdoc />
@@ -214,6 +254,12 @@ internal sealed class BooleanAttributeType : AttributeType
     public override string Description => "true or false";
 
     /// <inheritdoc />
+    public override string Kind => "boolean";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Values { get; } = ["true", "false"];
+
+    /// <inheritdoc />
     public override bool AllowsFlag => true;
 
     /// <inheritdoc />
@@ -244,6 +290,13 @@ internal sealed class ColourAttributeType : AttributeType
 
     /// <inheritdoc />
     public override string Description => "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'";
+
+    /// <inheritdoc />
+    public override string Kind => "colour";
+
+    /// <inheritdoc />
+    /// <remarks>The named colours and <c>default</c>; hex values such as <c>#ff8800</c> are accepted too.</remarks>
+    public override IReadOnlyList<string> Values { get; } = ["default", .. Names.Keys.OrderBy(k => k, StringComparer.Ordinal)];
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
@@ -306,6 +359,12 @@ internal sealed class LengthAttributeType : AttributeType
     public override string Description => "'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width";
 
     /// <inheritdoc />
+    public override string Kind => "length";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Values { get; } = ["auto", "*"];
+
+    /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         code = "";
@@ -360,6 +419,12 @@ internal sealed class ChoiceAttributeType : AttributeType
     public override string Description => "one of " + _displayChoices;
 
     /// <inheritdoc />
+    public override string Kind => "choice";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Values => _choices.Keys.ToArray();
+
+    /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         error = "expected " + Description;
@@ -383,6 +448,9 @@ internal sealed class RouteAttributeType : AttributeType
 {
     /// <inheritdoc />
     public override string Description => "a route such as 'Home/Index', 'Index', 'Admin/Users/Index' or 'Orders/Details?id=42'";
+
+    /// <inheritdoc />
+    public override string Kind => "route";
 
     /// <inheritdoc />
     public override bool AllowsInterpolation => true;
@@ -432,6 +500,9 @@ internal sealed class ModelAttributeType : AttributeType
 {
     /// <inheritdoc />
     public override string Description => "a model expression";
+
+    /// <inheritdoc />
+    public override string Kind => "model";
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)

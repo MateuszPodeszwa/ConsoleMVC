@@ -48,4 +48,5 @@ nav:
   - Remote Sessions: remote-sessions.md
   - Accessibility: accessibility.md
   - Localisation: localisation.md
+  - Editor Support: editor-support.md
   - API Reference: ../api/

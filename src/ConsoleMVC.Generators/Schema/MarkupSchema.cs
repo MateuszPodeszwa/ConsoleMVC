@@ -40,6 +40,7 @@ internal sealed class MarkupSchema
     private const string Rendering = "global::ConsoleMVC.Rendering.";
 
     private readonly Dictionary<string, ElementSchema> _elements;
+    private readonly ElementSchema[] _elementList;
 
     /// <summary>
     /// Creates a schema from a set of element definitions.
@@ -47,12 +48,16 @@ internal sealed class MarkupSchema
     /// <param name="elements">The element definitions.</param>
     public MarkupSchema(IEnumerable<ElementSchema> elements)
     {
-        _elements = elements.ToDictionary(e => e.Tag, StringComparer.Ordinal);
+        _elementList = elements.ToArray();
+        _elements = _elementList.ToDictionary(e => e.Tag, StringComparer.Ordinal);
         ElementList = string.Join(", ", _elements.Keys.Select(k => "<" + k + ">"));
     }
 
     /// <summary>Gets the default schema.</summary>
     public static MarkupSchema Default { get; } = CreateDefault();
+
+    /// <summary>Gets every element, in the order they were declared.</summary>
+    public IReadOnlyList<ElementSchema> Elements => _elementList;
 
     /// <summary>Gets a comma-separated list of known elements, for error messages.</summary>
     public string ElementList { get; }

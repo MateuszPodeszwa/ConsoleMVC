@@ -98,10 +98,10 @@ public class HomeViewModel
 
 ## IDE Support
 
-For `.cvw` file recognition, syntax highlighting, and icon support in JetBrains Rider, install the **ConsoleMVC CVWSupport** plugin:
+- **Live preview**: the [ConsoleMVC.Preview](https://www.nuget.org/packages/ConsoleMVC.Preview) tool draws a view without running the application: `dotnet tool install -g ConsoleMVC.Preview`, then `cvw-preview Views/Home/IndexView.cvw`
+- **Editor plugins**: the [Rider plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport) and a VS Code extension, developed in [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport), read the markup schema (`schema/cvw-schema.json` in the repository) for completion and documentation
 
-- [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport)
-- [Plugin Source Code](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport)
+See the [Editor Support guide](https://github.com/MateuszPodeszwa/ConsoleMVC/blob/main/docs/guides/docs/editor-support.md).
 
 ## Documentation
 
