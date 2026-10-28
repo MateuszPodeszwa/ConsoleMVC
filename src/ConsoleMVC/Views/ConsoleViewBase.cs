@@ -94,7 +94,9 @@ public abstract class ConsoleViewBase
     /// <returns>The value read.</returns>
     /// <remarks>
     /// When the input ends before the field is answered, the application ends, as a <c>&lt;menu&gt;</c> quits at the end
-    /// of input: the view's remaining fields are not asked and nothing is posted.
+    /// of input: the view's remaining fields are not asked and nothing is posted. When the view is shown again because
+    /// the posted form failed validation, a field without an error starts from the answer posted (a masked field
+    /// excepted), so pressing Enter keeps it.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="field"/> is <see langword="null"/>.</exception>
     /// <example><code>var answer = ReadInput(new CheckboxElement { Name = "Newsletter", Label = "Send news" });</code></example>
@@ -103,6 +105,13 @@ public abstract class ConsoleViewBase
         ArgumentNullException.ThrowIfNull(field);
 
         BeforeInteraction?.Invoke();
+
+        // A form shown again after validation failed keeps the answers that were valid, as ASP.NET Core forms do; a field
+        // with an error is asked afresh (an empty answer keeps a field's starting value, so a wrong one could not be cleared)
+        if (PostedForm is not null && PostedForm.TryGetValue(field.Name, out var posted) && field is IPrefilledField prefilled
+            && ModelState.ErrorsFor(field.Name).Count == 0)
+            prefilled.Prefill(posted);
+
         var value = field.Read(Renderer, Input) ?? throw new InputEndedException();
         Form[field.Name] = value;
         return value;
@@ -242,6 +251,12 @@ public abstract class ConsoleViewBase
     internal Action? BeforeInteraction { get; set; }
 
     /// <summary>
+    /// The values the user posted, when this view is shown again because they failed validation; its fields start from
+    /// them (masked fields excepted). <see langword="null"/> otherwise.
+    /// </summary>
+    internal IReadOnlyDictionary<string, string>? PostedForm { get; set; }
+
+    /// <summary>
     /// Gives <paramref name="other"/> (a partial or a layout) this view's renderer, input, view data, model state, form,
     /// theme and services, and fills its <c>@inject</c> properties.
     /// </summary>
@@ -251,6 +266,7 @@ public abstract class ConsoleViewBase
         other.BeforeInteraction = BeforeInteraction;
         other.ViewData = ViewData;
         other.ModelState = ModelState;
+        other.PostedForm = PostedForm;
         other.Renderer = Renderer;
         other.Input = Input;
         other.Form = Form;

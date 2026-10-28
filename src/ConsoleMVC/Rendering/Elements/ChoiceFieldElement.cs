@@ -31,7 +31,7 @@ namespace ConsoleMVC.Rendering;
 /// string? answer = size.Read(renderer, ConsoleTextInput.Instance); // "M" when the user just presses Enter
 /// </code>
 /// </example>
-public abstract class ChoiceFieldElement : Element, IFormField
+public abstract class ChoiceFieldElement : Element, IFormField, IPrefilledField
 {
     /// <summary>The message shown for a typed answer that matches no choice; <c>{0}</c> is the answer.</summary>
     public const string UnknownChoiceMessage = "'{0}' is not one of the choices.";
@@ -740,5 +740,14 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
         /// <summary>The answer was confirmed.</summary>
         Confirmed
+    }
+
+    /// <inheritdoc />
+    /// <remarks>Only values that are choices are taken, so a value posted from code that is not one cannot break the field.</remarks>
+    void IPrefilledField.Prefill(string posted)
+    {
+        var values = (AllowsSeveral ? posted.Split(ValueSeparator) : [posted]).Select(v => v.Trim()).Where(v => v.Length > 0).ToList();
+        if (values.Count > 0 && values.All(v => _choices.Any(c => string.Equals(c.EffectiveValue, v, StringComparison.OrdinalIgnoreCase))))
+            Default = string.Join(ValueSeparator, values);
     }
 }

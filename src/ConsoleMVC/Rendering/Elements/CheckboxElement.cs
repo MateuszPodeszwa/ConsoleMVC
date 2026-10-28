@@ -17,7 +17,7 @@ namespace ConsoleMVC.Rendering;
 /// string? answer = news.Read(renderer, ConsoleTextInput.Instance); // "true" or "false"
 /// </code>
 /// </example>
-public sealed class CheckboxElement : Element, IFormField
+public sealed class CheckboxElement : Element, IFormField, IPrefilledField
 {
     /// <summary>The message shown for a typed answer that is neither yes nor no.</summary>
     public const string AnswerMessage = "Please answer y or n.";
@@ -225,4 +225,7 @@ public sealed class CheckboxElement : Element, IFormField
     private string SafeLabel => TextSanitiser.Sanitise(Label).Replace('\n', ' ').TrimEnd();
 
     private TextStyle LabelStyle => TextStyle.Plain.WithForeground(LabelColour);
+
+    /// <inheritdoc />
+    void IPrefilledField.Prefill(string posted) => Checked = string.Equals(posted, "true", StringComparison.OrdinalIgnoreCase);
 }

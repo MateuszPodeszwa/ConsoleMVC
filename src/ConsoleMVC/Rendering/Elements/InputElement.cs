@@ -12,7 +12,7 @@ namespace ConsoleMVC.Rendering;
 /// var password = new InputElement { Name = "Password", Label = "Password: ", Masked = true };
 /// </code>
 /// </example>
-public sealed class InputElement : Element, IFormField
+public sealed class InputElement : Element, IFormField, IPrefilledField
 {
     /// <summary>The message shown when a required field is left empty.</summary>
     public const string RequiredMessage = "This field is required.";
@@ -86,4 +86,12 @@ public sealed class InputElement : Element, IFormField
     private string SafeLabel => TextSanitiser.Sanitise(Label).Replace('\n', ' ');
 
     private TextStyle LabelStyle => TextStyle.Plain.WithForeground(LabelColour);
+
+    /// <inheritdoc />
+    /// <remarks>A masked field (a password) is never filled in again.</remarks>
+    void IPrefilledField.Prefill(string posted)
+    {
+        if (!Masked)
+            Default = posted;
+    }
 }

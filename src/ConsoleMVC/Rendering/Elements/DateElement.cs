@@ -25,7 +25,7 @@ namespace ConsoleMVC.Rendering;
 /// // Arrow keys: Due: 2026-11-03  (Left/Right, Up/Down, t today, Enter)
 /// </code>
 /// </example>
-public sealed class DateElement : Element, IFormField
+public sealed class DateElement : Element, IFormField, IPrefilledField
 {
     /// <summary>The form of the stored answer.</summary>
     public const string ValueFormat = "yyyy-MM-dd";
@@ -326,5 +326,12 @@ public sealed class DateElement : Element, IFormField
         Year,
         Month,
         Day
+    }
+
+    /// <inheritdoc />
+    void IPrefilledField.Prefill(string posted)
+    {
+        if (DateOnly.TryParseExact(posted.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
+            Default = posted.Trim();
     }
 }

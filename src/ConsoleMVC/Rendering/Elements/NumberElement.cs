@@ -18,7 +18,7 @@ namespace ConsoleMVC.Rendering;
 /// // Arrow keys: Age: 30  (Up/Down, type a number, Enter)
 /// </code>
 /// </example>
-public sealed class NumberElement : Element, IFormField
+public sealed class NumberElement : Element, IFormField, IPrefilledField
 {
     /// <summary>The message for text that is not a number.</summary>
     public const string NotANumberMessage = "Enter a number, e.g. 42 or 2.5.";
@@ -324,5 +324,12 @@ public sealed class NumberElement : Element, IFormField
         Static,
         Keys,
         Answered
+    }
+
+    /// <inheritdoc />
+    void IPrefilledField.Prefill(string posted)
+    {
+        if (posted.Trim().Length > 0 && Validate(posted.Trim(), out _) is null)
+            Default = posted.Trim();
     }
 }

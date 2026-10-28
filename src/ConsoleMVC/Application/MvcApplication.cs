@@ -923,6 +923,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         var view = context.Own(_router.ResolveView(viewResult.ControllerName, viewResult.ViewName, context.Services));
         view.ViewData = viewResult.ViewData;
         view.ModelState = viewResult.ModelState;
+        view.PostedForm = viewResult.ModelState.IsValid || context.Route.FormData is not { } posted
+            ? null
+            : new Dictionary<string, string>(posted, StringComparer.OrdinalIgnoreCase);
         view.Renderer = renderer;
         view.Input = input;
         view.Theme = theme;
