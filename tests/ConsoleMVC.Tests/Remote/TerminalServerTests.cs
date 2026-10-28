@@ -302,9 +302,8 @@ public class TerminalServerTests
     [Fact]
     public async Task TheCertificateSetting_LoadsAPfx()
     {
-        using var certificate = SelfSignedCertificate();
         var path = Path.Combine(Path.GetTempPath(), $"consolemvc-{Guid.NewGuid():N}.pfx");
-        await File.WriteAllBytesAsync(path, certificate.Export(X509ContentType.Pfx, "secret"));
+        await File.WriteAllBytesAsync(path, SelfSignedPfx("secret"));
         try
         {
             var settings = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -325,12 +324,19 @@ public class TerminalServerTests
         }
     }
 
-    private static X509Certificate2 SelfSignedCertificate()
+    /// <summary>A self-signed certificate for localhost, loaded from a PFX as a server certificate would be.</summary>
+    private static X509Certificate2 SelfSignedCertificate() => X509CertificateLoader.LoadPkcs12(SelfSignedPfx(null), null);
+
+    /// <summary>
+    /// A new self-signed certificate as PFX bytes. Exported straight from the created certificate: a certificate loaded
+    /// from a PFX is not exportable by default, and macOS and Windows refuse to export it again.
+    /// </summary>
+    private static byte[] SelfSignedPfx(string? password)
     {
         using var key = RSA.Create(2048);
         var request = new CertificateRequest("CN=localhost", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         using var created = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddHours(1));
-        return X509CertificateLoader.LoadPkcs12(created.Export(X509ContentType.Pfx), null);
+        return created.Export(X509ContentType.Pfx, password);
     }
 
     private static int FreePort()
