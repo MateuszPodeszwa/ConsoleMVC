@@ -428,7 +428,7 @@ internal sealed class MarkupSchema
             // ---- composition: rendered by the emitter as a call to the partial's Render(model)
             new ElementSchema(PartialTag, "", ContentModel.Void,
             [
-                new AttributeSchema("name", "Name", text, required: true),
+                new AttributeSchema("name", "Name", new LiteralTextAttributeType(), required: true),
                 new AttributeSchema("model", "Model", new ModelAttributeType())
             ], topLevelOnly: true),
             new ElementSchema(BodyTag, "", ContentModel.Void, [], topLevelOnly: true)

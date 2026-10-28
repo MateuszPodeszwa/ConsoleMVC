@@ -400,7 +400,8 @@ internal sealed class MarkupParser
             return null;
         }
 
-        if (parts.Count > 1 && !schema.Type.AllowsInterpolation)
+        // A value that must be literal reports any expression itself (a partial's name: CVW114)
+        if (parts.Count > 1 && !schema.Type.AllowsInterpolation && schema.Type.AllowsExpression)
         {
             Report(CvwDiagnostics.InvalidAttributeValue, span, _text.Substring(span.Start, span.Length), name,
                 "text and expressions can only be mixed in text attributes; use a single @(expression)");

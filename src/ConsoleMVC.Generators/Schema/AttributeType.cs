@@ -44,6 +44,12 @@ internal abstract class AttributeType
     public virtual bool AllowsInterpolation => false;
 
     /// <summary>
+    /// Gets a value indicating whether the value may be an expression (<c>width=@Model.Width</c>); <see langword="false"/>
+    /// for a value the build must know, such as a partial's name.
+    /// </summary>
+    public virtual bool AllowsExpression => true;
+
+    /// <summary>
     /// Validates a literal value and translates it to C#.
     /// </summary>
     /// <param name="literal">The literal text (entities decoded). <see langword="null"/> for a valueless flag.</param>
@@ -84,6 +90,30 @@ internal sealed class StringAttributeType : AttributeType
     /// <inheritdoc />
     public override string WrapExpression(string expressionCode) =>
         "global::ConsoleMVC.Rendering.MarkupValue.Format(" + expressionCode + ")";
+}
+
+/// <summary>
+/// Text that must be written literally, because the build uses it, e.g. a partial's name (checked by
+/// <c>PartialChecker</c>, which reports an expression as CVW114).
+/// </summary>
+internal sealed class LiteralTextAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "literal text";
+
+    /// <inheritdoc />
+    public override string Kind => "text";
+
+    /// <inheritdoc />
+    public override bool AllowsExpression => false;
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        error = "";
+        code = CSharpLiteral.String(literal ?? "");
+        return literal is not null;
+    }
 }
 
 /// <summary>A whole number within a range, e.g. padding.</summary>

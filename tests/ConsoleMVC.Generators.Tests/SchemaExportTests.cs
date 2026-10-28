@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ConsoleMVC.Generators.Schema;
+using ConsoleMVC.Generators.Tests.Infrastructure;
 
 namespace ConsoleMVC.Generators.Tests;
 
@@ -97,6 +98,38 @@ public class SchemaExportTests
         Assert.Contains("darkgrey", colours);
         Assert.Contains("default", colours);
         Assert.True(attributes["title"].GetProperty("interpolation").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData("<partial name=\"@(prefix)er\" />")]
+    [InlineData("<partial name=\"@name\" />")]
+    public void PartialName_IsLiteralOnly_InTheSchema_AsTheBuildRequires(string markup)
+    {
+        using var json = Exported();
+        var partial = json.RootElement.GetProperty("elements").EnumerateArray().Single(e => e.GetProperty("name").GetString() == "partial");
+        var name = partial.GetProperty("attributes").EnumerateArray().Single(a => a.GetProperty("name").GetString() == "name");
+
+        Assert.False(name.GetProperty("interpolation").GetBoolean());
+        Assert.False(name.GetProperty("expression").GetBoolean());
+
+        // The build rejects what the schema no longer offers
+        var result = ViewHarness.GenerateFiles(
+        [
+            (ViewHarness.DefaultPath, "var name = \"Header\"; var prefix = \"Head\";\n" + markup + "\nreturn NavigationResult.Quit();"),
+            ("/app/Views/Shared/Header.cvw", "<text>Header</text>")
+        ]);
+        Assert.Contains(result.GeneratorDiagnostics, d => d.Id == "CVW114" && d.GetMessage().Contains("literally"));
+    }
+
+    [Fact]
+    public void ValueAttributes_TakeExpressions_InTheSchema()
+    {
+        using var json = Exported();
+        var box = json.RootElement.GetProperty("elements").EnumerateArray().Single(e => e.GetProperty("name").GetString() == "box");
+        var width = box.GetProperty("attributes").EnumerateArray().Single(a => a.GetProperty("name").GetString() == "width");
+
+        Assert.True(width.GetProperty("expression").GetBoolean());
+        Assert.False(width.GetProperty("interpolation").GetBoolean());
     }
 
     [Fact]

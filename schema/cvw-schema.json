@@ -78,7 +78,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -88,6 +89,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -98,6 +100,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -108,6 +111,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -118,6 +122,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -128,6 +133,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -138,6 +144,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -148,6 +155,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -158,6 +166,7 @@
           "accepts": "one of 'left', 'centre', 'center', 'right'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["left", "centre", "center", "right"]
         },
         {
@@ -168,6 +177,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         }
       ]
@@ -187,7 +197,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "title",
@@ -196,7 +207,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "width",
@@ -206,6 +218,7 @@
           "accepts": "'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["auto", "*"]
         },
         {
@@ -216,6 +229,7 @@
           "accepts": "a whole number from 0 to 1000",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 1000
         },
@@ -227,6 +241,7 @@
           "accepts": "a whole number from 0 to 1000",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 1000
         },
@@ -238,6 +253,7 @@
           "accepts": "one of 'single', 'double', 'rounded', 'heavy', 'ascii', 'none'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["single", "double", "rounded", "heavy", "ascii", "none"]
         },
         {
@@ -248,6 +264,7 @@
           "accepts": "a whole number from 0 to 20",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 20
         },
@@ -259,6 +276,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -269,6 +287,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -279,6 +298,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -289,6 +309,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -308,7 +329,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "style",
@@ -318,6 +340,7 @@
           "accepts": "one of 'single', 'double', 'heavy', 'dashed', 'ascii'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["single", "double", "heavy", "dashed", "ascii"]
         },
         {
@@ -328,6 +351,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -338,6 +362,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -348,6 +373,7 @@
           "accepts": "'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["auto", "*"]
         }
       ]
@@ -368,6 +394,7 @@
           "accepts": "a whole number from 0 to 100",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 100
         }
@@ -388,7 +415,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "border",
@@ -398,6 +426,7 @@
           "accepts": "one of 'single', 'double', 'rounded', 'heavy', 'ascii', 'none'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["single", "double", "rounded", "heavy", "ascii", "none"]
         },
         {
@@ -408,6 +437,7 @@
           "accepts": "a whole number from 0 to 20",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 20
         },
@@ -419,6 +449,7 @@
           "accepts": "'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["auto", "*"]
         },
         {
@@ -429,6 +460,7 @@
           "accepts": "a whole number from 0 to 1000",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 1000
         },
@@ -440,6 +472,7 @@
           "accepts": "a whole number from 0 to 1000",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 1000
         },
@@ -451,6 +484,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -461,6 +495,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -481,6 +516,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         }
       ]
@@ -500,7 +536,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -510,6 +547,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -520,6 +558,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -530,6 +569,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -540,6 +580,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -550,6 +591,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -560,6 +602,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -570,6 +613,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -580,6 +624,7 @@
           "accepts": "one of 'left', 'centre', 'center', 'right'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["left", "centre", "center", "right"]
         },
         {
@@ -590,6 +635,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         }
       ]
@@ -609,7 +655,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "error",
@@ -618,7 +665,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "key-color",
@@ -628,6 +676,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -638,6 +687,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -657,7 +707,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -667,6 +718,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -677,6 +729,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -687,6 +740,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -697,6 +751,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -707,6 +762,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -717,6 +773,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -727,6 +784,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -737,6 +795,7 @@
           "accepts": "one of 'left', 'centre', 'center', 'right'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["left", "centre", "center", "right"]
         },
         {
@@ -747,6 +806,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -756,7 +816,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "nav",
@@ -765,7 +826,8 @@
           "kind": "route",
           "accepts": "a route such as 'Home/Index', 'Index', 'Admin/Users/Index' or 'Orders/Details?id=42'",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "quit",
@@ -775,6 +837,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -785,6 +848,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -795,6 +859,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         }
       ]
@@ -814,7 +879,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "label",
@@ -823,7 +889,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "default",
@@ -832,7 +899,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "required",
@@ -842,6 +910,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -852,6 +921,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -862,6 +932,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -872,6 +943,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -891,7 +963,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "label",
@@ -900,7 +973,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "default",
@@ -909,7 +983,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "required",
@@ -919,6 +994,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -929,6 +1005,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -939,6 +1016,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -949,6 +1027,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -959,6 +1038,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -969,6 +1049,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -979,6 +1060,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -989,6 +1071,7 @@
           "accepts": "a whole number from 0 to 1000",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 1000
         }
@@ -1009,7 +1092,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "label",
@@ -1018,7 +1102,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "default",
@@ -1027,7 +1112,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "required",
@@ -1037,6 +1123,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1047,6 +1134,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1057,6 +1145,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1067,6 +1156,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1077,6 +1167,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -1096,7 +1187,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -1106,6 +1198,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1116,6 +1209,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1126,6 +1220,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1136,6 +1231,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1146,6 +1242,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1156,6 +1253,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1166,6 +1264,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1176,6 +1275,7 @@
           "accepts": "one of 'left', 'centre', 'center', 'right'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["left", "centre", "center", "right"]
         },
         {
@@ -1186,6 +1286,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1195,7 +1296,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         }
       ]
     },
@@ -1214,7 +1316,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "label",
@@ -1223,7 +1326,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "checked",
@@ -1233,6 +1337,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1243,6 +1348,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1253,6 +1359,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1263,6 +1370,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -1282,7 +1390,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "label",
@@ -1291,7 +1400,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "default",
@@ -1300,7 +1410,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "required",
@@ -1310,6 +1421,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1320,6 +1432,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1330,6 +1443,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1340,6 +1454,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1350,6 +1465,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1359,7 +1475,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "max",
@@ -1368,7 +1485,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "step",
@@ -1377,7 +1495,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "decimals",
@@ -1387,6 +1506,7 @@
           "accepts": "a whole number from 0 to 28",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 28
         }
@@ -1407,7 +1527,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "label",
@@ -1416,7 +1537,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "default",
@@ -1426,6 +1548,7 @@
           "accepts": "a date such as 2026-10-27, today, tomorrow, yesterday, today+7 or today-30",
           "flag": false,
           "interpolation": true,
+          "expression": true,
           "values": ["today", "tomorrow", "yesterday"]
         },
         {
@@ -1436,6 +1559,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1446,6 +1570,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1456,6 +1581,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1466,6 +1592,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1476,6 +1603,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1486,6 +1614,7 @@
           "accepts": "a date such as 2026-10-27, today, tomorrow, yesterday, today+7 or today-30",
           "flag": false,
           "interpolation": true,
+          "expression": true,
           "values": ["today", "tomorrow", "yesterday"]
         },
         {
@@ -1496,6 +1625,7 @@
           "accepts": "a date such as 2026-10-27, today, tomorrow, yesterday, today+7 or today-30",
           "flag": false,
           "interpolation": true,
+          "expression": true,
           "values": ["today", "tomorrow", "yesterday"]
         }
       ]
@@ -1515,7 +1645,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "for",
@@ -1524,7 +1655,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -1534,6 +1666,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1544,6 +1677,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -1563,7 +1697,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "separator",
@@ -1572,7 +1707,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -1582,6 +1718,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1592,6 +1729,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -1611,7 +1749,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "separator",
@@ -1620,7 +1759,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -1630,6 +1770,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1640,6 +1781,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1650,6 +1792,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1660,6 +1803,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -1679,7 +1823,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "value",
@@ -1688,7 +1833,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "max",
@@ -1697,7 +1843,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "label",
@@ -1706,7 +1853,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "bar-width",
@@ -1716,6 +1864,7 @@
           "accepts": "a whole number from 1 to 1000",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 1,
           "maximum": 1000
         },
@@ -1727,6 +1876,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1737,6 +1887,7 @@
           "accepts": "one of 'block', 'line', 'ascii'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["block", "line", "ascii"]
         },
         {
@@ -1747,6 +1898,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1757,6 +1909,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1767,6 +1920,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1777,6 +1931,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1787,6 +1942,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1797,6 +1953,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -1816,7 +1973,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "label",
@@ -1825,7 +1983,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "style",
@@ -1835,6 +1994,7 @@
           "accepts": "one of 'dots', 'line', 'circle'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["dots", "line", "circle"]
         },
         {
@@ -1845,6 +2005,7 @@
           "accepts": "a whole number from 0 to 2147483647",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 2147483647
         },
@@ -1856,6 +2017,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1865,7 +2027,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -1875,6 +2038,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1885,6 +2049,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1895,6 +2060,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1905,6 +2071,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -1924,7 +2091,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "max",
@@ -1933,7 +2101,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "values",
@@ -1943,6 +2112,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -1952,7 +2122,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "style",
@@ -1962,6 +2133,7 @@
           "accepts": "one of 'block', 'shade', 'ascii'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["block", "shade", "ascii"]
         },
         {
@@ -1972,6 +2144,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1982,6 +2155,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -1992,6 +2166,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2002,6 +2177,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -2021,7 +2197,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "value",
@@ -2030,7 +2207,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "color",
@@ -2040,6 +2218,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2050,6 +2229,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -2069,7 +2249,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "values",
@@ -2078,7 +2259,8 @@
           "kind": "number-list",
           "accepts": "numbers separated by commas or spaces, e.g. '3, 5, 2', or an expression such as @Model.Values",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "min",
@@ -2087,7 +2269,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "max",
@@ -2096,7 +2279,8 @@
           "kind": "number",
           "accepts": "a number such as 0, -5 or 2.5",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         },
         {
           "name": "label",
@@ -2105,7 +2289,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "show-last",
@@ -2115,6 +2300,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -2124,7 +2310,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "color",
@@ -2134,6 +2321,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2144,6 +2332,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2154,6 +2343,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2164,6 +2354,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -2183,7 +2374,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "height",
@@ -2193,6 +2385,7 @@
           "accepts": "a whole number from 1 to 1000",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 1,
           "maximum": 1000
         },
@@ -2204,6 +2397,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2214,6 +2408,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -2233,7 +2428,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "text",
@@ -2242,7 +2438,8 @@
           "kind": "text",
           "accepts": "text",
           "flag": false,
-          "interpolation": true
+          "interpolation": true,
+          "expression": true
         },
         {
           "name": "links",
@@ -2252,6 +2449,7 @@
           "accepts": "true or false",
           "flag": true,
           "interpolation": false,
+          "expression": true,
           "values": ["true", "false"]
         },
         {
@@ -2262,6 +2460,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2272,6 +2471,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2282,6 +2482,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2292,6 +2493,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2302,6 +2504,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2312,6 +2515,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2322,6 +2526,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         },
         {
@@ -2332,6 +2537,7 @@
           "accepts": "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["default", "black", "blue", "cyan", "darkblue", "darkcyan", "darkgray", "darkgreen", "darkgrey", "darkmagenta", "darkred", "darkyellow", "gray", "green", "grey", "magenta", "red", "white", "yellow"]
         }
       ]
@@ -2352,6 +2558,7 @@
           "accepts": "a whole number from 0 to 20",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 20
         },
@@ -2363,6 +2570,7 @@
           "accepts": "a whole number from 0 to 1000",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "minimum": 0,
           "maximum": 1000
         }
@@ -2384,6 +2592,7 @@
           "accepts": "'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width",
           "flag": false,
           "interpolation": false,
+          "expression": true,
           "values": ["auto", "*"]
         }
       ]
@@ -2401,9 +2610,10 @@
           "description": "The partial view's name: Views/Shared/{name}.cvw.",
           "required": true,
           "kind": "text",
-          "accepts": "text",
+          "accepts": "literal text",
           "flag": false,
-          "interpolation": true
+          "interpolation": false,
+          "expression": false
         },
         {
           "name": "model",
@@ -2412,7 +2622,8 @@
           "kind": "model",
           "accepts": "a model expression",
           "flag": false,
-          "interpolation": false
+          "interpolation": false,
+          "expression": true
         }
       ]
     },
