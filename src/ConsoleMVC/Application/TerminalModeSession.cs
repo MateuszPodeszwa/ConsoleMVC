@@ -11,24 +11,34 @@ namespace ConsoleMVC.Mvc;
 internal sealed class TerminalModeSession : IDisposable
 {
     private readonly Func<bool, bool> _setMode;
+    private readonly bool _console;
     private int _left;
 
-    private TerminalModeSession(Func<bool, bool> setMode)
+    private TerminalModeSession(Func<bool, bool> setMode, bool console)
     {
         _setMode = setMode;
+        _console = console;
+        if (!console)
+            return;
+
         AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
         Console.CancelKeyPress += OnCancelKeyPress;
     }
 
     /// <summary>Switches the mode on; returns <see langword="null"/> when the output cannot.</summary>
     /// <param name="setMode">Turns the mode on (<see langword="true"/>) or off, and says whether it could.</param>
-    public static TerminalModeSession? Enter(Func<bool, bool> setMode) => setMode(true) ? new TerminalModeSession(setMode) : null;
+    /// <param name="console">
+    /// Whether the terminal is this process's console, which is also put back on Ctrl+C and at exit. A remote terminal
+    /// is put back by its own session only.
+    /// </param>
+    public static TerminalModeSession? Enter(Func<bool, bool> setMode, bool console = true) =>
+        setMode(true) ? new TerminalModeSession(setMode, console) : null;
 
     /// <summary>Switches to the alternate screen; returns <see langword="null"/> when the output cannot.</summary>
-    public static TerminalModeSession? FullScreen(IMarkupRenderer renderer) => Enter(renderer.SetFullScreen);
+    public static TerminalModeSession? FullScreen(IMarkupRenderer renderer, bool console = true) => Enter(renderer.SetFullScreen, console);
 
     /// <summary>Turns mouse reporting on; returns <see langword="null"/> when the output cannot.</summary>
-    public static TerminalModeSession? Mouse(IMarkupRenderer renderer) => Enter(renderer.SetMouseReporting);
+    public static TerminalModeSession? Mouse(IMarkupRenderer renderer, bool console = true) => Enter(renderer.SetMouseReporting, console);
 
     /// <summary>Switches the mode off, once.</summary>
     public void Dispose()
@@ -36,13 +46,17 @@ internal sealed class TerminalModeSession : IDisposable
         if (Interlocked.Exchange(ref _left, 1) == 1)
             return;
 
-        AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
-        Console.CancelKeyPress -= OnCancelKeyPress;
+        if (_console)
+        {
+            AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
+            Console.CancelKeyPress -= OnCancelKeyPress;
+        }
+
         try
         {
             _setMode(false);
         }
-        catch (IOException)
+        catch (Exception e) when (e is IOException or ObjectDisposedException or OperationCanceledException)
         {
             // The terminal has gone; there is nothing to put back
         }

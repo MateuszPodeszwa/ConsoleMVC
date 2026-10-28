@@ -7,8 +7,9 @@ namespace ConsoleMVC.Mvc;
 /// follow a <c>\r</c> is written as <c>\r\n</c>, so lines always start at the left edge.
 /// </summary>
 /// <remarks>
-/// When the connection breaks, <paramref name="broken"/> is called and the write throws
-/// <see cref="OperationCanceledException"/>, so a session ends as when the client disconnects rather than with an error.
+/// When the connection breaks, <paramref name="broken"/> is called (the terminal is then disconnected) and the I/O error
+/// is rethrown unchanged, so code that already handles a lost terminal, such as a live element's timer, keeps handling it.
+/// The session sees the terminal disconnected and ends as when the client leaves.
 /// </remarks>
 /// <param name="inner">The writer to the terminal.</param>
 /// <param name="broken">Called once the connection is found broken; <see langword="null"/> for nothing.</param>
@@ -85,7 +86,8 @@ internal sealed class CrLfWriter(TextWriter inner, Action? broken = null) : Text
         }
         catch (Exception e) when (e is IOException or ObjectDisposedException)
         {
-            throw Broken(e);
+            broken?.Invoke();
+            throw;
         }
 
         _last = run[^1];
@@ -100,14 +102,9 @@ internal sealed class CrLfWriter(TextWriter inner, Action? broken = null) : Text
         }
         catch (Exception e) when (e is IOException or ObjectDisposedException)
         {
-            throw Broken(e);
+            broken?.Invoke();
+            throw;
         }
-    }
-
-    private OperationCanceledException Broken(Exception e)
-    {
-        broken?.Invoke();
-        return new OperationCanceledException("The remote terminal disconnected.", e);
     }
 
     /// <inheritdoc />

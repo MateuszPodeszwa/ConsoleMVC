@@ -169,3 +169,12 @@ The framework logs under the `ConsoleMVC.Mvc.MvcApplication` category:
 | Information | `Starting at Home/Index (Production)` and `Stopped` |
 | Debug | `Running Orders/Details` for every screen or redirect |
 | Error | `Unhandled exception on Orders/Save`, with the exception (it is still thrown to the caller) |
+
+A [remote sessions](remote-sessions.md) server also logs under `ConsoleMVC.Mvc.TerminalServer`:
+
+| Level | Message |
+|---|---|
+| Information | `Serving remote sessions on 127.0.0.1:2323 (Telnet, no TLS)` and `Stopped serving remote sessions` |
+| Information | `Session 3f2a… started for 127.0.0.1:50122 (XTERM-256COLOR, 100x30)` and `Session 3f2a… ended` |
+| Warning | `Connection from … refused: the session limit is reached` (also: the filter, a failed TLS handshake) |
+| Error | `Session 3f2a… failed`, and `Connection from … failed while it was set up`, with the exception; other sessions carry on |

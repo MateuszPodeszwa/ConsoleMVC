@@ -44,6 +44,10 @@ internal static partial class MvcApplicationLog
     [LoggerMessage(EventId = 9, Level = LogLevel.Warning, Message = "Connection from {RemoteEndPoint} refused: {Reason}")]
     public static partial void ConnectionRefused(ILogger logger, System.Net.EndPoint? remoteEndPoint, string reason);
 
+    /// <summary>Logs an unexpected error while setting up a connection; that connection is closed.</summary>
+    [LoggerMessage(EventId = 11, Level = LogLevel.Error, Message = "Connection from {RemoteEndPoint} failed while it was set up")]
+    public static partial void ConnectionFailed(ILogger logger, Exception exception, System.Net.EndPoint? remoteEndPoint);
+
     /// <summary>Logs that the server stopped.</summary>
     [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "Stopped serving remote sessions")]
     public static partial void StoppedServing(ILogger logger);

@@ -241,6 +241,36 @@ public class RemoteSessionTests
     }
 
     [Fact]
+    public async Task ABrokenConnection_EndsTheSession_WithoutAnError()
+    {
+        await using var app = RemoteTestSupport.BuildApp();
+        var stream = new DuplexTestStream();
+        await using var terminal = Terminal(stream);
+
+        var session = app.RunSessionAsync(terminal);
+        await stream.WaitForAsync("visit 1");
+        stream.FailWrites = true;
+        stream.Type("a\r");
+
+        await session.WaitAsync(RemoteTestSupport.Patience); // completes, does not throw
+        Assert.True(terminal.Disconnected.IsCancellationRequested);
+    }
+
+    [Fact]
+    public async Task ALiveElement_SurvivesItsTerminalBreaking()
+    {
+        var stream = new DuplexTestStream();
+        await using var terminal = Terminal(stream);
+        var region = new LiveDisplay(terminal.Renderer).Start(new SpinnerElement(), TimeSpan.FromMinutes(1));
+
+        stream.FailWrites = true;
+        region.Tick(); // on the timer thread this would have brought the process down
+
+        region.Dispose();
+        Assert.True(terminal.Disconnected.IsCancellationRequested);
+    }
+
+    [Fact]
     public void IdleTimeout_MustBePositive()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>

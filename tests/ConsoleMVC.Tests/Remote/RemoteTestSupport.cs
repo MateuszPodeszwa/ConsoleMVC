@@ -154,6 +154,9 @@ internal sealed class DuplexTestStream : Stream
 
     public bool IsDisposed { get; private set; }
 
+    /// <summary>Gets or sets whether writes fail, as when the client's connection breaks.</summary>
+    public bool FailWrites { get; set; }
+
     /// <summary>Waits until the output contains <paramref name="expected"/>.</summary>
     public Task WaitForAsync(string expected) =>
         RemoteTestSupport.EventuallyAsync(() => Output.Contains(expected, StringComparison.Ordinal), $"the output contains '{expected}' (it is:\n{Output})");
@@ -183,6 +186,8 @@ internal sealed class DuplexTestStream : Stream
     public override void Write(byte[] buffer, int offset, int count)
     {
         ObjectDisposedException.ThrowIf(IsDisposed, this);
+        if (FailWrites)
+            throw new IOException("Broken pipe");
         lock (_output)
             _output.Write(buffer, offset, count);
     }

@@ -39,11 +39,20 @@ public sealed class TerminalServer : IAsyncDisposable
     /// <summary>How long a Telnet client has to report its window size and terminal type: 500 ms.</summary>
     public static readonly TimeSpan NegotiationTimeout = TimeSpan.FromMilliseconds(500);
 
+    /// <summary>How long <see cref="StopAsync"/> lets sessions end by themselves before it closes their connections: 5 seconds.</summary>
+    public static readonly TimeSpan StopGracePeriod = TimeSpan.FromSeconds(5);
+
+    /// <summary>How long the server waits after accepting a connection failed (for example, out of file handles): 100 ms.</summary>
+    private static readonly TimeSpan AcceptRetryDelay = TimeSpan.FromMilliseconds(100);
+
     private readonly MvcApplication _app;
     private readonly TerminalServerOptions _options;
     private readonly ILogger _logger;
     private readonly CancellationTokenSource _stopping = new();
     private readonly ConcurrentDictionary<Task, bool> _sessions = new();
+
+    /// <summary>The connections being served, closed by <see cref="StopAsync"/> when their sessions do not end in time.</summary>
+    private readonly ConcurrentDictionary<TcpClient, bool> _clients = new();
     private TcpListener? _listener;
     private Task? _accepting;
     private int _sessionCount;
@@ -74,7 +83,7 @@ public sealed class TerminalServer : IAsyncDisposable
     public int SessionCount => Volatile.Read(ref _sessionCount);
 
     /// <summary>Starts listening and accepting clients in the background.</summary>
-    /// <exception cref="InvalidOperationException">Thrown when the server was already started or the options are not secure enough.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the server was already started or stopped, or the options are not secure enough.</exception>
     /// <exception cref="SocketException">Thrown when the address cannot be listened on (for example, the port is in use).</exception>
     /// <example><code>server.Start();</code></example>
     public void Start()
@@ -82,6 +91,8 @@ public sealed class TerminalServer : IAsyncDisposable
         _options.Validate();
         if (_listener is not null)
             throw new InvalidOperationException("The server has already been started.");
+        if (Volatile.Read(ref _stopped) == 1)
+            throw new InvalidOperationException("The server has been stopped; create a new one to serve again.");
 
         var listener = new TcpListener(_options.EndPoint);
         listener.Start();
@@ -103,8 +114,16 @@ public sealed class TerminalServer : IAsyncDisposable
         if (_accepting is { } accepting)
             await accepting.ConfigureAwait(false);
 
-        // Cancelling disconnected every client, so sessions waiting for a key end too
-        await Task.WhenAll(_sessions.Keys).ConfigureAwait(false);
+        // Cancelling disconnected every client, so sessions waiting for a key end too; a session stuck writing to a client
+        // that stopped reading is ended by closing its connection
+        var sessions = Task.WhenAll(_sessions.Keys);
+        if (await Task.WhenAny(sessions, Task.Delay(StopGracePeriod)).ConfigureAwait(false) != sessions)
+        {
+            foreach (var client in _clients.Keys)
+                client.Client.Close(0);
+        }
+
+        await sessions.ConfigureAwait(false);
         if (_listener is not null)
             MvcApplicationLog.StoppedServing(_logger);
     }
@@ -134,13 +153,14 @@ public sealed class TerminalServer : IAsyncDisposable
             }
             catch (SocketException)
             {
-                continue; // a client that went away while being accepted
+                // A client that went away while being accepted, or the process is out of handles: wait, then carry on
+                await Task.Delay(AcceptRetryDelay).ConfigureAwait(false);
+                continue;
             }
 
             var remote = client.Client.RemoteEndPoint;
-            if (_options.AcceptConnection is { } accept && !accept(remote ?? new IPEndPoint(IPAddress.None, 0)))
+            if (!Accepts(remote))
             {
-                MvcApplicationLog.ConnectionRefused(_logger, remote, "not accepted by the filter");
                 client.Dispose();
                 continue;
             }
@@ -155,6 +175,27 @@ public sealed class TerminalServer : IAsyncDisposable
 
             Track(ServeClientAsync(client));
         }
+    }
+
+    /// <summary>Runs <see cref="TerminalServerOptions.AcceptConnection"/>; a filter that throws refuses the connection.</summary>
+    private bool Accepts(EndPoint? remote)
+    {
+        if (_options.AcceptConnection is not { } accept)
+            return true;
+
+        try
+        {
+            if (accept(remote ?? new IPEndPoint(IPAddress.None, 0)))
+                return true;
+
+            MvcApplicationLog.ConnectionRefused(_logger, remote, "not accepted by the filter");
+        }
+        catch (Exception e)
+        {
+            MvcApplicationLog.ConnectionFailed(_logger, e, remote);
+        }
+
+        return false;
     }
 
     /// <summary>Keeps <paramref name="session"/> until it ends, so <see cref="StopAsync"/> can wait for it.</summary>
@@ -180,7 +221,8 @@ public sealed class TerminalServer : IAsyncDisposable
                     await client.GetStream().WriteAsync(Encoding.UTF8.GetBytes(_options.BusyMessage + "\r\n"), timeout.Token).ConfigureAwait(false);
                 }
             }
-            catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
+            catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException
+                                          or InvalidOperationException or SocketException)
             {
                 // The client went away first
             }
@@ -193,9 +235,13 @@ public sealed class TerminalServer : IAsyncDisposable
         var remote = client.Client.RemoteEndPoint;
         RemoteTerminal? terminal = null;
         Task? session = null;
+        _clients[client] = true;
         try
         {
             client.NoDelay = true;
+
+            // A blocked write fails after this long, disconnecting a client that stopped reading
+            client.SendTimeout = (int)_options.WriteTimeout.TotalMilliseconds;
             Stream stream = client.GetStream();
             if (_options.Certificate is { } certificate)
             {
@@ -241,12 +287,28 @@ public sealed class TerminalServer : IAsyncDisposable
         {
             MvcApplicationLog.ConnectionRefused(_logger, remote, e is AuthenticationException or OperationCanceledException ? "the TLS handshake failed or timed out" : "the connection was lost");
         }
+        catch (Exception e) when (session is null)
+        {
+            // Anything else while setting up ends this connection only, and is logged rather than lost
+            MvcApplicationLog.ConnectionFailed(_logger, e, remote);
+        }
         finally
         {
-            if (terminal is not null)
-                await terminal.DisposeAsync().ConfigureAwait(false);
-            client.Dispose();
-            Interlocked.Decrement(ref _sessionCount);
+            try
+            {
+                if (terminal is not null)
+                    await terminal.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                MvcApplicationLog.ConnectionFailed(_logger, e, remote);
+            }
+            finally
+            {
+                _clients.TryRemove(client, out _);
+                client.Dispose();
+                Interlocked.Decrement(ref _sessionCount);
+            }
         }
     }
 

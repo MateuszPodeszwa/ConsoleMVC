@@ -4,14 +4,14 @@
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
-ConsoleMVC brings the **Controller-ViewModel** pattern to console apps, with convention-based routing, reflection-based auto-discovery, and a Razor-like view engine powered by a C# source generator. If you've built ASP.NET Core MVC apps before, you already know how to use ConsoleMVC.
+ConsoleMVC brings the **Controller-ViewModel** pattern to console apps, with convention-based routing, automatic discovery through a generated route table, and a Razor-like view engine powered by a C# source generator. If you've built ASP.NET Core MVC apps before, you already know how to use ConsoleMVC.
 
 ## Why ConsoleMVC?
 
 Console applications often end up as unstructured, hard-to-maintain code. UI frameworks like Spectre.Console help with presentation, but they don't solve the underlying architectural problem. ConsoleMVC provides:
 
 - **Separation of concerns**: Controllers handle logic, Views handle rendering, Models carry data
-- **Convention over configuration**: Controllers and Views are auto-discovered at startup via reflection
+- **Convention over configuration**: Controllers and Views are found by convention, through a route table the build generates
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, the same patterns from ASP.NET Core MVC
 - **Razor-like view engine**: `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
 - **C-View Markup**: declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
@@ -44,7 +44,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 ### Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
-- JetBrains Rider is recommended, for the [ConsoleMVC CVWSupport plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport); a Visual Studio extension is planned
+- JetBrains Rider is recommended, for the [ConsoleMVC CVWSupport plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport); support for VS Code is planned in [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport)
 - With VS Code or another editor, [add basic support for `.cvw` files](#IDESupport)
 
 ### Installation
@@ -73,6 +73,7 @@ MyApp/
   MyApp.csproj
   Program.cs
   SharedResource.cs             # Names Resources/SharedResource.resx (English) and .pl.resx (Polish)
+  Resources/                    # SharedResource.resx and SharedResource.pl.resx
   appsettings.json              # Settings read by builder.Configuration
   MyApp.Tests/                  # Only with --tests: xUnit tests using ConsoleMVC.Testing
   Areas/Admin/                  # An area: Controllers/SettingsController.cs and Views/Settings/IndexView.cvw
@@ -125,7 +126,7 @@ using var app = builder.Build();
 await app.RunAsync();                                               // or app.Run()
 ```
 
-The framework scans the assembly at startup, discovers all controllers and views, and begins the main loop at the default route (`Home/Index`).
+The framework loads the route table generated for the assembly (every controller and view), and begins the main loop at the default route (`Home/Index`).
 
 ### Controllers
 
@@ -844,7 +845,7 @@ app.Run();                                      // Or serve many users: --Consol
 | `Localization` | Culture, translated framework messages and validation messages ([Localisation](docs/guides/docs/localisation.md)) |
 | `Mouse` | Click menu options, choices and checkboxes; the wheel scrolls ([Mouse](docs/guides/docs/controllers-and-forms.md#mouse)) |
 | `FullScreen` | Run on the terminal's alternate screen; the user's scrollback is restored when the application ends |
-| `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
+| `ApplicationAssembly` | The assembly whose controllers and views are used (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |
 | `Configuration` | Settings from `appsettings.json`, `appsettings.{Environment}.json`, environment variables (`Shop__Name`) and the command line (`--Shop:Name=Corner`), later ones winning; registered as `IConfiguration` (see [Configuration Files and Logging](docs/guides/docs/hosting.md)) |
 | `Environment` | `EnvironmentName` (`DOTNET_ENVIRONMENT`, default `Production`), `ContentRootPath` and `ApplicationName`; registered as `IHostEnvironment`. Choose them in code with `MvcApplication.CreateBuilder(new MvcApplicationOptions { … })` |
@@ -867,7 +868,7 @@ Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszw
 
 All three packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
 
-## License
+## Licence
 
 This project is licensed under the [MIT License](LICENSE).
 
@@ -875,7 +876,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## For Maintainers
 
-This section documents how to build, pack, and publish new versions of the framework and template packages.
+This section documents how to build, pack, and publish new versions of the framework, testing and template packages.
 
 ### Repository Structure
 
@@ -891,8 +892,10 @@ ConsoleMVC/
       build/ConsoleMVC.Framework.props    #   Auto-imported by consuming projects
       PACKAGE_README.md                   #   README shown on NuGet gallery
       Application/ Controllers/ Results/  #   MVC framework (namespace ConsoleMVC.Mvc)
-      Routing/ Binding/ Views/
+      Routing/ Binding/ Views/ Areas/
       Validation/ DependencyInjection/ Middleware/
+      Localization/ Refresh/ Shortcuts/   #   Localisation, timed refresh and keyboard shortcuts
+      Remote/                             #   Remote sessions: TerminalServer, RemoteTerminal, ITerminalSession
       Hosting/                            #   Configuration, environment and logging for the builder
       Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
     ConsoleMVC.Testing/                   # Test host, scripted input and snapshots (NuGet: ConsoleMVC.Testing)
@@ -915,10 +918,13 @@ ConsoleMVC/
       ConsoleMVC.App.csproj               #   sourceName replaced with user's project name
       Program.cs
       appsettings.json                    #   Settings read by builder.Configuration
+      SharedResource.cs Resources/        #   Localisation resources (English and Polish)
+      Areas/                              #   The Admin area
       Controllers/
       Models/
       Services/
       Views/                              #   including Views/Shared partials
+      ConsoleMVC.App.Tests/               #   The test project added by --tests
 ```
 
 ### Building and Testing
@@ -998,7 +1004,7 @@ When modifying the source generator (`src/ConsoleMVC.Generators`):
 - The generator targets `netstandard2.0`: avoid APIs not available in that target
 - To add a markup element, add its runtime class under `src/ConsoleMVC/Rendering/Elements` and register it in `Schema/MarkupSchema.cs`; add a rendering test in `ConsoleMVC.Generators.Tests`
 - New diagnostics need an entry in `AnalyzerReleases.Unshipped.md`
-- `Environment.NewLine` and similar banned symbols cannot be used (Roslyn analyzer restriction)
+- `Environment.NewLine` and similar banned symbols cannot be used (a Roslyn analyser restriction)
 - After changes, you must repack the `ConsoleMVC` package since the generator DLL is bundled inside it
 - Clear the local NuGet cache (`rm -rf ~/.nuget/packages/consolemvc.framework`) when testing locally to avoid stale generator DLLs
 
@@ -1009,4 +1015,4 @@ Follow [SemVer](https://semver.org/):
 - **Minor** (1.x.0): New features, new base class methods, backward-compatible additions
 - **Major** (x.0.0): Breaking changes to the public API (Controller, ConsoleView, NavigationResult, etc.)
 
-Keep both packages' versions in sync: when the framework version bumps, update the template's `PackageReference` and bump the template version too.
+Keep the three packages' versions in sync: when the framework version bumps, bump `ConsoleMVC.Testing` and the template too, and update the template's `PackageReference`s.

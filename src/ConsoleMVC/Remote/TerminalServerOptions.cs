@@ -95,6 +95,13 @@ public sealed class TerminalServerOptions
     /// <example><code>options.IdleTimeout = TimeSpan.FromMinutes(10);</code></example>
     public TimeSpan IdleTimeout { get; set; } = RemoteTerminalOptions.DefaultIdleTimeout;
 
+    /// <summary>
+    /// Gets or sets how long writing to a client may block before the client is disconnected: a client that stops reading
+    /// (its connection full) cannot hold its session, or the server's shutdown, for longer. The default is 30 seconds.
+    /// </summary>
+    /// <example><code>options.WriteTimeout = TimeSpan.FromSeconds(10);</code></example>
+    public TimeSpan WriteTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
     /// <summary>Gets or sets how long a client has to finish the TLS handshake. The default is 10 seconds.</summary>
     /// <example><code>options.HandshakeTimeout = TimeSpan.FromSeconds(5);</code></example>
     public TimeSpan HandshakeTimeout { get; set; } = TimeSpan.FromSeconds(10);
@@ -215,6 +222,9 @@ public sealed class TerminalServerOptions
 
         if (HandshakeTimeout <= TimeSpan.Zero)
             throw new InvalidOperationException("TerminalServerOptions.HandshakeTimeout must be positive.");
+
+        if (WriteTimeout <= TimeSpan.Zero || WriteTimeout.TotalMilliseconds > int.MaxValue)
+            throw new InvalidOperationException("TerminalServerOptions.WriteTimeout must be positive.");
 
         if (Certificate is { HasPrivateKey: false })
             throw new InvalidOperationException("TerminalServerOptions.Certificate has no private key, so it cannot be used for TLS.");

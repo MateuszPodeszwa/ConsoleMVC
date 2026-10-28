@@ -383,7 +383,7 @@ with `dotnet_diagnostic.CVW119.severity = error` in `.editorconfig`.
 Each option needs exactly one of `nav`, `quit` or `back`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
 
 !!! note "Top level only"
-    `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
+    `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>`, `<menu>`, `<scroll>` and `<partial>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
 
 ### `<breadcrumbs />`
 
@@ -587,7 +587,7 @@ Like a field, `<scroll>` waits for the user, so it goes at the top level of a vi
 
 ### `<errors />`
 
-Shows validation messages from the view's `ModelState` (see [Validation](https://github.com/MateuszPodeszwa/ConsoleMVC#validation)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.
+Shows validation messages from the view's `ModelState` (see [Validation](validation.md)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.
 
 ```
 <errors />
@@ -602,6 +602,7 @@ Shows validation messages from the view's `ModelState` (see [Validation](https:/
 | Attribute | Values | Default |
 |---|---|---|
 | `for` | a field name (case-insensitive) | all fields |
+| `class` | theme class names, separated by spaces | none |
 | `color` / `colour` | a [colour](#colours) | `red` |
 
 ### `<partial />`
@@ -611,7 +612,7 @@ Renders a **partial view**: a reusable piece of markup in `Views/Shared/{Name}.c
 ```
 @* Views/Shared/Header.cvw *@
 @model string
-<box border="double" align="centre">@Model</box>
+<box border="double"><text align="centre">@Model</text></box>
 <br />
 ```
 
@@ -671,7 +672,7 @@ A theme defines named styles once for the whole application; elements use them w
 | `danger` | bold red text |
 | `panel` | rounded cyan border, padding 2 |
 
-Classes are applied in order, then the element's own attributes, so `<box class="panel" padding="0">` keeps the panel's border with no padding. Unknown class names are ignored. Text properties apply to `<text>`, `<cell>` and `<option>`; the text colour also colours `<separator>` and `<errors>`; border, padding and width properties apply to `<box>` and `<table>`.
+Classes are applied in order, then the element's own attributes, so `<box class="panel" padding="0">` keeps the panel's border with no padding. Unknown class names are ignored. Text properties apply to `<text>`, `<cell>`, `<option>` and `<choice>`; the text colour also colours `<separator>` and `<errors>`; border, padding and width properties apply to `<box>` and `<table>`.
 
 Define your own classes, or replace the built-in ones, in `Program.cs`:
 
@@ -721,9 +722,9 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW106 | Control flow or a code block inside `<text>` |
 | CVW107 | Attribute specified twice |
 | CVW108 | Malformed tag |
-| CVW109 | Element rule broken (an `<option>` needs exactly one of `nav` or `quit`) |
+| CVW109 | Element rule broken (an `<option>` needs exactly one of `nav`, `quit` or `back`) |
 | CVW110 | Text or an expression directly inside `<table>`, `<row>` or `<menu>` |
-| CVW111 | Required attribute missing (`<option key>`, `<input name>`, `<select name>`, `<checkbox name>`) |
+| CVW111 | Required attribute missing (`<option key>`, `name` on `<input>`, `<select>`, `<radio>`, `<checkbox>`, `<number>`, `<date>` and `<partial>`, `<bar value>`, `<sparkline values>`, `<markdown text>`) |
 | CVW112 | `@()` contains no expression |
 | CVW113 | Markup nested more than 100 levels deep |
 | CVW114 | `<partial>` names no partial view in `Views/Shared`, or its name is not written literally |

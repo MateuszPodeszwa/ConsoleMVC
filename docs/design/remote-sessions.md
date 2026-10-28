@@ -148,6 +148,11 @@ TerminalKeyDecoder.Next():
 - `WaitForInput(timeout)` waits on the channel, so `@refresh` screens refresh remotely too.
 - When the stream ends, the client is idle longer than `IdleTimeout`, or the session presses Ctrl+C, reads return
   the end of input and the session ends as a local run does when its input ends.
+- A write that fails (the connection broke) disconnects the terminal and rethrows the I/O error unchanged, so code that
+  already copes with a lost terminal (a live element's timer, putting the terminal mode back) keeps coping; the session
+  then ends quietly, because an I/O error on a disconnected terminal is the end of the session, not an error to log.
+- The alternate screen and mouse reporting of a remote terminal are put back by its own session only: the server's
+  Ctrl+C and process exit handlers belong to the server's console.
 
 ## 6. The server
 
@@ -163,9 +168,13 @@ TerminalServer.Start():
         Raw    → ask the terminal for its size (ESC [ 18 t)
         terminal ← new RemoteTerminal(...);  run app.RunSessionAsync(terminal, server token) on its own task
         log the start and the end; an exception ends that session only
-StopAsync(): stop listening, cancel and close every session, wait for them
+StopAsync(): stop listening, cancel (which disconnects every terminal), wait up to 5 s,
+             then close the connections of sessions still running (stuck writing), and wait for them
+every connection: SendTimeout = WriteTimeout (30 s), so a client that stops reading cannot block a write for ever
+AcceptConnection that throws → refused and logged;  accept errors → retried after 100 ms
 ```
 
+While negotiating, at most 4096 data bytes are kept; a client that sends more is not waited for any longer.
 `TelnetStream` strips commands from the input: `IAC IAC` is the byte 255, `IAC WILL/WONT/DO/DONT x` is skipped,
 `IAC SB NAWS w w h h IAC SE` resizes, `IAC SB TTYPE IS name IAC SE` names the terminal; subnegotiations longer than
 64 bytes are dropped. UTF-8 output never contains the byte 255, so output needs no escaping.
@@ -195,8 +204,9 @@ Settings, for running without code changes:
 
 `ITextInput` is synchronous, so each session blocks one thread while it waits for a key. `RunSessionAsync` starts the
 session with `TaskCreationOptions.LongRunning`, on a thread of its own: the caller is never blocked, and sessions do
-not take thread-pool threads until an action awaits something that is not finished. `MaxSessions` (default 16) bounds
-the threads used. Cancelling the token disconnects the terminal, so a session waiting for a key ends too, and
+not take thread-pool threads until an action awaits something that is not finished. After that, the session continues
+on a thread-pool thread, which then blocks while it waits for a key; the waits are task waits, which the thread pool
+notices and compensates for by adding threads. `MaxSessions` (default 16) bounds the threads used. Cancelling the token disconnects the terminal, so a session waiting for a key ends too, and
 `RunSessionAsync` then throws `OperationCanceledException`, as `RunAsync` does.
 
 ## 9. Testing

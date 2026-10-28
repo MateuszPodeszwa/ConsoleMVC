@@ -132,6 +132,67 @@ public class TerminalServerTests
     }
 
     [Fact]
+    public async Task AClientThatNeverReads_CannotStopTheServerStopping()
+    {
+        await using var app = BuildApp();
+        var server = new TerminalServer(app, Loopback());
+        server.Start();
+        // A small receive window, set before connecting, so the echo fills the connection quickly
+        using var client = new System.Net.Sockets.TcpClient { ReceiveBufferSize = 2048 };
+        await client.ConnectAsync(server.LocalEndPoint);
+
+        // Typing is echoed; a client that never reads fills the connection until the server's writes block
+        var typing = Task.Run(async () =>
+        {
+            var keys = Enumerable.Repeat((byte)'n', 64 * 1024).ToArray();
+            try
+            {
+                await SendAsync(client.GetStream(), "n\r");
+                for (var i = 0; i < 1024; i++)
+                    await client.GetStream().WriteAsync(keys);
+            }
+            catch (Exception e) when (e is IOException or ObjectDisposedException)
+            {
+                // The server closed the connection
+            }
+        });
+        await Task.Delay(3000);
+
+        await server.StopAsync().WaitAsync(Patience);
+
+        Assert.Equal(0, server.SessionCount);
+        client.Dispose();
+        await typing.WaitAsync(Patience);
+        await server.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task AFilterThatThrows_RefusesThatConnection_AndTheServerCarriesOn()
+    {
+        var calls = 0;
+        await using var app = BuildApp();
+        await using var server = new TerminalServer(app, Loopback(o => o.AcceptConnection = _ =>
+            ++calls == 1 ? throw new InvalidOperationException("filter bug") : true));
+        server.Start();
+
+        using var refused = await ConnectAsync(server);
+        Assert.Equal("", await ReadToEndAsync(refused.GetStream()));
+
+        using var accepted = await ConnectAsync(server);
+        await ReadUntilAsync(accepted.GetStream(), new StringBuilder(), "visit 1");
+    }
+
+    [Fact]
+    public async Task AStoppedServer_CannotBeStartedAgain()
+    {
+        await using var app = BuildApp();
+        var server = new TerminalServer(app, Loopback());
+        await server.StopAsync();
+
+        Assert.Throws<InvalidOperationException>(server.Start);
+    }
+
+    [Fact]
     public async Task TheRawProtocol_AsksTheTerminalForItsSize()
     {
         await using var app = BuildApp();

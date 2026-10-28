@@ -49,7 +49,8 @@ A constructor parameter that cannot be resolved fails with an `InvalidOperationE
 `@inject IOptions<Dictionary<string, int>> Limits`.
 
 The name must be a valid C# identifier and cannot be one the view already has (`Model`, `ViewData`, `ModelState`,
-`Renderer`, `Input`, `Form`, `Theme`, `Services`, `PreparePartial`). Mistakes are build errors in the `.cvw` file:
+`Renderer`, `Input`, `Form`, `Theme`, `Services`, `Render`, `RenderInternal`, `ReadInput`, `RunMenu`, `PreparePartial`, and
+the members every object has: `Equals`, `GetHashCode`, `GetType`, `ToString`, `MemberwiseClone`). Mistakes are build errors in the `.cvw` file:
 
 | Id | Meaning |
 |---|---|
@@ -78,9 +79,10 @@ view   Done  ─┘ → dispose
 
 ## Framework services
 
-The framework registers `IMarkupRenderer` and `ITextInput` unless you do, and always provides `IConfiguration`,
-`IHostEnvironment`, the options services (`IOptions<T>`) and logging (`ILogger<T>`; see
-[Configuration Files and Logging](hosting.md)). You can therefore inject them, or replace the renderer and input with
+The framework registers `IMarkupRenderer`, `ITextInput` and `ILiveDisplay` unless you do, and always provides
+`IConfiguration`, `IHostEnvironment`, the options services (`IOptions<T>`), localisation (`IStringLocalizer<T>`; see
+[Localisation](localisation.md)), `ITerminalSession` (the session the code runs in; see
+[Remote Sessions](remote-sessions.md)) and logging (`ILogger<T>`; see [Configuration Files and Logging](hosting.md)). You can therefore inject them, or replace the renderer and input with
 your own registration:
 
 ```csharp

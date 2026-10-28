@@ -85,7 +85,9 @@ public sealed class AccountController(ITerminalSession session, IUserStore users
 | `Disconnect()` | Ends the session, for example after too many failed sign-ins |
 
 Singletons are shared by every session, so keep per-user state in `Items` (or in a store keyed by the session's `Id`),
-and make shared services safe to use from several threads. Scoped services are still one scope per screen.
+and make shared services safe to use from several threads. Scoped services are still one scope per screen. Ask for
+`ITerminalSession` in controllers, views, middleware and scoped services, never in a singleton's constructor: a
+singleton is created once, so it would keep the first session that created it.
 
 ## What works remotely
 
@@ -110,6 +112,9 @@ The defaults are safe:
   network in clear text, unless you set `AllowUnencryptedNetworkAccess` (only on a network you trust);
 - it accepts at most 16 sessions, buffers at most 4096 typed characters per session, keeps window sizes to at most
   1000 by 500, and drops idle clients and clients that do not finish the TLS handshake in 10 seconds;
+- a client that stops reading cannot hold its session: a write that blocks for `WriteTimeout` (30 seconds) disconnects
+  it, and stopping the server closes any connection whose session has not ended after 5 seconds;
+- a filter (`AcceptConnection`) that throws refuses that connection and is logged; the server carries on;
 - session identifiers are random, from a cryptographic generator.
 
 Turn on TLS 1.2 or 1.3 with a certificate:

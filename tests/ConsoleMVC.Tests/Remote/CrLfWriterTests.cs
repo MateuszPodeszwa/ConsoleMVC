@@ -35,13 +35,14 @@ public class CrLfWriterTests
     }
 
     [Fact]
-    public void ABrokenConnection_EndsTheSession_InsteadOfFailing()
+    public void ABrokenConnection_IsReported_AndTheErrorKept()
     {
         var broken = 0;
         var writer = new CrLfWriter(new FailingWriter(), () => broken++);
 
-        Assert.Throws<OperationCanceledException>(() => writer.Write("x"));
-        Assert.Throws<OperationCanceledException>(() => writer.Flush());
+        // The I/O error stays an I/O error, so code that already handles a lost terminal keeps handling it
+        Assert.Throws<IOException>(() => writer.Write("x"));
+        Assert.Throws<IOException>(() => writer.Flush());
         Assert.Equal(2, broken);
     }
 

@@ -36,6 +36,9 @@ internal sealed class TelnetStream : Stream
     private const byte TerminalTypeIs = 0;
     private const byte TerminalTypeSend = 1;
 
+    /// <summary>The most data bytes kept while negotiating; a client that sends more is not waited for any longer.</summary>
+    public const int MaxNegotiationBuffer = 4096;
+
     /// <summary>The longest subnegotiation kept; longer ones are dropped.</summary>
     public const int MaxSubnegotiationLength = 64;
 
@@ -96,7 +99,8 @@ internal sealed class TelnetStream : Stream
 
         // A read is never cancelled (that can break a TLS stream): when the time passes it is left for the next read
         var deadline = Task.Delay(timeout, cancellationToken);
-        while (WindowSize is null || TerminalType is null)
+        // Data typed meanwhile is kept for reads, up to a limit: a client that floods data is not waited for
+        while ((WindowSize is null || TerminalType is null) && _data.Count < MaxNegotiationBuffer)
         {
             _pendingRead ??= _inner.ReadAsync(_received, CancellationToken.None).AsTask();
             if (await Task.WhenAny(_pendingRead, deadline).ConfigureAwait(false) == deadline)
@@ -109,6 +113,9 @@ internal sealed class TelnetStream : Stream
                 return;
         }
     }
+
+    /// <summary>Gets how many data bytes are parsed and waiting to be read.</summary>
+    internal int BufferedDataCount => _data.Count;
 
     /// <summary>A read started while negotiating that had not finished when the time passed.</summary>
     private Task<int>? _pendingRead;
@@ -342,7 +349,14 @@ internal sealed class TelnetStream : Stream
     protected override void Dispose(bool disposing)
     {
         if (disposing)
+        {
             _inner.Dispose();
+
+            // A read left from negotiating fails when the connection closes; nobody waits for it any more
+            _pendingRead?.ContinueWith(static read => _ = read.Exception, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+
         base.Dispose(disposing);
     }
 }

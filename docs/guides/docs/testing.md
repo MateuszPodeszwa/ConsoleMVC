@@ -86,7 +86,7 @@ line) fails with a message naming both.
 with `@refresh` or `RefreshEvery`: the screen uses it up and is drawn again. Elsewhere a `Wait()` step fails the run.
 
 ```csharp
-var run = Host().Run(new ScriptedInput("4").Wait().Line("q")); // the status page refreshes once, then quits
+var run = Host().Run(new ScriptedInput("4", "2").Wait().Line("b")); // feature tour, live status, one refresh, back
 ```
 
 With `builder.Mouse` on, `Click(column, row)` clicks a place on the screen (counted from 0 at the top left of the

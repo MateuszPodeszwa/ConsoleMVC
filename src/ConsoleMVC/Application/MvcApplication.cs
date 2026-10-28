@@ -392,9 +392,10 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                     CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)
                 .Unwrap().ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (terminal.Disconnected.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        catch (Exception e) when (e is OperationCanceledException or IOException or ObjectDisposedException
+                                  && terminal.Disconnected.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            // The client disconnected: the session is over
+            // The client disconnected (or its connection broke while the screen was written): the session is over
         }
 
         // Cancelling disconnected the client, which can end the session as if it had quit: report the cancellation
@@ -579,14 +580,16 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         MvcApplicationLog.Starting(logger, state.Current, Environment.EnvironmentName);
 
         HotReloadHandler.Updated += OnHotReload;
-        using var screen = _fullScreen ? TerminalModeSession.FullScreen(renderer) : null;
-        using var mouse = _mouse ? TerminalModeSession.Mouse(renderer) : null;
+        // A remote terminal is put back by its own session, not by the server's Ctrl+C or exit
+        var local = terminal is null;
+        using var screen = _fullScreen ? TerminalModeSession.FullScreen(renderer, local) : null;
+        using var mouse = _mouse ? TerminalModeSession.Mouse(renderer, local) : null;
         try
         {
             await RunLoopAsync(pipeline, assembly, state, renderer, refreshing, theme, logger, cancellationToken).ConfigureAwait(false);
             MvcApplicationLog.Stopped(logger);
         }
-        catch (Exception e) when (e is not OperationCanceledException)
+        catch (Exception e) when (e is not OperationCanceledException && !LostTerminal(e, terminal))
         {
             // Logged where it happened, then rethrown unchanged for the caller (and the terminal) to see
             MvcApplicationLog.UnhandledException(logger, e, state.Current);
@@ -597,6 +600,10 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             HotReloadHandler.Updated -= OnHotReload;
         }
     }
+
+    /// <summary>Whether <paramref name="e"/> is the I/O error of a remote terminal whose client has gone, not an error to log.</summary>
+    private static bool LostTerminal(Exception e, RemoteTerminal? terminal) =>
+        terminal is { Disconnected.IsCancellationRequested: true } && e is IOException or ObjectDisposedException;
 
     /// <summary>Marks the router for rediscovery; called on a hot reload thread.</summary>
     private void OnHotReload() => Interlocked.Exchange(ref _reloadRequested, 1);

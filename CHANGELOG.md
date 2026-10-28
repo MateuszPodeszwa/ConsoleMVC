@@ -18,13 +18,15 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - `ITerminalSession`, resolved from services: the session's `Id`, `IsRemote`, `RemoteEndPoint`, `TerminalType`, `Width`,
   `Height`, per-session `Items` and `Disconnect()`.
 - Secure defaults: loopback only, a network address needs TLS (or `AllowUnencryptedNetworkAccess`), at most 16 sessions,
-  bounded input and window sizes, idle and handshake timeouts, and random session identifiers.
+  bounded input and window sizes, idle, handshake and write timeouts (`WriteTimeout`, 30 seconds), and random session
+  identifiers. Stopping the server closes connections whose sessions have not ended after 5 seconds.
 - The template's status page shows its session, and `Program.cs` explains how to serve the app.
 
 ### Changed
 
 - `ILiveDisplay` draws on the terminal of the session that started the live element.
 - A run's current page and history are kept per session; local runs behave as before.
+- The alternate screen and mouse reporting are put back with every kind of terminal error, not only `IOException`.
 
 ## [1.32.0]
 

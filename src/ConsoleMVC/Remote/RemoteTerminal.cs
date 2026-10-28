@@ -198,6 +198,10 @@ public sealed class RemoteTerminal : IAsyncDisposable
         {
             // Already disposed
         }
+        catch (AggregateException)
+        {
+            // A callback registered on Disconnected failed; the terminal is disconnected all the same
+        }
 
         _textInput.Writer.TryComplete();
     }

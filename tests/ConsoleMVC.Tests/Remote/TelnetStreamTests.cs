@@ -136,6 +136,19 @@ public class TelnetStreamTests
         Assert.Equal((byte)'y', buffer[0]);
     }
 
+    [Fact]
+    public async Task Negotiate_StopsBufferingAClientThatFloodsData()
+    {
+        var flood = new DuplexTestStream();
+        var telnet = new TelnetStream(flood);
+        for (var i = 0; i < 256; i++)
+            flood.Send(new byte[4096]); // 1 MB of data, and no answers
+
+        await telnet.NegotiateAsync(TimeSpan.FromSeconds(5), CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(4));
+
+        Assert.InRange(telnet.BufferedDataCount, 1, TelnetStream.MaxNegotiationBuffer + 4096);
+    }
+
     private static string Latin1Output(DuplexTestStream stream) =>
         System.Text.Encoding.Latin1.GetString(stream.OutputBytes);
 }
