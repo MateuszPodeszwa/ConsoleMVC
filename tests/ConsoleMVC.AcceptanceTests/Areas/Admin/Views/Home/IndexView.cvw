@@ -1,4 +1,6 @@
 <text>Admin home</text>
+<text>Area: @NavigationHistory[^1].Area, controller: @NavigationHistory[^1].ControllerName</text>
+<breadcrumbs />
 <menu>
     <option key="a" nav="Home/Index">This area's Home</option>
     <option key="h" nav="/Home/Index">The application's Home</option>

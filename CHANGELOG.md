@@ -130,6 +130,9 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
     fields as a terminal first shows them (`checked`, `default` values, the select and radio frames);
   - refuses a `--width` outside 20 to 500 with a clear message (it clamped silently), accepts `--option=value`, and
     says a shared view over 1 MB is too large rather than not found.
+- With piped input `<shortcuts />` still listed shortcuts, which do nothing there; it now lists none.
+- A route typed in another case (`admin/users/index`) kept that case in `RouteContext` and the breadcrumbs
+  (`Area` was `admin`); routes now read as the controller is declared.
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).

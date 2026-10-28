@@ -523,6 +523,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
 
         /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
         public List<RouteContext> History { get; } = [];
+
+        /// <summary>Whether keys can never be read (the console's input is piped), so shortcuts do nothing.</summary>
+        public bool KeysUnavailable { get; set; }
     }
 
     /// <summary>The culture chosen in code, or else in the <see cref="MvcLocalizationOptions.CultureSetting"/> setting.</summary>
@@ -575,6 +578,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             input = _services.GetRequiredService<ITextInput>();
             echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
             session = TerminalSession.ForLocalRun();
+
+            state.KeysUnavailable = input is ConsoleTextInput && !input.CanReadKeys;
 
             // Ctrl+C (or the caller's token) ends the run while a screen waits for the user, not after the next key
             if (input is ConsoleTextInput)
@@ -806,11 +811,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         context.Controller = controller;
         var actionMethod = _router.ResolveAction(controller.GetType(), route.Action);
 
-        // Normalise the route to the declared action name so View() resolves the right view
-        // regardless of the casing used in navigation.
+        // Normalise the route to the declared controller and action names, so View() resolves the right view and the
+        // area and breadcrumbs read as declared, whatever casing navigation used (admin/users/index)
         controller.RouteContext = new RouteContext
         {
-            Controller = route.Controller,
+            Controller = Router.ControllerKey(controller.GetType()),
             Action = actionMethod.Name,
             FormData = route.FormData,
             RouteValues = route.RouteValues
@@ -922,8 +927,10 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         view.Input = input;
         view.Theme = theme;
         view.NavigationHistory = state.History.ToArray();
-        view.ShortcutHints = _shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Description))
-            .Select(s => new ShortcutHint(s.Gesture.ToString(), s.Description!)).ToArray();
+        // Shortcuts need keys: with piped input they do nothing, so <shortcuts /> does not offer them
+        view.ShortcutHints = !state.KeysUnavailable
+            ? _shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Description)).Select(s => new ShortcutHint(s.Gesture.ToString(), s.Description!)).ToArray()
+            : [];
 
         // A refresh always clears, or the screen would be drawn again below itself
         if (_clearScreenBetweenViews || clear)

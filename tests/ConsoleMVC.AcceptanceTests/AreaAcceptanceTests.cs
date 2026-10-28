@@ -19,4 +19,12 @@ public class AreaAcceptanceTests
         Assert.Equal(["Home/Index", "Admin/Home/Index", "Home/Index"], run.Routes);
         Assert.Contains("Acceptance", run.LastScreen);
     }
+
+    [Fact]
+    public void ARouteTypedInAnyCase_ReadsAsDeclared()
+    {
+        var run = App.Host().Run("0", "q");
+
+        Assert.Contains("Area: Admin, controller: Home", run.LastScreen);
+    }
 }

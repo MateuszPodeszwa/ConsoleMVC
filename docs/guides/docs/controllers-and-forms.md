@@ -90,7 +90,7 @@ once and follows the navigation. The description is optional; shortcuts with one
   without Shift.
 - With shortcuts mapped, lines are read key by key so shortcuts work in menus and text fields; typing, Backspace,
   Delete, Left, Right, Home and End work as usual.
-- With piped input there are no keys to read, so shortcuts are not available.
+- With piped input there are no keys to read, so shortcuts are not available, and `<shortcuts />` lists none.
 - A view that catches every exception around a prompt (`catch (Exception)`) would also catch the shortcut; catch
   specific exceptions instead.
 

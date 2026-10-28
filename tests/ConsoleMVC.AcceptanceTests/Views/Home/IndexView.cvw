@@ -11,5 +11,6 @@
     <option key="7" nav="Clock/Index">Clock</option>
     <option key="8" nav="Size/Index">Size</option>
     <option key="9" nav="Admin/Home/Index">Admin</option>
+    <option key="0" nav="admin/home/index">admin (typed in lower case)</option>
     <option key="q" quit>Quit</option>
 </menu>
