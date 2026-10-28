@@ -120,6 +120,14 @@ internal sealed class MarkupParser
                 continue;
             }
 
+            // Razor-style @if, @{ or @( where the view is already C#: C# would read a verbatim identifier or an error (CS1646)
+            if (c == '@' && RazorStyleCode() is { } razor)
+            {
+                Report(CvwDiagnostics.AtInCode, new SourceSpan(_position, razor.Written.Length), razor.Written, razor.Instead);
+                _position++; // read the rest as the C# it was meant to be, so no other errors follow
+                continue;
+            }
+
             if (c is '/' or '\'' or '"' or '@' or '$')
             {
                 var skip = CSharpLexer.Skip(_text, _position);
@@ -182,6 +190,35 @@ internal sealed class MarkupParser
         return nodes;
     }
 
+    /// <summary>
+    /// Recognises Razor-style code after the <c>@</c> under the cursor in C# code: <c>@{</c>, <c>@(</c>, or a control keyword
+    /// such as <c>@if</c> followed by <c>(</c> or <c>{</c>. A verbatim identifier such as <c>@class</c> is not one.
+    /// </summary>
+    /// <returns>What was written and what to write instead, or <see langword="null"/>.</returns>
+    private (string Written, string Instead)? RazorStyleCode()
+    {
+        switch (Peek(1))
+        {
+            case '{':
+                return ("@{", "the statements directly, without the braces");
+            case '(':
+                return ("@(", "the expression directly");
+        }
+
+        var keyword = PeekIdentifier(_position + 1);
+        if (!ControlKeywords.Contains(keyword))
+            return null;
+
+        var next = _position + 1 + keyword.Length;
+        while (next < _text.Length && char.IsWhiteSpace(_text[next]))
+            next++;
+
+        if (next >= _text.Length || _text[next] is not ('(' or '{'))
+            return null;
+
+        return ("@" + keyword, keyword is "do" or "try" ? $"'{keyword} {{ ... }}'" : $"'{keyword} (...) {{ ... }}'");
+    }
+
     /// <summary>Markup may only begin where a C# statement may begin.</summary>
     private static bool IsStatementStart(char lastSignificant) =>
         lastSignificant is '\0' or ';' or '{' or '}' or ':';
@@ -202,7 +239,10 @@ internal sealed class MarkupParser
         _depth++;
         try
         {
-            return ParseElementCore();
+            // Rules over several attributes and the children, now that both are known (ElementRules)
+            var element = ParseElementCore();
+            ElementRules.Check(element, _diagnostics);
+            return element;
         }
         finally
         {
@@ -347,6 +387,15 @@ internal sealed class MarkupParser
             {
                 _position++;
                 SkipWhitespace();
+
+                // title=> or title=/>: nothing follows the '=', which is a mistake for every attribute, not an empty value
+                if (_position >= _text.Length || Peek() == '>' || (Peek() == '/' && Peek(1) == '>'))
+                {
+                    Report(CvwDiagnostics.InvalidAttributeValue, new SourceSpan(attributeStart, name.Length), "", name,
+                        $"a value is required after '='; write {name}=\"\" for an empty value");
+                    continue;
+                }
+
                 parts = ParseAttributeValue();
             }
 
@@ -397,7 +446,8 @@ internal sealed class MarkupParser
             return null;
         }
 
-        if (parts.Count > 1 && !schema.Type.AllowsInterpolation)
+        // A value that must be literal reports any expression itself (a partial's name: CVW114)
+        if (parts.Count > 1 && !schema.Type.AllowsInterpolation && schema.Type.AllowsExpression)
         {
             Report(CvwDiagnostics.InvalidAttributeValue, span, _text.Substring(span.Start, span.Length), name,
                 "text and expressions can only be mixed in text attributes; use a single @(expression)");

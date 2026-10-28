@@ -21,9 +21,6 @@ namespace ConsoleMVC.Generators.Analysis;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 {
-    /// <summary>The most names listed in a message.</summary>
-    private const int MaxSuggestions = 8;
-
     /// <summary>The CVW121 property naming the controller (the view's folder), for the code fix that creates the view.</summary>
     public const string ControllerProperty = "Controller";
 
@@ -35,7 +32,7 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-        [CvwDiagnostics.UnknownCodeRoute, CvwDiagnostics.MissingView];
+        [CvwDiagnostics.UnknownCodeRoute, CvwDiagnostics.MissingView, CvwDiagnostics.DuplicateAction];
 
     /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
@@ -45,9 +42,12 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
         // Views generated from .cvw files are generated code; their C# is the user's, so it is checked too
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics);
 
+        // Overloaded actions fail when they are navigated to; say so at build time (CVW123)
+        context.RegisterSymbolAction(CheckDuplicateActions, SymbolKind.NamedType);
+
         context.RegisterCompilationStartAction(start =>
         {
-            var catalogue = Catalogue.Build(start.Compilation);
+            var catalogue = Catalogue.Build(start.Compilation, RouteSymbols.IsModule(start.Compilation, start.Options.AnalyzerConfigOptionsProvider.GlobalOptions));
             if (catalogue.Controllers.Count == 0)
                 return; // controllers compiled elsewhere: nothing to check against
 
@@ -71,6 +71,14 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        // app.MapKey(ConsoleKey.F1, "Help/Index", "Help"): the target is a full route, checked like nav="Help/Index"
+        if (owner == RouteSymbols.ApplicationType && method.Name == "MapKey" && Argument(invocation, "target") is { } keyTarget)
+        {
+            if (Constant(keyTarget) is { } route)
+                CheckTarget(context, catalogue, keyTarget, $"MapKey(\"{route}\")", route, current: null);
+            return;
+        }
+
         if (owner != RouteSymbols.NavigationResultType)
             return;
 
@@ -84,21 +92,72 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
                 break;
 
             case "To" when Argument(invocation, "target") is { } target:
-                if (Constant(target) is not { } text)
-                    break;
-
-                var path = text.Split('?')[0].Trim();
-                var slash = path.LastIndexOf('/');
-                if (slash >= 0)
-                    Report(context, catalogue, target.Syntax.GetLocation(), $"NavigationResult.To(\"{text}\")",
-                        RouteSymbols.Qualify(path.Substring(0, slash), viewController, catalogue.Controllers.ContainsKey), path.Substring(slash + 1));
-                else if (viewController is not null)
-                    Report(context, catalogue, target.Syntax.GetLocation(), $"NavigationResult.To(\"{text}\")", viewController, path);
+                if (Constant(target) is { } text)
+                    CheckTarget(context, catalogue, target, $"NavigationResult.To(\"{text}\")", text, viewController);
                 break;
 
             case "To":
                 CheckRoute(context, catalogue, invocation, "NavigationResult.To", Argument(invocation, "controller"), Argument(invocation, "action"), viewController);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Checks a target written as one string, <c>"Orders/Details?id=4"</c>; an action alone is on
+    /// <paramref name="current"/>, and is not checked without one.
+    /// </summary>
+    private static void CheckTarget(OperationAnalysisContext context, Catalogue catalogue, IArgumentOperation target, string call,
+        string text, string? current)
+    {
+        var path = text.Split('?')[0].Trim();
+        var slash = path.LastIndexOf('/');
+        if (slash >= 0)
+            Report(context, catalogue, target.Syntax.GetLocation(), call,
+                RouteSymbols.Qualify(path.Substring(0, slash), current, catalogue.Controllers.ContainsKey), path.Substring(slash + 1));
+        else if (current is not null)
+            Report(context, catalogue, target.Syntax.GetLocation(), call, current, path);
+    }
+
+    /// <summary>
+    /// Reports CVW123 for every action of a controller after the first with the same name (in any casing), as the
+    /// router finds them: public instance methods returning an action result, on the controller and its base classes,
+    /// an override counting once.
+    /// </summary>
+    private static void CheckDuplicateActions(SymbolAnalysisContext context)
+    {
+        if (context.Symbol is not INamedTypeSymbol type || RouteSymbols.ControllerName(type) is not { } controller)
+            return;
+
+        var overridden = new HashSet<IMethodSymbol>(SymbolEqualityComparer.Default);
+        var actions = new List<IMethodSymbol>();
+        for (var current = type; current is not null && current.ToDisplayString() != RouteSymbols.ControllerType; current = current.BaseType)
+        {
+            foreach (var method in current.GetMembers().OfType<IMethodSymbol>())
+            {
+                if (overridden.Contains(method.OriginalDefinition) || !RouteSymbols.IsAction(method))
+                    continue;
+
+                for (var hidden = method.OverriddenMethod; hidden is not null; hidden = hidden.OverriddenMethod)
+                    overridden.Add(hidden.OriginalDefinition);
+                actions.Add(method);
+            }
+        }
+
+        foreach (var group in actions.GroupBy(m => m.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+        {
+            // Reported on the methods declared in this class: after the first when they all are, else all of them (one
+            // in a base class makes every one here a duplicate)
+            var here = group.Where(m => SymbolEqualityComparer.Default.Equals(m.ContainingType, type)).ToList();
+            foreach (var method in here.Count == group.Count() ? here.Skip(1) : here)
+            {
+                var location = method.Locations.FirstOrDefault(l => l.IsInSource);
+                if (location is null)
+                    continue;
+
+                context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.DuplicateAction, location,
+                    $"'{controller}' has {group.Count()} actions named '{group.Key}'. Actions are found by name, so navigating " +
+                    "to it would fail when the application runs: rename one, or mark a helper [NonAction]."));
+            }
         }
     }
 
@@ -123,22 +182,30 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
         var location = (controllerArgument is { ArgumentKind: not ArgumentKind.DefaultValue } && !IsNull(controllerArgument) && !catalogue.Controllers.ContainsKey(controller)
             ? controllerArgument.Syntax
             : actionArgument.Syntax).GetLocation();
-        Report(context, catalogue, location, $"{call}(\"{action}\")", controller, action);
+        var written = controllerArgument is { ArgumentKind: not ArgumentKind.DefaultValue } && Constant(controllerArgument) is { } controllerText
+            ? $"{call}(\"{controllerText}\", \"{action}\")"
+            : $"{call}(\"{action}\")";
+        Report(context, catalogue, location, written, controller, action);
     }
 
     private static void Report(OperationAnalysisContext context, Catalogue catalogue, Location location, string call, string controller, string action)
     {
         if (!catalogue.Controllers.TryGetValue(controller, out var actions))
         {
+            if (catalogue.IsModule)
+                return; // a module cannot see the controllers of the application that adds it
+
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.UnknownCodeRoute, location,
-                $"{call}: there is no controller '{controller}'. Controllers: {List(catalogue.Controllers.Keys)}."));
+                $"{call}: there is no controller '{controller}'.{RouteSuggestions.DidYouMean(catalogue.Controllers.Keys, controller)} " +
+                $"Controllers: {RouteSuggestions.List(catalogue.Controllers.Keys, controller)}."));
             return;
         }
 
         if (!actions.Contains(action))
         {
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.UnknownCodeRoute, location,
-                $"{call}: the controller '{controller}' has no action '{action}'. Actions: {List(actions)}."));
+                $"{call}: the controller '{controller}' has no action '{action}'.{RouteSuggestions.DidYouMean(actions, action)} " +
+                $"Actions: {RouteSuggestions.List(actions, action)}."));
         }
     }
 
@@ -167,7 +234,7 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
         var existing = catalogue.Views.Where(v => v.StartsWith(controller + "/", StringComparison.OrdinalIgnoreCase))
             .Select(v => v.Substring(controller.Length + 1)).OrderBy(v => v, StringComparer.Ordinal).ToList();
-        var others = existing.Count == 0 ? "" : $" Views of '{controller}': {List(existing)}.";
+        var others = existing.Count == 0 ? "" : $"{RouteSuggestions.DidYouMean(existing, name)} Views of '{controller}': {RouteSuggestions.List(existing, name)}.";
 
         // What the code fix needs to create the view: its folder, its name and, when known, its model type
         var properties = ImmutableDictionary.CreateBuilder<string, string?>();
@@ -199,13 +266,6 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
     private static bool IsNull(IArgumentOperation argument) =>
         argument.Value.ConstantValue is { HasValue: true, Value: null };
 
-    private static string List(IEnumerable<string> names)
-    {
-        var all = names.OrderBy(n => n, StringComparer.Ordinal).ToList();
-        var shown = string.Join(", ", all.Take(MaxSuggestions));
-        return all.Count > MaxSuggestions ? shown + ", …" : shown;
-    }
-
     /// <summary>The controllers (with their actions) and views of a compilation, matched case-insensitively.</summary>
     private sealed class Catalogue
     {
@@ -213,9 +273,21 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
         public HashSet<string> Views { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-        public static Catalogue Build(Compilation compilation)
+        /// <summary>Whether the compilation is a module, whose application's controllers are not known.</summary>
+        public bool IsModule { get; private set; }
+
+        public static Catalogue Build(Compilation compilation, bool isModule)
         {
-            var catalogue = new Catalogue();
+            var catalogue = new Catalogue { IsModule = isModule };
+
+            // The controllers of the modules this compilation references are known too
+            foreach (var module in RouteSymbols.ModuleControllers(compilation))
+            {
+                if (!catalogue.Controllers.TryGetValue(module.Name, out var known))
+                    catalogue.Controllers[module.Name] = known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                known.UnionWith(module.Actions);
+            }
+
             foreach (var type in RouteSymbols.AllTypes(compilation.Assembly.GlobalNamespace))
             {
                 if (RouteSymbols.ControllerName(type) is { } controller)

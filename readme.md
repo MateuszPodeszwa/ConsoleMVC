@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.33: remote sessions: `dotnet run -- --ConsoleMVC:Serve=2323` serves the application to many users at once over Telnet or TLS, each with their own screen and history. 1.32 added Native AOT and trimming, 1.31 mouse support, 1.30 areas and feature modules. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.34: editor support: `cvw-preview` draws a view without running the application, and `schema/cvw-schema.json` describes the markup for editor plugins. 1.33 added remote sessions (`--ConsoleMVC:Serve=2323` serves the application to many users at once), 1.32 Native AOT and trimming, 1.31 mouse support, 1.30 areas and feature modules. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -44,8 +44,8 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 ### Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
-- JetBrains Rider is recommended, for the [ConsoleMVC CVWSupport plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport); support for VS Code is planned in [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport)
-- With VS Code or another editor, [add basic support for `.cvw` files](#IDESupport)
+- JetBrains Rider or VS Code, with the plugins from [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport), or any editor: see [IDE support](#IDESupport)
+- Optionally the `cvw-preview` tool, to see a view without running the application: `dotnet tool install -g ConsoleMVC.Preview`
 
 ### Installation
 
@@ -64,7 +64,7 @@ cd MyApp
 dotnet run
 ```
 
-Add `--tests` for a test project too (`MyApp/MyApp.Tests`, using [ConsoleMVC.Testing](docs/guides/docs/testing.md)): `dotnet new consolemvc -n MyApp --tests`, then `dotnet test MyApp.Tests`.
+Add `--tests` for a test project too (`MyApp/MyApp.Tests`, using [ConsoleMVC.Testing](docs/guides/docs/testing.md)): `dotnet new consolemvc -n MyApp --tests`, then `dotnet test MyApp/MyApp.Tests`.
 
 This scaffolds a ready-to-run application with the following structure:
 
@@ -75,12 +75,15 @@ MyApp/
   SharedResource.cs             # Names Resources/SharedResource.resx (English) and .pl.resx (Polish)
   Resources/                    # SharedResource.resx and SharedResource.pl.resx
   appsettings.json              # Settings read by builder.Configuration
+  appsettings.Development.json  # Debug logging when DOTNET_ENVIRONMENT=Development
+  .gitignore                    # Build output, logs and *.received.txt snapshot files
   MyApp.Tests/                  # Only with --tests: xUnit tests using ConsoleMVC.Testing
   Areas/Admin/                  # An area: Controllers/SettingsController.cs and Views/Settings/IndexView.cvw
   Controllers/
     HomeController.cs
     GreetController.cs          # Form posting with model binding
     CalcController.cs           # Form posting with simple parameter binding
+    BookingController.cs        # <date>, <select filter>, <select multiple>, a masked PIN; ILogger
   Models/
     HomeViewModel.cs
     FeaturesViewModel.cs        # Rows for the <table> on the feature tour page
@@ -88,6 +91,7 @@ MyApp/
     GreetFormModel.cs           # Bound from form data (complex model)
     GreetResultModel.cs
     CalcResultModel.cs
+    BookingFormModel.cs         # [Range] and [RegularExpression] validation
   Services/
     IGreetingService.cs         # Registered in Program.cs, injected into GreetController and a view
     GreetingService.cs
@@ -104,6 +108,9 @@ MyApp/
     Calc/
       IndexView.cvw             # <number> and <radio> fields, posts the Form
       ResultView.cvw
+    Booking/
+      IndexView.cvw             # The richer fields, and a theme class of the app's own
+      ConfirmedView.cvw         # <markdown> built from the model
     Shared/
       _Layout.cvw               # Frames every view: breadcrumbs, app name, separator
       PageHeader.cvw            # A partial view, used with <partial>
@@ -569,7 +576,7 @@ See the [Dependency Injection guide](docs/guides/docs/dependency-injection.md) a
 
 ### Async Actions and Middleware
 
-Actions may be asynchronous, and a `CancellationToken` parameter receives the token passed to `RunAsync`:
+Actions may be asynchronous, and a `CancellationToken` parameter is cancelled when the token passed to `RunAsync` is, or when the user presses Ctrl+C:
 
 ```csharp
 public async Task<ActionResult> Index(CancellationToken cancellationToken) =>
@@ -752,9 +759,23 @@ Start → Home/Index (default route)
 
 ### <a id="IDESupport"></a> IDE Support for `.cvw` Files
 
-The [ConsoleMVC CVWSupport](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport) plugin for JetBrains Rider understands directives and the C# code in views. Highlighting and completion for C-View Markup elements are planned for the plugin; until then markup is shown as plain text and errors are reported by the build.
+Three pieces help editors understand C-View Markup, and all of them come from the framework itself, so they never fall out of step with the build:
 
-To get basic C# syntax highlighting in `.cvw` files in other editors:
+- **`schema/cvw-schema.json`** describes every element, attribute, accepted value, directive and diagnostic, with documentation. Editor plugins read it for completion, hover and early checks; a test keeps it identical to what the generator knows.
+- **`cvw-preview`** (the [ConsoleMVC.Preview](https://www.nuget.org/packages/ConsoleMVC.Preview) tool) draws a view with the real rendering engine, without building or running the application:
+
+  ```bash
+  dotnet tool install -g ConsoleMVC.Preview
+  cvw-preview Views/Home/IndexView.cvw --width 100            # plain text
+  cvw-preview Views/Home/IndexView.cvw --format html          # for an editor's preview panel
+  ```
+
+  Expressions appear as placeholders such as `{Model.Title}`, the body of a loop is drawn once, and partial views and the layout come from `Views/Shared`.
+- **Editor plugins** in [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport): the [Rider plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport) and a VS Code extension, with highlighting, completion and a live preview.
+
+See the [Editor Support guide](docs/guides/docs/editor-support.md) and the [design](docs/design/editor-support.md).
+
+Without a plugin, C# highlighting is a reasonable fallback:
 
 **JetBrains Rider / IntelliJ:**
 Settings → Editor → File Types → find C# → add `*.cvw` pattern
@@ -854,7 +875,7 @@ app.Run();                                      // Or serve many users: --Consol
 
 ## Roadmap
 
-The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Every feature planned for the framework is now built, from full-screen mode, live elements and charts to Native AOT and remote sessions. What remains is **IDE support for markup**, developed in its own repository, [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport).
+The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Every feature planned for the framework is now built, from full-screen mode, live elements and charts to Native AOT and remote sessions. Editor support has its foundations here (the markup schema and the `cvw-preview` tool); the plugins themselves are developed in [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport).
 
 Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszwa/ConsoleMVC/issues).
 
@@ -865,8 +886,9 @@ Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszw
 | [`ConsoleMVC.Framework`](https://www.nuget.org/packages/ConsoleMVC.Framework) | Framework library + source generator | Referenced by your project |
 | [`ConsoleMVC.Testing`](https://www.nuget.org/packages/ConsoleMVC.Testing) | Test host, scripted input and snapshots | Referenced by your test project ([guide](docs/guides/docs/testing.md)) |
 | [`ConsoleMVC.Template`](https://www.nuget.org/packages/ConsoleMVC.Template) | `dotnet new` project template | Used to scaffold new projects |
+| [`ConsoleMVC.Preview`](https://www.nuget.org/packages/ConsoleMVC.Preview) | The `cvw-preview` .NET tool | Draws a view without running the application ([guide](docs/guides/docs/editor-support.md)) |
 
-All three packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
+All four packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
 
 ## Licence
 
@@ -876,7 +898,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## For Maintainers
 
-This section documents how to build, pack, and publish new versions of the framework, testing and template packages.
+This section documents how to build, pack, and publish new versions of the framework, testing, template and preview packages.
 
 ### Repository Structure
 
@@ -906,9 +928,14 @@ ConsoleMVC/
       Emit/ Diagnostics/                  #   C# generation with #line mapping; CVWxxx diagnostics
       Analysis/                           #   NavigationAnalyzer: CVW120 and CVW121 for C# navigation
     ConsoleMVC.CodeFixes/                 # IDE code fixes (create a missing view), bundled into ConsoleMVC package
+    ConsoleMVC.Preview/                   # The cvw-preview .NET tool (NuGet: ConsoleMVC.Preview)
+  schema/
+    cvw-schema.json                       # The markup described for editors (UPDATE_SCHEMA=1 dotnet test rewrites it)
   tests/
     ConsoleMVC.Tests/                     # Framework and rendering unit/integration tests
     ConsoleMVC.Generators.Tests/          # Runs the generator, compiles and executes views
+    ConsoleMVC.Preview.Tests/             # Previews of views and the cvw-preview command line
+    ConsoleMVC.AcceptanceTests/           # An application on the packed packages, checked through typed input (run.sh)
   docs/
     design/                               # Designs: UML, grammar, pseudocode for each feature
     guides/                               # MkDocs user guides
@@ -917,7 +944,8 @@ ConsoleMVC/
       .template.config/template.json      #   Template engine configuration
       ConsoleMVC.App.csproj               #   sourceName replaced with user's project name
       Program.cs
-      appsettings.json                    #   Settings read by builder.Configuration
+      appsettings.json                    #   Settings read by builder.Configuration (and appsettings.Development.json)
+      .gitignore                          #   Build output, logs and *.received.txt
       SharedResource.cs Resources/        #   Localisation resources (English and Polish)
       Areas/                              #   The Admin area
       Controllers/
@@ -936,19 +964,20 @@ dotnet test ConsoleMVC.sln
 
 ### Releasing a New Version
 
-**1. Bump version numbers** in the three packed `.csproj` files:
+**1. Bump version numbers** in the four packed `.csproj` files:
 
 - `src/ConsoleMVC/ConsoleMVC.csproj`: update `<Version>`
 - `src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj`: update `<Version>`
+- `src/ConsoleMVC.Preview/ConsoleMVC.Preview.csproj`: update `<Version>`
 - `ConsoleMVC.Template.csproj`: update `<Version>`
 
 Also update the `<PackageReference>` versions in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj` (ConsoleMVC.Framework) and `templates/ConsoleMVC.App/ConsoleMVC.App.Tests/ConsoleMVC.App.Tests.csproj` (ConsoleMVC.Testing).
 
 **2. Merge to `main`.** The [Publish packages](.github/workflows/publish.yml) workflow notices that the version has no `vX.Y.Z` tag yet and:
 
-- checks that the three `<Version>` values and the template's package references agree;
+- checks that the four `<Version>` values and the template's package references agree;
 - builds with `-warnaserror` and runs every test;
-- packs `ConsoleMVC.Framework`, `ConsoleMVC.Testing` and `ConsoleMVC.Template`;
+- packs `ConsoleMVC.Framework`, `ConsoleMVC.Testing`, `ConsoleMVC.Preview` and `ConsoleMVC.Template`;
 - pushes them to **NuGet.org** with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key: GitHub issues a short-lived token that nuget.org exchanges for a one-hour key) and to **GitHub Packages** with the built-in `GITHUB_TOKEN`;
 - creates the GitHub release `vX.Y.Z` with this version's section of `CHANGELOG.md` and the `.nupkg` files attached.
 
@@ -962,7 +991,7 @@ Publishing a release by hand, or **Actions → Publish packages → Run workflow
 | Repository | `ConsoleMVC` |
 | Workflow File | `publish.yml` |
 | Environment | `release` |
-| Glob patterns and packages | `ConsoleMVC.*` (covers `ConsoleMVC.Framework`, `ConsoleMVC.Testing`, `ConsoleMVC.Template` and future packages) |
+| Glob patterns and packages | `ConsoleMVC.*` (covers `ConsoleMVC.Framework`, `ConsoleMVC.Testing`, `ConsoleMVC.Template`, `ConsoleMVC.Preview` and future packages) |
 | Scope | Push new versions of existing packages (with `ConsoleMVC.*`, also push new packages) |
 
 The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repository variable `NUGET_USER` to use another account. GitHub creates the `release` environment on the first run; add required reviewers to it under **Settings → Environments** if you want to approve each release.
@@ -972,6 +1001,7 @@ The workflow logs in as the nuget.org profile `MateuszPodeszwa`; set a repositor
 ```bash
 dotnet pack src/ConsoleMVC/ConsoleMVC.csproj -c Release -o nupkg
 dotnet pack src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj -c Release -o nupkg
+dotnet pack src/ConsoleMVC.Preview/ConsoleMVC.Preview.csproj -c Release -o nupkg
 dotnet pack ConsoleMVC.Template.csproj -c Release -o nupkg
 dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_NUGET_API_KEY --source nuget.org   # a key from nuget.org/account/apikeys
 dotnet nuget push "nupkg/*.nupkg" --api-key YOUR_GITHUB_TOKEN --source https://nuget.pkg.github.com/MateuszPodeszwa/index.json
@@ -986,6 +1016,20 @@ dotnet nuget add source https://nuget.pkg.github.com/MateuszPodeszwa/index.json 
     --name github --username YOUR_GITHUB_USERNAME --password YOUR_TOKEN
 dotnet add package ConsoleMVC.Framework --source github
 ```
+
+### Acceptance Tests
+
+`tests/ConsoleMVC.AcceptanceTests` is an application with its own controllers and `.cvw` views that references the
+**packed** `ConsoleMVC.Framework` and `ConsoleMVC.Testing` packages (from `artifacts/feed`), as a user's application
+does, and checks the documented behaviour by typing into it with `MvcTestHost`. It is not in `ConsoleMVC.sln`, because
+it needs the packages first:
+
+```bash
+tests/ConsoleMVC.AcceptanceTests/run.sh      # packs both packages into artifacts/feed, then runs the tests
+```
+
+Write a new acceptance test from the documentation, not from the code: start from what a guide promises, check that
+the test fails against the package before your change, and passes after it. CI runs them on every pull request.
 
 ### Updating the Template
 
@@ -1003,6 +1047,7 @@ When modifying the source generator (`src/ConsoleMVC.Generators`):
 
 - The generator targets `netstandard2.0`: avoid APIs not available in that target
 - To add a markup element, add its runtime class under `src/ConsoleMVC/Rendering/Elements` and register it in `Schema/MarkupSchema.cs`; add a rendering test in `ConsoleMVC.Generators.Tests`
+- Describe every new element and attribute in `Schema/MarkupDocumentation.cs`, then run `UPDATE_SCHEMA=1 dotnet test tests/ConsoleMVC.Generators.Tests` to rewrite `schema/cvw-schema.json` (a test fails until you do), and check that `cvw-preview` draws the element (`tests/ConsoleMVC.Preview.Tests`)
 - New diagnostics need an entry in `AnalyzerReleases.Unshipped.md`
 - `Environment.NewLine` and similar banned symbols cannot be used (a Roslyn analyser restriction)
 - After changes, you must repack the `ConsoleMVC` package since the generator DLL is bundled inside it

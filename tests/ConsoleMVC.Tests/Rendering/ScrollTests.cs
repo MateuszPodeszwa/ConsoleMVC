@@ -44,6 +44,35 @@ public class ScrollTests
         Assert.Equal(["Line 3", "Line 4", "Line 5"], Visible(screen)); // the status line goes once the user continues
     }
 
+    [Fact]
+    public void AResizeWhileScrolling_LaysThePageOutAtTheNewWidth()
+    {
+        // A terminal resized from 40 to 20 columns while the first page is shown: the renderer redraws the screen
+        var screen = new RewritableScreen();
+        var width = 40;
+        var renderer = new MarkupRenderer(screen, () => width, () => 24);
+        renderer.Clear();
+        var scroll = new ScrollElement { Height = 3 };
+        for (var i = 1; i <= 6; i++)
+        {
+            var text = new TextElement();
+            text.AppendText($"Item {i} has a description of several words");
+            scroll.Add(text);
+        }
+
+        string[]? afterResize = null;
+        scroll.Show(renderer, new ScriptedKeys(ConsoleKey.Enter), onPage: () =>
+        {
+            width = 20;
+            Assert.True(renderer.RedrawIfWidthChanged());
+            afterResize = Visible(screen);
+        });
+
+        Assert.All(afterResize!, line => Assert.True(line.Length <= 20, line));
+        Assert.StartsWith("Lines 1-3 of 18", afterResize![^1]);   // each item now takes three lines
+        Assert.All(Visible(screen), line => Assert.True(line.Length <= 20, line));
+    }
+
     [Theory]
     [InlineData(ConsoleKey.PageDown, "Line 4")]
     [InlineData(ConsoleKey.Spacebar, "Line 4")]

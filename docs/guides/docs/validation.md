@@ -48,6 +48,10 @@ The view shows the messages with `<errors />`:
 <input name="Name" label="Name: " />
 ```
 
+Shown again this way, the form keeps the user's valid answers: each field without an error starts from what was
+posted, so Enter keeps it, and only the fields with errors are asked afresh. Masked fields (passwords) are never filled
+in again.
+
 ## Rules
 
 - Validation runs only when form data is posted; navigating to an action without a form never produces errors.

@@ -91,7 +91,13 @@ public abstract class ConsoleViewBase
     /// every top-level field.
     /// </summary>
     /// <param name="field">The field to read.</param>
-    /// <returns>The value read; an empty string when the input has ended.</returns>
+    /// <returns>The value read.</returns>
+    /// <remarks>
+    /// When the input ends before the field is answered, the application ends, as a <c>&lt;menu&gt;</c> quits at the end
+    /// of input: the view's remaining fields are not asked and nothing is posted. When the view is shown again because
+    /// the posted form failed validation, a field without an error starts from the answer posted (a masked field
+    /// excepted), so pressing Enter keeps it.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="field"/> is <see langword="null"/>.</exception>
     /// <example><code>var answer = ReadInput(new CheckboxElement { Name = "Newsletter", Label = "Send news" });</code></example>
     protected internal string ReadInput(IFormField field)
@@ -99,7 +105,14 @@ public abstract class ConsoleViewBase
         ArgumentNullException.ThrowIfNull(field);
 
         BeforeInteraction?.Invoke();
-        var value = field.Read(Renderer, Input) ?? "";
+
+        // A form shown again after validation failed keeps the answers that were valid, as ASP.NET Core forms do; a field
+        // with an error is asked afresh (an empty answer keeps a field's starting value, so a wrong one could not be cleared)
+        if (PostedForm is not null && PostedForm.TryGetValue(field.Name, out var posted) && field is IPrefilledField prefilled
+            && ModelState.ErrorsFor(field.Name).Count == 0)
+            prefilled.Prefill(posted);
+
+        var value = field.Read(Renderer, Input) ?? throw new InputEndedException();
         Form[field.Name] = value;
         return value;
     }
@@ -227,8 +240,8 @@ public abstract class ConsoleViewBase
         return services.GetService(typeof(T)) is T service
             ? service
             : throw new InvalidOperationException(
-                $"'{GetType().Name}' injects '{typeof(T).Name} {property}', but no service of type '{typeof(T).FullName}' is registered. " +
-                $"Register it with builder.Services, e.g. builder.Services.AddSingleton<{typeof(T).Name}, ...>();");
+                $"'{GetType().Name}' injects '{TypeNames.Of(typeof(T))} {property}', but no service of type '{TypeNames.Of(typeof(T), qualified: true)}' is registered. " +
+                $"Register it with builder.Services, e.g. builder.Services.AddSingleton<{TypeNames.Of(typeof(T))}, ...>();");
     }
 
     /// <summary>
@@ -236,6 +249,12 @@ public abstract class ConsoleViewBase
     /// <c>&lt;menu&gt;</c>). A view with a layout uses it to draw the layout's footer.
     /// </summary>
     internal Action? BeforeInteraction { get; set; }
+
+    /// <summary>
+    /// The values the user posted, when this view is shown again because they failed validation; its fields start from
+    /// them (masked fields excepted). <see langword="null"/> otherwise.
+    /// </summary>
+    internal IReadOnlyDictionary<string, string>? PostedForm { get; set; }
 
     /// <summary>
     /// Gives <paramref name="other"/> (a partial or a layout) this view's renderer, input, view data, model state, form,
@@ -247,6 +266,7 @@ public abstract class ConsoleViewBase
         other.BeforeInteraction = BeforeInteraction;
         other.ViewData = ViewData;
         other.ModelState = ModelState;
+        other.PostedForm = PostedForm;
         other.Renderer = Renderer;
         other.Input = Input;
         other.Form = Form;

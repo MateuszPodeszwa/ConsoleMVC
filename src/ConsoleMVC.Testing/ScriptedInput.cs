@@ -115,7 +115,8 @@ public sealed class ScriptedInput : ITextInput
         ArgumentOutOfRangeException.ThrowIfNegative(column);
         ArgumentOutOfRangeException.ThrowIfNegative(row);
 
-        Key(KeyOf(ConsoleKey.Escape));
+        // The report's first key is marked, so a script that clicks while the mouse is off is explained as such
+        _steps.Enqueue(new Step(null, KeyOf(ConsoleKey.Escape), StartsMouseReport: true));
         foreach (var c in $"[<{button};{column + 1};{row + 1}M")
             Key(new ConsoleKeyInfo(c, ConsoleKey.NoName, shift: false, alt: false, control: false));
         return this;
@@ -198,6 +199,10 @@ public sealed class ScriptedInput : ITextInput
             return null;
 
         ThrowIfWait(step, "a line");
+        if (step.StartsMouseReport)
+            throw new InvalidOperationException(
+                "The application read a line, but the next step of the script is a mouse click or wheel turn (Click or Wheel). " +
+                "Turn the mouse on in the test host (builder.Mouse = true) so the application reads mouse reports.");
         if (step.Line is null)
             throw new InvalidOperationException(
                 $"The application read a line, but the next step of the script is the key {Describe(step.Key!.Value)}. " +
@@ -240,7 +245,7 @@ public sealed class ScriptedInput : ITextInput
         key.KeyChar is >= ' ' and not '\u007f' ? $"'{key.KeyChar}'" : key.Key.ToString();
 
     /// <summary>One step: a line, a key, or (neither) a pause for a refresh.</summary>
-    private readonly record struct Step(string? Line, ConsoleKeyInfo? Key)
+    private readonly record struct Step(string? Line, ConsoleKeyInfo? Key, bool StartsMouseReport = false)
     {
         public bool IsWait => Line is null && Key is null;
     }

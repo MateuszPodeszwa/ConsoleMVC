@@ -193,7 +193,9 @@ internal static class ModelValidator
 
     /// <summary>
     /// The message for a failed <paramref name="attribute"/>: its <c>ErrorMessage</c> translated and formatted with the
-    /// attribute's own arguments, or else the message the attribute produced (itself translated when a resource has it).
+    /// attribute's own arguments; or else the message the attribute produced, translated when a resource has it as a
+    /// whole (<c>The Name field is required.</c>) or has the attribute's English template (<c>The {0} field is
+    /// required.</c>, then formatted like the original, so one translation serves every field).
     /// </summary>
     private static string Message(ValidationAttribute attribute, string display, ValidationResult result, IStringLocalizer? localizer)
     {
@@ -208,8 +210,27 @@ internal static class ModelValidator
                 return FrameworkText.Format(template.Value, Arguments(attribute, display));
         }
 
-        return Translate(localizer, produced);
+        var whole = localizer[produced];
+        if (!whole.ResourceNotFound)
+            return whole.Value;
+
+        if (string.IsNullOrEmpty(attribute.ErrorMessage) && DefaultTemplate(attribute) is { Length: > 0 } english)
+        {
+            var translated = localizer[english];
+            if (!translated.ResourceNotFound)
+                return FrameworkText.Format(translated.Value, Arguments(attribute, display));
+        }
+
+        return produced;
     }
+
+    /// <summary>The attribute's own English message template, such as <c>The {0} field is required.</c></summary>
+    private static string? DefaultTemplate(ValidationAttribute attribute) =>
+        ErrorMessageString.GetValue(attribute) as string;
+
+    /// <summary><see cref="ValidationAttribute"/>'s protected <c>ErrorMessageString</c>: the template its message is formatted from.</summary>
+    private static readonly System.Reflection.PropertyInfo ErrorMessageString =
+        typeof(ValidationAttribute).GetProperty("ErrorMessageString", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
 
     /// <summary>The arguments the built-in attributes format their messages with: the field, then their limits.</summary>
     private static object?[] Arguments(ValidationAttribute attribute, string display) => attribute switch

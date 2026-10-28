@@ -27,6 +27,10 @@ internal sealed class ShortcutInput(ITextInput inner, IReadOnlyList<KeyShortcut>
     /// <inheritdoc />
     protected override void OnKey(ConsoleKeyInfo key)
     {
+        // The field being answered uses this key now (Esc restoring a changed <number>, for example)
+        if (FieldKeyClaim.IsClaimed(key))
+            return;
+
         foreach (var shortcut in shortcuts)
         {
             if (shortcut.Gesture.Matches(key))

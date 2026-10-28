@@ -22,6 +22,9 @@ application's project file.
 
 ```csharp
 using ConsoleMVC.Testing;
+using Microsoft.Extensions.DependencyInjection;   // AddSingleton, Configure
+using MyApp.Controllers;                          // HomeController
+using MyApp.Services;                             // IGreetingService, GreetingService, GreetingOptions
 
 public class GreetingTests
 {
@@ -61,9 +64,10 @@ you want them. Each `Run` builds a fresh application, so tests do not share stat
 | `LastScreen` | The final screen |
 | `Output` | All screens one after another |
 | `Routes` | `Controller/Action` for every navigation cycle, redirects included |
-| `RemainingInput` | Script steps the application never read |
+| `RemainingInput` | How many script steps the application never read (`Assert.Equal(0, run.RemainingInput)`) |
 
-When the script ends, menus quit, so a run always finishes.
+When the script ends, the run ends, whether a menu or a form field is waiting (a form is never posted with answers
+nobody gave), so a run always finishes.
 
 ## Scripting lines and keys
 
@@ -80,7 +84,9 @@ var run = Host().Run(input);
 
 A `<select>`, `<radio>` or `<checkbox>` uses the arrow keys when the next step of the script is a key, and a typed
 answer when it is a line, so both ways can be tested. A step of the wrong kind (a key where the application reads a
-line) fails with a message naming both.
+line) fails with a message naming both. With shortcuts mapped (`ConfigureApplication`) or `builder.Mouse` on, text
+fields and menus are read key by key, as in a terminal, so there a key step is typed into the field like any other
+key.
 
 `Wait()` is a pause in which nothing is typed, for screens that [refresh](live-screens.md#refreshing-a-view-on-a-timer)
 with `@refresh` or `RefreshEvery`: the screen uses it up and is drawn again. Elsewhere a `Wait()` step fails the run.
@@ -90,10 +96,13 @@ var run = Host().Run(new ScriptedInput("4", "2").Wait().Line("b")); // feature t
 ```
 
 With `builder.Mouse` on, `Click(column, row)` clicks a place on the screen (counted from 0 at the top left of the
-current screen) and `Wheel(down)` turns the wheel:
+current screen) and `Wheel(down)` turns the wheel. Turn the mouse on in the host, as `Program.cs` does; with it off, a
+click fails the run with a message saying so:
 
 ```csharp
-var run = Host().Run(new ScriptedInput().Click(2, 3).Line("Ada")); // click the option on the fourth row
+private static MvcTestHost MouseHost() => MvcTestHost.For<HomeController>(builder => builder.Mouse = true);
+
+var run = MouseHost().Run(new ScriptedInput().Click(2, 3).Line("Ada")); // click the option on the fourth row
 ```
 
 ## Snapshots
@@ -108,7 +117,7 @@ Snapshot.Match(run.LastScreen, "greeting-result");     // __snapshots__/greeting
 |---|---|
 | The file does not exist | It is created and the test passes; commit it |
 | The file does not exist and `CI` is set (build servers) | The test fails, so a snapshot is never accepted unseen |
-| The text is the same | The test passes (line endings are ignored) |
+| The text is the same | The test passes. Line endings, spaces at the ends of lines and blank lines at the end are ignored, as a terminal does not show them and editors change them |
 | The text differs | The test fails with the first different line, and the new text is saved as `greeting-result.received.txt` beside the snapshot |
 | `CONSOLEMVC_UPDATE_SNAPSHOTS=1` | Differences replace the snapshot: `CONSOLEMVC_UPDATE_SNAPSHOTS=1 dotnet test` |
 
@@ -131,5 +140,11 @@ using var app = builder.Build();
 app.Run();
 ```
 
-Controllers can also be tested on their own: create one with `Router.ResolveController(name, services)`, or construct
-it directly and check the `ViewResult` it returns.
+Controllers can also be tested on their own: construct one directly and check the `ViewResult` it returns, or let a
+router create it with its services:
+
+```csharp
+var router = new Router();
+router.DiscoverAll(typeof(HomeController).Assembly);
+var controller = router.ResolveController("Home", services);   // services: an IServiceProvider with what it needs
+```

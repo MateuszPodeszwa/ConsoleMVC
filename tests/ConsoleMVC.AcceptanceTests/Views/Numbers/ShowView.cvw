@@ -1,0 +1,7 @@
+@model object
+
+<text>@Model</text>
+<errors />
+<menu>
+    <option key="q" quit>Quit</option>
+</menu>

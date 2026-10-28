@@ -34,8 +34,10 @@ jobs:
       - name: Test
         run: dotnet test ConsoleMVC.sln --configuration Release --no-build --verbosity normal
 
-  # Packs the framework, the testing package and the template, then checks that `dotnet new consolemvc` (with and
-  # without --tests) builds, and that the generated tests pass, including the snapshot shipped with the template
+  # Packs the framework, the testing package, the template and the preview tool, runs the acceptance tests against the
+  # packed packages, then checks that
+  # `dotnet new consolemvc` (with and without --tests) builds, that the generated tests pass, including the snapshot
+  # shipped with the template, and that cvw-preview draws the template's views
   template:
     runs-on: ubuntu-latest
     env:
@@ -56,6 +58,13 @@ jobs:
           dotnet pack src/ConsoleMVC/ConsoleMVC.csproj --configuration Release --no-build --output "$RUNNER_TEMP/feed"
           dotnet pack src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj --configuration Release --no-build --output "$RUNNER_TEMP/feed"
           dotnet pack ConsoleMVC.Template.csproj --configuration Release --output "$RUNNER_TEMP/feed"
+          dotnet pack src/ConsoleMVC.Preview/ConsoleMVC.Preview.csproj --configuration Release --output "$RUNNER_TEMP/feed"
+
+      - name: Run the acceptance tests against the packed packages
+        run: |
+          mkdir -p artifacts/feed
+          cp "$RUNNER_TEMP"/feed/ConsoleMVC.Framework.*.nupkg "$RUNNER_TEMP"/feed/ConsoleMVC.Testing.*.nupkg artifacts/feed/
+          dotnet test tests/ConsoleMVC.AcceptanceTests --verbosity normal
 
       - name: Generate and test projects from the template
         run: |
@@ -68,6 +77,14 @@ jobs:
           dotnet new consolemvc -n Shop --tests
           dotnet build Shop/Shop.csproj -warnaserror
           dotnet test Shop/Shop.Tests
+
+      - name: Preview the template's views with the packed cvw-preview tool
+        run: |
+          dotnet tool install --tool-path "$RUNNER_TEMP/tools" ConsoleMVC.Preview --add-source "$RUNNER_TEMP/feed"
+          cd "$RUNNER_TEMP/generated/Shop"
+          "$RUNNER_TEMP/tools/cvw-preview" Areas/Admin/Views/Settings/IndexView.cvw --width 60 | tee preview.txt
+          grep -q "Admin: settings" preview.txt
+          "$RUNNER_TEMP/tools/cvw-preview" Views/Home/IndexView.cvw --format html | grep -q '<pre class="cvw-screen">'
 
       - name: Publish the template as Native AOT and run it
         run: |

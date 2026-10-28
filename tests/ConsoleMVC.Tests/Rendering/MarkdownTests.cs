@@ -158,4 +158,13 @@ public class MarkdownTests
     {
         Assert.Equal(0, new MarkdownElement { Text = "Hello" }.MeasureWidth(40));
     }
+
+    [Theory]
+    [InlineData("See ![a chart](chart.png) here", "See [image: a chart] here")]
+    [InlineData("![](x.png)", "[image]")]
+    [InlineData("Not an image: ! [x](y)", "Not an image: ! x (y)")]
+    public void Images_AreDescribed_InsteadOfDrawnAsLinks(string markdown, string expected)
+    {
+        Assert.Equal(expected, Plain(markdown, width: 60).TrimEnd());
+    }
 }

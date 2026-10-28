@@ -43,6 +43,10 @@ public class ViewResult : ActionResult
     /// <summary>The shortest refresh interval accepted by <see cref="RefreshEvery"/>: 100 ms.</summary>
     public static readonly TimeSpan MinimumRefreshInterval = TimeSpan.FromMilliseconds(100);
 
+    /// <summary>The longest refresh interval accepted by <see cref="RefreshEvery"/>: 24 hours, as for <c>@refresh</c>.</summary>
+    /// <example><code>View(model).RefreshEvery(ViewResult.MaximumRefreshInterval);</code></example>
+    public static readonly TimeSpan MaximumRefreshInterval = TimeSpan.FromHours(24);
+
     /// <summary>
     /// Gets how often the screen is drawn again while the user has not started answering, as chosen by
     /// <see cref="RefreshEvery"/>; <see cref="Timeout.InfiniteTimeSpan"/> after <see cref="NoRefresh"/>; or
@@ -55,15 +59,15 @@ public class ViewResult : ActionResult
     /// Draws the screen again every <paramref name="interval"/> until the user starts answering: the action runs again
     /// for fresh data. This wins over the view's <c>@refresh</c> directive.
     /// </summary>
-    /// <param name="interval">How often, at least <see cref="MinimumRefreshInterval"/>.</param>
+    /// <param name="interval">How often, from <see cref="MinimumRefreshInterval"/> to <see cref="MaximumRefreshInterval"/>.</param>
     /// <returns>This result, for chaining.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="interval"/> is shorter than <see cref="MinimumRefreshInterval"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="interval"/> is outside that range.</exception>
     /// <example><code>return View(status).RefreshEvery(TimeSpan.FromSeconds(5));</code></example>
     public ViewResult RefreshEvery(TimeSpan interval)
     {
-        if (interval < MinimumRefreshInterval)
+        if (interval < MinimumRefreshInterval || interval > MaximumRefreshInterval)
             throw new ArgumentOutOfRangeException(nameof(interval), interval,
-                $"A screen refreshes at most every {MinimumRefreshInterval.TotalMilliseconds} ms.");
+                $"The refresh interval must be from {MinimumRefreshInterval.TotalMilliseconds} ms to {MaximumRefreshInterval.TotalHours} hours, as for @refresh.");
 
         RefreshInterval = interval;
         return this;

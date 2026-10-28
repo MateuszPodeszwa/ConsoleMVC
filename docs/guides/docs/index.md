@@ -23,4 +23,5 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 - [Remote Sessions](remote-sessions.md): serve the application to many users at once over Telnet, TLS, SSH or a web terminal.
 - [Accessibility](accessibility.md): a screen-reader mode and a high-contrast theme that users can turn on.
 - [Localisation](localisation.md): resources in views, translated framework messages and validation, and the run's culture.
+- [Editor Support](editor-support.md): preview a view with `cvw-preview` without running the application, and the markup schema used by the Rider and VS Code plugins.
 - [API Reference](../api/): auto-generated reference documentation for all public types.

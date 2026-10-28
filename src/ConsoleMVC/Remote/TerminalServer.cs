@@ -343,8 +343,7 @@ public sealed class TerminalServer : IAsyncDisposable
     {
         try
         {
-            terminal.Output.Write("\u001b[18t");
-            terminal.Output.Flush();
+            terminal.AskWindowSize();
         }
         catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
         {

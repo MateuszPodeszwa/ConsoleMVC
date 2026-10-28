@@ -12,7 +12,7 @@ namespace ConsoleMVC.Rendering;
 /// var password = new InputElement { Name = "Password", Label = "Password: ", Masked = true };
 /// </code>
 /// </example>
-public sealed class InputElement : Element, IFormField
+public sealed class InputElement : Element, IFormField, IPrefilledField
 {
     /// <summary>The message shown when a required field is left empty.</summary>
     public const string RequiredMessage = "This field is required.";
@@ -26,7 +26,11 @@ public sealed class InputElement : Element, IFormField
     /// <summary>Gets or sets the text written before reading the value (no line break is added).</summary>
     public string? Label { get; set; }
 
-    /// <summary>Gets or sets the value used when the user enters nothing.</summary>
+    /// <summary>
+    /// Gets or sets the value used when the user enters nothing. It is shown after the label in brackets
+    /// (<c>Name: [Ada] </c>), so the user knows that Enter keeps it; never for a masked field.
+    /// </summary>
+    /// <example><code>new InputElement { Name = "City", Label = "City: ", Default = "London" }</code></example>
     public string? Default { get; set; }
 
     /// <summary>Gets or sets whether an empty value is rejected and the field asked again.</summary>
@@ -63,6 +67,10 @@ public sealed class InputElement : Element, IFormField
             if (SafeLabel.Length > 0)
                 renderer.WritePrompt(SafeLabel, LabelStyle);
 
+            // What Enter keeps, so a value filled in (a default, or the answer of a form shown again) is not invisible
+            if (!Masked && !string.IsNullOrEmpty(Default))
+                renderer.WritePrompt($"[{TextSanitiser.Sanitise(Default).Replace('\n', ' ')}] ", FieldText.Hint);
+
             var raw = Masked ? input.ReadMasked(MaskCharacter) : input.ReadLine();
             if (raw is null)
                 return null;
@@ -86,4 +94,12 @@ public sealed class InputElement : Element, IFormField
     private string SafeLabel => TextSanitiser.Sanitise(Label).Replace('\n', ' ');
 
     private TextStyle LabelStyle => TextStyle.Plain.WithForeground(LabelColour);
+
+    /// <inheritdoc />
+    /// <remarks>A masked field (a password) is never filled in again.</remarks>
+    void IPrefilledField.Prefill(string posted)
+    {
+        if (!Masked)
+            Default = posted;
+    }
 }

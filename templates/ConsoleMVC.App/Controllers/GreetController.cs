@@ -23,7 +23,8 @@ public class GreetController(IGreetingService greetings) : Controller
 
     /// <summary>
     /// Receives form data posted from the Index view and displays a personalised greeting.
-    /// If the name is empty, redirects back to the form.
+    /// When the form is not valid (no name, or one that is too long), shows the form again with its errors; the valid
+    /// answers stay filled in.
     /// </summary>
     /// <param name="model">The form data automatically bound from the view's form submission.</param>
     public ActionResult Result(GreetFormModel model)

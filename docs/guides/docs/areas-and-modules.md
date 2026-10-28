@@ -43,7 +43,9 @@ return NavigationResult.To("Admin/Users/Details?id=4");
 
 Inside an area, a controller named without an area means the area's own controller when it has one, and the
 application's otherwise. So from a screen in the Admin area, `nav="Home/Index"` goes to `Admin/Home` if the area has a
-Home controller, and to the application's `Home` if not. Two areas can each have a `HomeController`.
+Home controller, and to the application's `Home` if not. Two areas can each have a `HomeController`. To reach the
+application's controller from an area that has one of the same name, start the route with `/`: `nav="/Home/Index"`,
+`RedirectToAction("Index", "/Home")` or `NavigationResult.To("/Home/Index")`.
 
 `RouteContext.Area` is the area of a route (`null` outside one), and `RouteContext.ControllerName` is the controller
 without it. Breadcrumbs show the controller's name without the area.
@@ -76,4 +78,17 @@ builder.AddModule<BillingModule>();
 - `Configure` runs once, when the module is added; adding a module twice does nothing.
 - `builder.AddModule(assembly)` adds a library that has no module class.
 - Put a module's controllers in an area named after it (`[Area("Billing")]`), so its routes cannot collide with the
-  application's. A module can have its own `Views/Shared` partials for its views.
+  application's. Their views then live where an area's views do, in the library's `Areas/Billing/Views/{Controller}`
+  (`Areas/Billing/Views/Invoices/IndexView.cvw`); views in `Views/Invoices` are not found, and the library's build
+  warns about them with CVW121. A module can have its own `Views/Shared` partials for its views.
+- The build checks know both sides: the application's `nav`, `RedirectToAction` and `MapKey` routes may name the
+  modules' controllers (`nav="Billing/Invoices/Index"`), and a module may name the application's (`nav="Home/Index"`),
+  which it cannot see, so those are not reported as unknown; its own controllers' actions are still checked. A library
+  with an `IMvcModule` class is a module for these checks; one added with `AddModule(assembly)` says so in its project
+  file:
+
+  ```xml
+  <PropertyGroup>
+      <ConsoleMVCModule>true</ConsoleMVCModule>
+  </PropertyGroup>
+  ```

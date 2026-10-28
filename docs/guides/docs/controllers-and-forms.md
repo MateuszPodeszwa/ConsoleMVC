@@ -18,8 +18,11 @@ public class HomeController(IGreetingService greetings) : Controller
 }
 ```
 
-- `HomeController` is reached as `Home`; action names are matched case-insensitively and must be unique (no overloads).
+- `HomeController` is reached as `Home`; action names are matched case-insensitively and must be unique (no overloads): two actions with the same name are build error CVW123.
 - Constructor parameters come from `builder.Services` (see [Dependency Injection](dependency-injection.md)).
+- Do not name a controller after the project's root namespace: in a project `Shop`, a `ShopController`'s views are in
+  the namespace `Shop.Views.Shop`, where `Shop.Models` means `Shop.Views.Shop.Models` and is not found (CS0234). Use
+  `global::Shop.Models.Cart` in such views, or another name.
 
 | Method | Result |
 |---|---|
@@ -42,10 +45,13 @@ return View("Sumary", model);                // warning CVW121: there is no view
 public ActionResult Report() => View();      // warning CVW121 when Views/Orders/ReportView.cvw does not exist
 ```
 
-The same goes for `NavigationResult.To(...)` and `ToAction(...)` in views, and for `nav` attributes (CVW119). For
+The same goes for `NavigationResult.To(...)` and `ToAction(...)` in views, for the routes of `app.MapKey(key, "Help/Index")`, and for `nav` attributes (CVW119). The message suggests the closest name (`Did you mean 'Details'?`) and lists the others, closest first. For
 CVW121 the IDE offers a fix that creates the view, with `@model` set to the type of the model you pass. Names built at
-run time are not checked. To make these warnings errors, add `dotnet_diagnostic.CVW120.severity = error` (and the
-same for CVW119 and CVW121) to `.editorconfig`.
+run time are not checked. To make these warnings errors, add
+`<WarningsAsErrors>$(WarningsAsErrors);CVW119;CVW120;CVW121</WarningsAsErrors>` to the project file. CVW120 and
+CVW121 also follow `dotnet_diagnostic.CVW120.severity = error` in `.editorconfig`; CVW119 is reported against the
+`.cvw` view, which `.editorconfig` sections do not cover, so set it in the project file or in a `.globalconfig` file
+(`is_global = true`).
 
 ## Navigation from views
 
@@ -61,7 +67,7 @@ A view ends by returning a `NavigationResult`, or with a `<menu>`, which returns
 | `NavigationResult.Back()` | Return to the previous screen (the same as a menu option marked `back`) |
 | `NavigationResult.Quit()` | Exit the application |
 
-The framework remembers the screens shown (up to 50). `Back()` and `<option key="b" back>Back</option>` return to the previous one, running its action again without form data; showing the same screen twice in a row (a form after validation fails) counts once. Views read the trail from `NavigationHistory` and show it with `<breadcrumbs />`. See the [design](https://github.com/MateuszPodeszwa/ConsoleMVC/blob/main/docs/design/navigation-history.md).
+The framework remembers the screens shown (up to 50). `Back()` and `<option key="b" back>Back</option>` return to the previous one, running its action again without form data; a screen is its controller, action and route values, so `Orders/Details?id=2` and `Orders/Details?id=42` are two screens. Showing the same screen twice in a row (a form after validation fails, a refresh) counts once, and going to a screen that is already in the history (a menu's Home option) returns the history to it: the breadcrumbs are always the path to the current screen. Views read the trail from `NavigationHistory` and show it with `<breadcrumbs />`. See the [design](https://github.com/MateuszPodeszwa/ConsoleMVC/blob/main/docs/design/navigation-history.md).
 
 ## Keyboard shortcuts
 
@@ -79,11 +85,15 @@ app.MapKey(new KeyGesture(ConsoleKey.F5), () => NavigationResult.ToAction("Index
 Pressing the key while a screen waits for the user (a menu, a text field or an arrow-key field) leaves the screen at
 once and follows the navigation. The description is optional; shortcuts with one are listed by `<shortcuts />`.
 
+- A field keeps a key it has a use for at that moment: Esc restores a changed `<number>` and clears a `<select filter>`'s
+  filter, and is the shortcut otherwise.
 - Shortcuts can use F1 to F24, Esc, Insert, or any key with Ctrl or Alt. Keys needed for typing are refused, and so are
-  Ctrl+C, Ctrl+D, Ctrl+Z and Ctrl+Q and Ctrl+S (terminals keep the last two for flow control).
+  Ctrl+C (it interrupts), Ctrl+D and Ctrl+Z (they end the input), Ctrl+H, Ctrl+I, Ctrl+J and Ctrl+M (terminals send them
+  as Backspace, Tab and Enter, so they would never reach the shortcut), and Ctrl+Q and Ctrl+S (flow control), with or
+  without Shift.
 - With shortcuts mapped, lines are read key by key so shortcuts work in menus and text fields; typing, Backspace,
   Delete, Left, Right, Home and End work as usual.
-- With piped input there are no keys to read, so shortcuts are not available.
+- With piped input there are no keys to read, so shortcuts are not available, and `<shortcuts />` lists none.
 - A view that catches every exception around a prompt (`catch (Exception)`) would also catch the shortcut; catch
   specific exceptions instead.
 
@@ -101,7 +111,7 @@ In terminals that report the mouse (most do; the legacy Windows console does not
 | Click | Does |
 |---|---|
 | a `<menu>` option | chooses it (whatever was typed is replaced) |
-| a `<select>` or vertical `<radio>` choice | chooses it (ticks it in a `<select multiple>`) |
+| a `<select>` or `<radio>` choice (a `<radio>`'s choices are side by side; any part of one, on any of its lines, is the choice) | chooses it (ticks it in a `<select multiple>`) |
 | a `<checkbox>` | ticks or clears it, as Space does |
 | the wheel | moves through lists and `<scroll>` like the arrow keys |
 
@@ -155,8 +165,8 @@ public ActionResult Review(ReviewModel review) { … }             // records: b
 
 | Type | Notes |
 |---|---|
-| `string` | As posted |
-| `int`, `long`, `short`, `byte`, `float`, `double`, `decimal`, `Half`, `Int128`, `UInt128` | Invariant culture (`1.5`) |
+| `string` | As posted; an empty value is not bound, so the field keeps its default (`null`, or its initialiser) |
+| `int`, `long`, `short`, `byte`, `float`, `double`, `decimal`, `Half`, `Int128`, `UInt128` | Invariant culture (`1.5`, `-2`, `1.5e3`), decimal digits only: hexadecimal (`0x10`), thousands separators (`1,000`) and values that are not finite (`1e400`, `NaN`) are not valid |
 | `bool` | `true` / `false` |
 | `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan` | Invariant culture (`2026-10-27`) |
 | `Guid`, `Uri`, `Version` | |
@@ -164,7 +174,8 @@ public ActionResult Review(ReviewModel review) { … }             // records: b
 | nullable types (`int?`) | An empty value binds `null` |
 | collections: `T[]`, `List<T>`, `IList<T>`, `ICollection<T>`, `IEnumerable<T>`, `IReadOnlyList<T>`, `IReadOnlyCollection<T>` of a type above | The value is split on commas (`<select multiple>` posts `red,blue`); parts are trimmed, empty parts dropped, and an empty value gives an empty collection |
 | classes and records | Simple and collection properties by name; records and other classes without a parameterless constructor through their public constructor |
-| `CancellationToken` | Never bound from the form: receives the token passed to `RunAsync` |
+| `CancellationToken` | Never bound from the form: cancelled when the token passed to `RunAsync` is, or by Ctrl+C |
 
-A missing key leaves the default (or the parameter's default value, `int page = 1`). A value that cannot be converted
+A missing key or an empty value leaves the default (or the parameter's default value, `int page = 1`), as in ASP.NET
+Core, where an empty value binds `null`: an optional `[EmailAddress] string? Email` left blank is valid. A value that cannot be converted
 keeps the default and is reported in `ModelState`, which is described in [Validation](validation.md).

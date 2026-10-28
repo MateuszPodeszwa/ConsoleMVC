@@ -91,7 +91,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         _applicationAssembly = builder.ApplicationAssembly;
         _services = services;
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
-        _fullScreen = builder.FullScreen;
+        _fullScreen = builder.UsesFullScreen;
         _mouse = builder.UsesMouse;
         _screenReader = builder.UsesScreenReader;
         _localization = builder.Localization.Copy();
@@ -221,8 +221,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         if (!IsShortcutKey(gesture))
         {
             throw new ArgumentException(
-                $"{gesture} is needed for typing or for the input itself. Use F1 to F24, Esc, Insert, or a key with Ctrl or Alt " +
-                "(except Ctrl+C, Ctrl+D, Ctrl+Z, and Ctrl+Q and Ctrl+S, which terminals use for flow control).", nameof(gesture));
+                $"{gesture} is needed for typing or for the input itself. Use F1 to F24, Esc, Insert, or a key with Ctrl or Alt, " +
+                "except Ctrl+C (interrupts), Ctrl+D and Ctrl+Z (end the input), Ctrl+H, Ctrl+I, Ctrl+J and Ctrl+M (terminals send " +
+                "them as Backspace, Tab and Enter), and Ctrl+Q and Ctrl+S (flow control), with or without Shift.", nameof(gesture));
         }
 
         if (_shortcuts.Any(s => s.Gesture == gesture))
@@ -237,9 +238,14 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     {
         var withModifier = (gesture.Modifiers & (ConsoleModifiers.Control | ConsoleModifiers.Alt)) != 0;
         if (withModifier)
-            // Ctrl+C interrupts, Ctrl+D and Ctrl+Z end the input, and terminals keep Ctrl+Q and Ctrl+S for flow control
-            return !(gesture.Modifiers == ConsoleModifiers.Control
-                     && gesture.Key is ConsoleKey.C or ConsoleKey.D or ConsoleKey.Z or ConsoleKey.Q or ConsoleKey.S);
+        {
+            // Ctrl+C interrupts, Ctrl+D and Ctrl+Z end the input, terminals send Ctrl+H, Ctrl+I, Ctrl+J and Ctrl+M as
+            // Backspace, Tab and Enter, and keep Ctrl+Q and Ctrl+S for flow control. Shift does not change the byte a
+            // terminal sends for Ctrl and a letter, so Ctrl+Shift+S is Ctrl+S.
+            var controlOnly = (gesture.Modifiers & ~ConsoleModifiers.Shift) == ConsoleModifiers.Control;
+            return !(controlOnly && gesture.Key is ConsoleKey.C or ConsoleKey.D or ConsoleKey.Z or ConsoleKey.Q or ConsoleKey.S
+                                                 or ConsoleKey.H or ConsoleKey.I or ConsoleKey.J or ConsoleKey.M);
+        }
 
         return gesture.Key is >= ConsoleKey.F1 and <= ConsoleKey.F24 or ConsoleKey.Escape or ConsoleKey.Insert;
     }
@@ -344,9 +350,15 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         if (Interlocked.Exchange(ref _running, 1) == 1)
             throw new InvalidOperationException("The application is already running.");
 
+        // Ctrl+C ends the run cleanly, like a menu's quit: screens are left, services disposed and "Stopped" logged
+        using var interrupt = ConsoleInterrupt.Listen(cancellationToken);
         try
         {
-            await WithCultureAsync(() => RunOnceAsync(Pipeline(), _local, null, null, cancellationToken)).ConfigureAwait(false);
+            await WithCultureAsync(() => RunOnceAsync(Pipeline(), _local, null, null, interrupt.Token)).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (interrupt.Pressed && !cancellationToken.IsCancellationRequested)
+        {
+            // The user pressed Ctrl+C: the application ends normally
         }
         finally
         {
@@ -413,12 +425,17 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the options are not secure enough (see <see cref="TerminalServerOptions.AllowUnencryptedNetworkAccess"/>).</exception>
     /// <example><code>await app.ServeAsync(new TerminalServerOptions { EndPoint = new IPEndPoint(IPAddress.Loopback, 2323) }, token);</code></example>
-    public async Task ServeAsync(TerminalServerOptions options, CancellationToken cancellationToken = default)
+    public Task ServeAsync(TerminalServerOptions options, CancellationToken cancellationToken = default) =>
+        ServeAsync(options, cancellationToken, started: null);
+
+    /// <summary>Serves, telling <paramref name="started"/> which server listens once it has started.</summary>
+    private async Task ServeAsync(TerminalServerOptions options, CancellationToken cancellationToken, Action<TerminalServer>? started)
     {
         ArgumentNullException.ThrowIfNull(options);
 
         await using var server = new TerminalServer(this, options);
         server.Start();
+        started?.Invoke(server);
         try
         {
             await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
@@ -433,7 +450,10 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         }
     }
 
-    /// <summary>Serves until the token is cancelled or the user presses Ctrl+C in the server's console.</summary>
+    /// <summary>
+    /// Serves until the token is cancelled or the user presses Ctrl+C in the server's console, saying where it listens
+    /// on the console (the log may go only to a file).
+    /// </summary>
     private async Task ServeUntilStoppedAsync(TerminalServerOptions options, CancellationToken cancellationToken)
     {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -446,7 +466,14 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         Console.CancelKeyPress += onCancel;
         try
         {
-            await ServeAsync(options, stop.Token).ConfigureAwait(false);
+            await ServeAsync(options, stop.Token, server =>
+            {
+                var client = options.Protocol == TerminalProtocol.Telnet
+                    ? options.Certificate is null ? $"telnet {server.LocalEndPoint.Address} {server.LocalEndPoint.Port}" : "a Telnet client with TLS"
+                    : options.Certificate is null ? $"nc {server.LocalEndPoint.Address} {server.LocalEndPoint.Port}" : $"openssl s_client -connect {server.LocalEndPoint}";
+                Console.WriteLine($"Serving on {server.LocalEndPoint} ({options.Protocol}, {(options.Certificate is null ? "no TLS" : "TLS")}). " +
+                                  $"Connect with {client}. Press Ctrl+C to stop.");
+            }).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
         }
         finally
@@ -496,6 +523,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
 
         /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
         public List<RouteContext> History { get; } = [];
+
+        /// <summary>Whether keys can never be read (the console's input is piped), so shortcuts do nothing.</summary>
+        public bool KeysUnavailable { get; set; }
     }
 
     /// <summary>The culture chosen in code, or else in the <see cref="MvcLocalizationOptions.CultureSetting"/> setting.</summary>
@@ -548,6 +578,12 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             input = _services.GetRequiredService<ITextInput>();
             echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
             session = TerminalSession.ForLocalRun();
+
+            state.KeysUnavailable = input is ConsoleTextInput && !input.CanReadKeys;
+
+            // Ctrl+C (or the caller's token) ends the run while a screen waits for the user, not after the next key
+            if (input is ConsoleTextInput)
+                input = new CancellableConsoleInput(input, cancellationToken);
         }
         else
         {
@@ -558,6 +594,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             echo = terminal.Output;
             session = TerminalSession.ForRemote(terminal, new LiveDisplay(renderer));
             terminal.Start();
+            terminal.AwaitWindowSize(); // a raw terminal answers its size question before the first screen
         }
 
         using var current = TerminalSession.Use(session);
@@ -588,6 +625,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         {
             await RunLoopAsync(pipeline, assembly, state, renderer, refreshing, theme, logger, cancellationToken).ConfigureAwait(false);
             MvcApplicationLog.Stopped(logger);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            MvcApplicationLog.Stopped(logger);
+            throw;
         }
         catch (Exception e) when (e is not OperationCanceledException && !LostTerminal(e, terminal))
         {
@@ -679,6 +721,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                             navigation = shortcut.Navigation;
                             refreshing = false;
                         }
+                        catch (InputEndedException)
+                        {
+                            // A form field got no answer before the input ended: end the run, as a menu does
+                            return;
+                        }
                         catch (ViewRefreshException)
                         {
                             // Nothing typed in time: run the same route again for fresh data, on a cleared screen
@@ -764,11 +811,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         context.Controller = controller;
         var actionMethod = _router.ResolveAction(controller.GetType(), route.Action);
 
-        // Normalise the route to the declared action name so View() resolves the right view
-        // regardless of the casing used in navigation.
+        // Normalise the route to the declared controller and action names, so View() resolves the right view and the
+        // area and breadcrumbs read as declared, whatever casing navigation used (admin/users/index)
         controller.RouteContext = new RouteContext
         {
-            Controller = route.Controller,
+            Controller = Router.ControllerKey(controller.GetType()),
             Action = actionMethod.Name,
             FormData = route.FormData,
             RouteValues = route.RouteValues
@@ -807,8 +854,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
-    /// Adds the screen about to be shown to the history. Showing the same screen again (a form after validation failed,
-    /// or the screen reached with Back) replaces the last entry instead.
+    /// Adds the screen about to be shown to the history. A screen is its controller, action and route values, so
+    /// <c>Orders/Details?id=2</c> and <c>Orders/Details?id=42</c> are two screens. Showing the last screen again (a form
+    /// after validation failed, a refresh, or the screen reached with Back) replaces the last entry, and going to a
+    /// screen that is already in the history (a menu's Home option) returns the history to it, so the breadcrumbs are
+    /// always the path to the current screen and Back never revisits it.
     /// </summary>
     private static void RecordScreen(NavigationState state, ActionContext context)
     {
@@ -817,10 +867,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         var screen = new RouteContext { Controller = route.Controller, Action = route.Action, RouteValues = route.RouteValues };
 
         var history = state.History;
-        if (history.Count > 0 && SameScreen(history[^1], screen))
-            history[^1] = screen;
-        else
-            history.Add(screen);
+        var earlier = history.FindLastIndex(entry => SameScreen(entry, screen));
+        if (earlier >= 0)
+            history.RemoveRange(earlier, history.Count - earlier);
+
+        history.Add(screen);
 
         if (history.Count > MaxHistory)
             history.RemoveAt(0);
@@ -840,9 +891,28 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         return new RouteContext { Controller = previous.Controller, Action = previous.Action, RouteValues = previous.RouteValues };
     }
 
+    /// <summary>Whether two routes are the same screen: the same controller and action (in any casing) and route values.</summary>
     private static bool SameScreen(RouteContext a, RouteContext b) =>
         string.Equals(a.Controller, b.Controller, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(a.Action, b.Action, StringComparison.OrdinalIgnoreCase);
+        && string.Equals(a.Action, b.Action, StringComparison.OrdinalIgnoreCase)
+        && SameRouteValues(a.RouteValues, b.RouteValues);
+
+    /// <summary>Whether two sets of route values are equal: keys in any casing, values exactly; none and empty are equal.</summary>
+    private static bool SameRouteValues(IReadOnlyDictionary<string, string>? a, IReadOnlyDictionary<string, string>? b)
+    {
+        var left = a ?? EmptyRouteValues;
+        var right = b ?? EmptyRouteValues;
+        if (left.Count != right.Count)
+            return false;
+
+        var lookup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in right)
+            lookup.TryAdd(key, value);
+
+        return left.All(pair => lookup.TryGetValue(pair.Key, out var value) && string.Equals(value, pair.Value, StringComparison.Ordinal));
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyRouteValues = new Dictionary<string, string>();
 
     /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.
@@ -853,18 +923,24 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         var view = context.Own(_router.ResolveView(viewResult.ControllerName, viewResult.ViewName, context.Services));
         view.ViewData = viewResult.ViewData;
         view.ModelState = viewResult.ModelState;
+        view.PostedForm = viewResult.ModelState.IsValid || context.Route.FormData is not { } posted
+            ? null
+            : new Dictionary<string, string>(posted, StringComparer.OrdinalIgnoreCase);
         view.Renderer = renderer;
         view.Input = input;
         view.Theme = theme;
         view.NavigationHistory = state.History.ToArray();
-        view.ShortcutHints = _shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Description))
-            .Select(s => new ShortcutHint(s.Gesture.ToString(), s.Description!)).ToArray();
+        // Shortcuts need keys: with piped input they do nothing, so <shortcuts /> does not offer them
+        view.ShortcutHints = !state.KeysUnavailable
+            ? _shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Description)).Select(s => new ShortcutHint(s.Gesture.ToString(), s.Description!)).ToArray()
+            : [];
 
         // A refresh always clears, or the screen would be drawn again below itself
         if (_clearScreenBetweenViews || clear)
             renderer.Clear();
 
-        input.Arm(viewResult.ResolveRefresh(view.DeclaredRefreshInterval));
+        // A screen reader would read the whole page out again at every refresh: screens do not refresh for it
+        input.Arm(renderer is ScreenReaderRenderer ? null : viewResult.ResolveRefresh(view.DeclaredRefreshInterval));
         return view.RenderInternal(viewResult.Model)
                ?? throw new InvalidOperationException(
                    $"View '{view.GetType().Name}' returned null. Views must return a NavigationResult.");

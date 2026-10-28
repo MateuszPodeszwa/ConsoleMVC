@@ -1,0 +1,6 @@
+@inject System.Collections.Generic.IList<string> Names
+
+<text>@Names.Count names</text>
+<menu>
+    <option key="q" quit>Quit</option>
+</menu>

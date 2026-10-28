@@ -4,7 +4,7 @@ namespace ConsoleMVC.Rendering;
 
 /// <summary>
 /// Inline Markdown: <c>**bold**</c> and <c>__bold__</c>, <c>*italic*</c> and <c>_italic_</c> (nested), <c>`code`</c>,
-/// <c>[text](address)</c>, <c>&lt;https://…&gt;</c> and backslash escapes. A delimiter that is never closed is kept as text.
+/// <c>[text](address)</c>, images (<c>![description](address)</c>, drawn as <c>[image: description]</c>), <c>&lt;https://…&gt;</c> and backslash escapes. A delimiter that is never closed is kept as text.
 /// </summary>
 /// <example><code>MarkdownInline.Append("Use **bold**", TextStyle.Plain, element, styledText);</code></example>
 internal static class MarkdownInline
@@ -96,6 +96,16 @@ internal static class MarkdownInline
                 Flush();
                 output.Add((code, style.WithForeground(options.CodeColour)));
                 i = afterCode;
+                continue;
+            }
+
+            // An image cannot be shown in a terminal: its description stands in for it, as [image: a chart]
+            if (c == '!' && i + 1 < s.Length && s[i + 1] == '[' && TryLink(s, i + 1, out var alt, out _, out var afterImage))
+            {
+                Flush();
+                var description = alt.Trim().Length > 0 ? $"[image: {alt.Trim()}]" : "[image]";
+                output.Add((description, style.WithDecoration(TextDecoration.Dim)));
+                i = afterImage;
                 continue;
             }
 

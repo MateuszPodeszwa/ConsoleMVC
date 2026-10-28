@@ -1,0 +1,3 @@
+<checkbox name="agree" label="Agree" />
+
+return NavigationResult.ToAction("Show", Form);

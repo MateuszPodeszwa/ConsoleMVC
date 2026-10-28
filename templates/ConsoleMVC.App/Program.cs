@@ -1,6 +1,7 @@
 using ConsoleMVC.App;
 using ConsoleMVC.App.Services;
 using ConsoleMVC.Mvc;
+using ConsoleMVC.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +18,10 @@ builder.Logging.AddFile("logs/app.log");
 
 // Run on the terminal's alternate screen, like a full-screen editor: your scrollback comes back when the app ends
 builder.FullScreen = true;
+
+// A theme class of your own, used with class="brand" (Views/Booking/IndexView.cvw); the built-in ones are listed in
+// the C-View Markup guide
+builder.Theme.Set("brand", new ThemeStyle { BorderColour = Colour.Magenta, TitleColour = Colour.Magenta, Bold = true });
 
 // Click menu options, choices and checkboxes, and scroll with the wheel, in terminals that report the mouse
 builder.Mouse = true;
@@ -37,7 +42,9 @@ builder.Localization.ValidationResource = typeof(SharedResource);
 
 using var app = builder.Build();
 
-// Keyboard shortcuts that work on every screen; the layout lists them with <shortcuts />
+// Keyboard shortcuts that work on every screen; the layout lists them with <shortcuts />. The build checks the route
+// of a shortcut like a nav attribute (CVW120)
+app.MapKey(ConsoleKey.F1, "Home/About", "Help");
 app.MapKey(new KeyGesture(ConsoleKey.Escape), NavigationResult.Back(), "Back");
 app.MapKey(KeyGesture.Parse("Ctrl+X"), NavigationResult.Quit(), "Quit");
 

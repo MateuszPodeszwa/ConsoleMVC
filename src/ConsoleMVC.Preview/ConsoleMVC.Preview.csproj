@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>ConsoleMVC.Preview</RootNamespace>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- A dotnet tool: dotnet tool install -g ConsoleMVC.Preview, then cvw-preview -->
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>cvw-preview</ToolCommandName>
+        <!-- Runs on the newest .NET installed, so editors do not need .NET 10 itself -->
+        <RollForward>Major</RollForward>
+
+        <!-- NuGet Package Metadata -->
+        <PackageId>ConsoleMVC.Preview</PackageId>
+        <Title>ConsoleMVC.Preview - a live preview of C-View Markup views</Title>
+        <Version>1.34.0</Version>
+        <Authors>Mateusz Podeszwa</Authors>
+        <Description>Draws a ConsoleMVC .cvw view with the real rendering engine, without building or running the application: expressions appear as placeholders, partial views and layouts are included. Writes HTML, plain text or ANSI; the VS Code and Rider plugins use it for their live preview.</Description>
+        <Copyright>Copyright (c) 2026 Mateusz Podeszwa</Copyright>
+        <PackageTags>mvc;console;preview;cvw;markup;consolemvc;dotnet-tool</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
+        <PackageProjectUrl>https://github.com/MateuszPodeszwa/ConsoleMVC</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/MateuszPodeszwa/ConsoleMVC</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="PACKAGE_README.md" Pack="true" PackagePath="" />
+        <InternalsVisibleTo Include="ConsoleMVC.Preview.Tests" />
+    </ItemGroup>
+
+    <!-- The rendering engine draws the elements; the generator's parser reads the markup exactly as the build does -->
+    <ItemGroup>
+        <ProjectReference Include="../ConsoleMVC/ConsoleMVC.csproj" />
+        <ProjectReference Include="../ConsoleMVC.Generators/ConsoleMVC.Generators.csproj" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    </ItemGroup>
+
+</Project>

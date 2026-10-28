@@ -19,7 +19,9 @@ telnet localhost 2323
 ```
 
 The server listens on the loopback address until you choose otherwise, so nobody else on the network can connect.
-Press Ctrl+C in the server's console to stop it: every client is disconnected and their terminals are put back.
+Its console says where it listens and how to connect (`Serving on 127.0.0.1:2323 (Telnet, no TLS). Connect with telnet
+127.0.0.1 2323. Press Ctrl+C to stop.`), also when the log goes only to a file. Press Ctrl+C there to stop it: every
+client is disconnected (a client in the middle of a form gets nothing more) and their terminals are put back.
 
 | Setting | Meaning | Default |
 |---|---|---|
@@ -80,7 +82,7 @@ public sealed class AccountController(ITerminalSession session, IUserStore users
 | `IsRemote` | Whether this is a remote client |
 | `RemoteEndPoint` | The client's address |
 | `TerminalType` | What the client reported, such as `XTERM-256COLOR` |
-| `Width`, `Height` | The client's window size, kept up to date when it resizes |
+| `Width`, `Height` | The client's window size, kept up to date when it resizes. Telnet clients report it; a `Raw` client is asked for it (`ESC [ 18 t`) and the first screen waits up to half a second for the answer, then uses 80 by 24 |
 | `Items` | Values for this session only, safe to use from several threads |
 | `Disconnect()` | Ends the session, for example after too many failed sign-ins |
 

@@ -13,14 +13,15 @@ namespace ConsoleMVC.Rendering;
 /// override characters can visually reorder text to disguise its meaning.
 /// </para>
 /// <para>
-/// The sanitiser therefore removes all C0 and C1 control characters (including <c>ESC</c>) and
-/// Unicode bidirectional overrides, keeps line feeds, converts <c>\r\n</c> and lone <c>\r</c>
-/// to <c>\n</c>, and expands tabs to <see cref="TabWidth"/> spaces.
+/// The sanitiser therefore removes whole escape sequences (<c>ESC [ … J</c>, <c>ESC ] … BEL</c> and the like, so none
+/// of their text is left behind), all other C0 and C1 control characters and Unicode bidirectional overrides, keeps
+/// line feeds, converts <c>\r\n</c> and lone <c>\r</c> to <c>\n</c>, and expands tabs to <see cref="TabWidth"/>
+/// spaces.
 /// </para>
 /// </remarks>
 /// <example>
 /// <code>
-/// var safe = TextSanitiser.Sanitise(userInput); // "Bob\u001b[2J" → "Bob[2J"
+/// var safe = TextSanitiser.Sanitise(userInput); // "Bob\u001b[2J" → "Bob"
 /// </code>
 /// </example>
 public static class TextSanitiser
@@ -61,6 +62,9 @@ public static class TextSanitiser
                 case '\t':
                     builder.Append(' ', TabWidth);
                     break;
+                case '\u001b' or '\u009b' or '\u009d' or '\u0090' or '\u0098' or '\u009e' or '\u009f':
+                    i = EndOfSequence(text, i);
+                    break;
                 default:
                     if (!IsUnsafe(c))
                         builder.Append(c);
@@ -69,6 +73,70 @@ public static class TextSanitiser
         }
 
         return builder.ToString();
+    }
+
+    /// <summary>The longest control sequence skipped; past it the rest is treated as text (still with controls removed).</summary>
+    private const int MaxSequenceLength = 512;
+
+    /// <summary>
+    /// Returns the index of the last character of the escape sequence starting at <paramref name="start"/> (an
+    /// <c>ESC</c> or a C1 introducer): a CSI (<c>ESC [</c>, parameters, intermediates and a final byte), a string
+    /// sequence (<c>ESC ]</c> OSC, <c>ESC P</c> DCS, <c>ESC X</c>, <c>ESC ^</c>, <c>ESC _</c>) up to its terminator (BEL or
+    /// <c>ESC \</c>), or a two-character sequence (<c>ESC c</c>). A sequence that is not finished within
+    /// <see cref="MaxSequenceLength"/> characters ends at its introducer, so text after it is not swallowed.
+    /// </summary>
+    private static int EndOfSequence(string text, int start)
+    {
+        var i = start;
+        var kind = text[i];
+        if (kind == '\u001b')
+        {
+            if (i + 1 >= text.Length)
+                return i;
+
+            kind = text[i + 1] switch
+            {
+                '[' => '\u009b',
+                ']' => '\u009d',
+                'P' => '\u0090',
+                'X' => '\u0098',
+                '^' => '\u009e',
+                '_' => '\u009f',
+                _ => '\0'
+            };
+
+            i++;
+            if (kind == '\0')
+            {
+                // ESC, intermediates (0x20-0x2F), then one final character (0x30-0x7E)
+                while (i < text.Length && text[i] is >= ' ' and <= '/' && i - start < MaxSequenceLength)
+                    i++;
+                return i < text.Length && text[i] is >= '0' and <= '~' ? i : i - 1;
+            }
+        }
+
+        var limit = Math.Min(text.Length, start + MaxSequenceLength);
+        if (kind == '\u009b')
+        {
+            // CSI: parameters (0x30-0x3F), intermediates (0x20-0x2F), then a final byte (0x40-0x7E)
+            var j = i + 1;
+            while (j < limit && text[j] is >= '0' and <= '?')
+                j++;
+            while (j < limit && text[j] is >= ' ' and <= '/')
+                j++;
+            return j < limit && text[j] is >= '@' and <= '~' ? j : i;
+        }
+
+        // A string sequence: up to BEL, ST (0x9C) or ESC \
+        for (var j = i + 1; j < limit; j++)
+        {
+            if (text[j] is '\u0007' or '\u009c')
+                return j;
+            if (text[j] == '\u001b' && j + 1 < text.Length && text[j + 1] == '\\')
+                return j + 1;
+        }
+
+        return i;
     }
 
     /// <summary>Fast check so that the common case (already-safe text) allocates nothing.</summary>

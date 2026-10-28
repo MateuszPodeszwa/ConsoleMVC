@@ -87,7 +87,70 @@ public class NavigationAnalyzerTests
 
         Assert.Equal("CVW121", diagnostic.Id);
         Assert.Contains(message, diagnostic.GetMessage());
-        Assert.Contains("Index, List", diagnostic.GetMessage()); // the views that exist
+        Assert.Contains("Index", diagnostic.GetMessage()); // the views that exist
+        Assert.Contains("List", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public void AMisspeltName_IsSuggested_AndListedFirst()
+    {
+        var diagnostic = Assert.Single(Analyze("public ActionResult A() => View(\"Lst\");"));
+
+        Assert.Contains("Did you mean 'List'?", diagnostic.GetMessage());
+        Assert.Contains("Views of 'Orders': List, ", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public void ANameCloseToNothing_HasNoSuggestion()
+    {
+        var diagnostic = Assert.Single(Analyze("public ActionResult A() => RedirectToAction(\"Zzzzzzzz\");"));
+
+        Assert.DoesNotContain("Did you mean", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public void TheMessage_QuotesTheCallAsWritten()
+    {
+        var diagnostic = Assert.Single(Analyze("public ActionResult A() => RedirectToAction(\"Detials\", \"Orders\");"));
+
+        Assert.StartsWith("RedirectToAction(\"Orders\", \"Detials\")", diagnostic.GetMessage());
+        Assert.Contains("Did you mean 'Details'?", diagnostic.GetMessage());
+    }
+
+    [Theory]
+    [InlineData("\"Orders/Lsit\"", "MapKey(\"Orders/Lsit\"): the controller 'Orders' has no action 'Lsit'. Did you mean 'List'?")]
+    [InlineData("\"Ordres/List\"", "MapKey(\"Ordres/List\"): there is no controller 'Ordres'. Did you mean 'Orders'?")]
+    public void MapKeyTargets_AreChecked(string target, string message)
+    {
+        var diagnostic = Assert.Single(Analyze($"private void Keys(MvcApplication app) => app.MapKey(System.ConsoleKey.F1, {target}, \"Help\");"));
+
+        Assert.Equal("CVW120", diagnostic.Id);
+        Assert.StartsWith(message, diagnostic.GetMessage());
+    }
+
+    [Theory]
+    [InlineData("public ActionResult Q() => View(\"List\"); public ActionResult Q(int id) => View(\"List\");")]
+    [InlineData("public ActionResult Report() => View(\"List\"); public ActionResult report() => View(\"List\");")]
+    [InlineData("public ActionResult Index(int page) => View(\"List\");")]   // a second Index, beside the controller's own
+    public void TwoActionsWithTheSameName_AreCVW123(string actions)
+    {
+        var diagnostic = Assert.Single(Analyze(actions), d => d.Id == "CVW123");
+
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("actions named", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public void AnActionAndANonActionHelper_WithTheSameName_AreFine()
+    {
+        Assert.DoesNotContain(Analyze("[NonAction] public ActionResult Report() => View(\"List\"); public ActionResult Report(int id) => View(\"List\");"),
+            d => d.Id == "CVW123");
+    }
+
+    [Fact]
+    public void ACorrectMapKeyTarget_HasNoWarning()
+    {
+        Assert.Empty(Analyze("private void Keys(MvcApplication app) => app.MapKey(System.ConsoleKey.F1, \"Orders/List?page=2\", \"Help\");"));
     }
 
     [Fact]

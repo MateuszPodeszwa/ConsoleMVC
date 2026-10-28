@@ -55,6 +55,6 @@ public class ValidationErrorsElementTests
         var state = new ModelStateDictionary();
         state.AddModelError("x", "bad\u001b[2J");
 
-        Assert.Equal(["• bad[2J"], Plain(new ValidationErrorsElement { Source = state }));
+        Assert.Equal(["• bad"], Plain(new ValidationErrorsElement { Source = state }));
     }
 }

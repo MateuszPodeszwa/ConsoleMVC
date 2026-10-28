@@ -31,7 +31,7 @@ namespace ConsoleMVC.Rendering;
 /// string? answer = size.Read(renderer, ConsoleTextInput.Instance); // "M" when the user just presses Enter
 /// </code>
 /// </example>
-public abstract class ChoiceFieldElement : Element, IFormField
+public abstract class ChoiceFieldElement : Element, IFormField, IPrefilledField
 {
     /// <summary>The message shown for a typed answer that matches no choice; <c>{0}</c> is the answer.</summary>
     public const string UnknownChoiceMessage = "'{0}' is not one of the choices.";
@@ -65,8 +65,10 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
     /// <summary>
     /// Gets or sets the value chosen when the user enters nothing, and the highlighted choice in arrow-key mode. For
-    /// several answers, separate the values with commas.
+    /// several answers, separate the values with commas. Each must be a choice's value (ignoring case), or
+    /// <see cref="Read"/> throws; an empty answer stores the choice's own value.
     /// </summary>
+    /// <example><code>var size = new RadioElement { Name = "Size", Default = "m" }; // an empty answer stores "M"</code></example>
     public string? Default { get; set; }
 
     /// <summary>Gets or sets whether an empty answer is rejected and the field asked again.</summary>
@@ -144,7 +146,8 @@ public abstract class ChoiceFieldElement : Element, IFormField
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when an argument is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when the field has no choices, or when several answers are allowed and a value contains a comma.
+    /// Thrown when the field has no choices, when several answers are allowed and a value contains a comma, or when
+    /// <see cref="Default"/> names a value that no choice has.
     /// </exception>
     public string? Read(IMarkupRenderer renderer, ITextInput input)
     {
@@ -157,6 +160,11 @@ public abstract class ChoiceFieldElement : Element, IFormField
         if (AllowsSeveral && _choices.Any(c => c.EffectiveValue.Contains(ValueSeparator)))
             throw new InvalidOperationException(
                 $"{ElementName} '{Name}' allows several answers, so its choice values cannot contain '{ValueSeparator}'.");
+
+        // An empty answer takes the default, which must therefore be a choice
+        if (DefaultTokens().FirstOrDefault(t => FindValue(t) < 0) is { } unknown)
+            throw new InvalidOperationException(
+                $"{ElementName} '{Name}' has default '{unknown}', which is not the value of any of its choices ({string.Join(", ", _choices.Select(c => c.EffectiveValue))}).");
 
         return input.CanReadKeys && renderer.CanRewrite ? ReadWithKeys(renderer, input) : ReadTyped(renderer, input);
     }
@@ -184,9 +192,10 @@ public abstract class ChoiceFieldElement : Element, IFormField
             var answer = line.Trim();
             if (answer.Length == 0)
             {
-                var fallback = Default?.Trim() ?? "";
-                if (!Required || fallback.Length > 0)
-                    return fallback;
+                // The default's choices, as a typed answer naming them would be stored
+                var defaults = DefaultIndices();
+                if (!Required || defaults.Count > 0)
+                    return string.Join(ValueSeparator, defaults.Select(i => _choices[i].EffectiveValue));
 
                 ShowError(renderer, FrameworkText.Current.Required);
                 continue;
@@ -290,6 +299,9 @@ public abstract class ChoiceFieldElement : Element, IFormField
         renderer.Render(this);
         renderer.MapClicks(_clickTargets);
 
+        // Esc clears a filter being typed; without one, it is left to an application shortcut
+        using var claim = FieldKeyClaim.Claim(key => key.Key == ConsoleKey.Escape && AllowsFilter && _filter.Length > 0);
+
         while (true)
         {
             var read = input.ReadKey();
@@ -321,10 +333,27 @@ public abstract class ChoiceFieldElement : Element, IFormField
     /// <summary>The choice each line of the last vertical layout shows, by line object.</summary>
     private readonly Dictionary<RenderedLine, int> _choiceOfLine = new(ReferenceEqualityComparer.Instance);
 
+    /// <summary>Where each choice of the last side-by-side layout is: its line and columns, and its index.</summary>
+    private readonly List<(int Line, int From, int To, int Choice)> _choicePlaces = [];
+
     private void MapChoiceLines(IReadOnlyList<RenderedLine> lines)
     {
         var visible = Matching(_filter);
         var targets = new List<ClickTarget>();
+
+        // Side by side: a choice is part of a line; clicking it moves there (Home, then Right) and presses Enter
+        foreach (var (line, from, to, choice) in _choicePlaces)
+        {
+            var position = visible.IndexOf(choice);
+            if (position < 0 || line >= lines.Count)
+                continue;
+
+            var keys = new List<ConsoleKeyInfo> { ClickTarget.Key(ConsoleKey.Home) };
+            keys.AddRange(Enumerable.Repeat(ClickTarget.Key(ConsoleKey.RightArrow), position));
+            keys.Add(ClickTarget.Key(ConsoleKey.Enter));
+            targets.Add(new ClickTarget(line, keys) { FromColumn = from, ToColumn = to });
+        }
+
         for (var line = 0; line < lines.Count; line++)
         {
             if (!_choiceOfLine.TryGetValue(lines[line], out var choice))
@@ -434,16 +463,22 @@ public abstract class ChoiceFieldElement : Element, IFormField
         AllowsSeveral ? Enumerable.Range(0, _choices.Count).Where(i => _ticked[i]).ToList() : [_cursor];
 
     /// <summary>The choices named by <see cref="Default"/>, matched like typed answers.</summary>
-    private List<int> DefaultIndices()
+    private List<int> DefaultIndices() =>
+        DefaultTokens().Select(FindValue).Where(i => i >= 0).Distinct().Order().ToList();
+
+    /// <summary>The values <see cref="Default"/> names: one, or several separated by commas when several answers are allowed.</summary>
+    private IEnumerable<string> DefaultTokens()
     {
         if (string.IsNullOrWhiteSpace(Default))
             return [];
 
         var tokens = AllowsSeveral ? Default.Split(ValueSeparator) : [Default];
-        return tokens.Select(t => t.Trim()).Where(t => t.Length > 0)
-            .Select(t => _choices.FindIndex(c => string.Equals(c.EffectiveValue, t, StringComparison.OrdinalIgnoreCase)))
-            .Where(i => i >= 0).Distinct().Order().ToList();
+        return tokens.Select(t => t.Trim()).Where(t => t.Length > 0);
     }
+
+    /// <summary>The choice whose value is <paramref name="value"/>, ignoring case; -1 when none is.</summary>
+    private int FindValue(string value) =>
+        _choices.FindIndex(c => string.Equals(c.EffectiveValue, value, StringComparison.OrdinalIgnoreCase));
 
     // ------------------------------------------------------------------ layout
 
@@ -476,27 +511,34 @@ public abstract class ChoiceFieldElement : Element, IFormField
             return (Marker: marker, Choice: _choices[i], Bold: i == _cursor, Index: i);
         }).ToList();
 
-        var keys = Horizontal ? "Left/Right" : "Up/Down";
-        var typing = AllowsFilter ? "type to filter, " : "";
-        var hint = AllowsSeveral ? $"({typing}{keys}, Space, Enter)" : $"({typing}{keys}, Enter)";
+        var words = FrameworkText.Current;
+        var hint = (Horizontal, AllowsFilter, AllowsSeveral) switch
+        {
+            (true, _, _) => words.RadioKeys,
+            (false, true, true) => words.FilterManyKeys,
+            (false, true, false) => words.FilterKeys,
+            (false, false, true) => words.SelectManyKeys,
+            _ => words.SelectKeys
+        };
         _choiceOfLine.Clear();
+        _choicePlaces.Clear();
         var lines = ChoiceLines(width, items.Select(i => (i.Marker, i.Choice, i.Bold)).ToList(), hint, markerStyle,
             indent: LabelIndent + 1, choiceIndices: items.Select(i => i.Index).ToList()).ToList();
 
         var dim = TextStyle.Plain.WithDecoration(TextDecoration.Dim);
         var heading = Horizontal ? 0 : HeadingLines(width, hint).Count;
         if (first > 0)
-            lines.Insert(heading, new RenderedLine([Span.Spaces(LabelIndent + 3), new Span($"({first} more above)", dim)]).Clip(width));
+            lines.Insert(heading, new RenderedLine([Span.Spaces(LabelIndent + 3), new Span(FrameworkText.Format(words.MoreAbove, first), dim)]).Clip(width));
         if (first + count < visible.Count)
-            lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span($"({visible.Count - first - count} more below)", dim)]).Clip(width));
+            lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span(FrameworkText.Format(words.MoreBelow, visible.Count - first - count), dim)]).Clip(width));
 
         if (AllowsFilter && _filter.Length > 0)
         {
             var filter = TextSanitiser.Sanitise(_filter);
             lines.Insert(Math.Min(heading, lines.Count), new RenderedLine(
-                [Span.Spaces(LabelIndent + 1), new Span("Filter: ", dim), new Span(filter, TextStyle.Plain.WithDecoration(TextDecoration.Bold))]).Clip(width));
+                [Span.Spaces(LabelIndent + 1), new Span(words.FilterLabel, dim), new Span(filter, TextStyle.Plain.WithDecoration(TextDecoration.Bold))]).Clip(width));
             if (visible.Count == 0)
-                lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span("(no matches)", dim)]).Clip(width));
+                lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span(words.NoMatches, dim)]).Clip(width));
         }
 
         if (_error is not null)
@@ -533,21 +575,23 @@ public abstract class ChoiceFieldElement : Element, IFormField
         if (Horizontal)
         {
             // One space after the label, two between choices
-            var segments = new List<(Span[] Spans, int Gap)>();
+            var segments = new List<(Span[] Spans, int Gap, int Choice)>();
             if (SafeLabel.Length > 0)
-                segments.Add(([new Span(SafeLabel, LabelStyle)], 0));
+                segments.Add(([new Span(SafeLabel, LabelStyle)], 0, -1));
 
-            foreach (var (marker, choice, bold) in items)
+            for (var item = 0; item < items.Count; item++)
             {
+                var (marker, choice, bold) = items[item];
                 var style = bold ? choice.Style.WithDecoration(TextDecoration.Bold) : choice.Style;
                 var gap = segments.Count == 0 ? 0 : segments.Count == 1 && SafeLabel.Length > 0 ? 1 : 2;
-                segments.Add(([new Span(marker, markerStyle), Span.Spaces(1), new Span(TextSanitiser.Sanitise(choice.LabelText), style)], gap));
+                segments.Add(([new Span(marker, markerStyle), Span.Spaces(1), new Span(TextSanitiser.Sanitise(choice.LabelText), style)], gap,
+                    choiceIndices?[item] ?? -1));
             }
 
             if (hint is not null)
-                segments.Add(([new Span(hint, hintStyle)], 2));
+                segments.Add(([new Span(hint, hintStyle)], 2, -1));
 
-            return Flow(segments, width);
+            return Flow(segments, width, _choicePlaces);
         }
 
         var lines = HeadingLines(width, hint);
@@ -577,32 +621,40 @@ public abstract class ChoiceFieldElement : Element, IFormField
     /// <summary>The label of a vertical field, followed by the keys to press when there is a hint.</summary>
     private List<RenderedLine> HeadingLines(int width, string? hint)
     {
-        var heading = new List<(Span[] Spans, int Gap)>();
+        var heading = new List<(Span[] Spans, int Gap, int Choice)>();
         if (SafeLabel.Length > 0)
-            heading.Add(([new Span(SafeLabel, LabelStyle)], 0));
+            heading.Add(([new Span(SafeLabel, LabelStyle)], 0, -1));
         if (hint is not null)
-            heading.Add(([new Span(hint, TextStyle.Plain.WithDecoration(TextDecoration.Dim))], 1));
-        return heading.Count == 0 ? [] : Flow(heading, width);
+            heading.Add(([new Span(hint, TextStyle.Plain.WithDecoration(TextDecoration.Dim))], 1, -1));
+        return heading.Count == 0 ? [] : Flow(heading, width, []);
     }
 
     /// <summary>
-    /// Places segments side by side, each after its gap of spaces, starting a new line when one does not fit.
+    /// Lays segments out side by side, starting a new line when the next one does not fit. A segment wider than a whole
+    /// line (a long choice on a narrow terminal) wraps onto the lines below, under its own text, rather than being cut.
     /// </summary>
-    private static List<RenderedLine> Flow(List<(Span[] Spans, int Gap)> segments, int width)
+    /// <param name="segments">The label, the choices and the hint, each with the gap before it and its choice (or -1).</param>
+    /// <param name="width">The width of the lines.</param>
+    /// <param name="places">Receives where each choice was put: its lines and columns.</param>
+    private static List<RenderedLine> Flow(List<(Span[] Spans, int Gap, int Choice)> segments, int width,
+        List<(int Line, int From, int To, int Choice)> places)
     {
         var lines = new List<RenderedLine>();
         var current = new List<Span>();
         var used = 0;
 
-        foreach (var (segment, gap) in segments)
+        void NewLine()
+        {
+            lines.Add(new RenderedLine(current).Clip(width));
+            current = [];
+            used = 0;
+        }
+
+        foreach (var (segment, gap, choice) in segments)
         {
             var segmentWidth = segment.Sum(s => s.Width);
             if (current.Count > 0 && used + gap + segmentWidth > width)
-            {
-                lines.Add(new RenderedLine(current).Clip(width));
-                current = [];
-                used = 0;
-            }
+                NewLine();
 
             if (current.Count > 0)
             {
@@ -610,8 +662,37 @@ public abstract class ChoiceFieldElement : Element, IFormField
                 used += gap;
             }
 
-            current.AddRange(segment);
-            used += segmentWidth;
+            if (used + segmentWidth <= width)
+            {
+                if (choice >= 0)
+                    places.Add((lines.Count, used, used + segmentWidth, choice));
+                current.AddRange(segment);
+                used += segmentWidth;
+                continue;
+            }
+
+            // Too wide for any line: the marker and as many words as fit, then the rest under the text, line by line
+            var prefix = segment.Take(segment.Length - 1).ToArray();
+            var last = segment[^1];
+            var indent = used + prefix.Sum(s => s.Width);
+            var pieces = TextWrapper.Wrap(last.Text, Math.Max(width - indent, 1));
+            for (var i = 0; i < pieces.Count; i++)
+            {
+                if (i > 0)
+                {
+                    NewLine();
+                    current.Add(Span.Spaces(indent));
+                    used = indent;
+                }
+
+                var start = i == 0 ? used : indent;
+                if (i == 0)
+                    current.AddRange(prefix);
+                current.Add(last with { Text = pieces[i] });
+                used = indent + TextWidth.Of(pieces[i]);
+                if (choice >= 0)
+                    places.Add((lines.Count, i == 0 ? start : indent, used, choice));
+            }
         }
 
         if (current.Count > 0)
@@ -659,5 +740,14 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
         /// <summary>The answer was confirmed.</summary>
         Confirmed
+    }
+
+    /// <inheritdoc />
+    /// <remarks>Only values that are choices are taken, so a value posted from code that is not one cannot break the field.</remarks>
+    void IPrefilledField.Prefill(string posted)
+    {
+        var values = (AllowsSeveral ? posted.Split(ValueSeparator) : [posted]).Select(v => v.Trim()).Where(v => v.Length > 0).ToList();
+        if (values.Count > 0 && values.All(v => _choices.Any(c => string.Equals(c.EffectiveValue, v, StringComparison.OrdinalIgnoreCase))))
+            Default = string.Join(ValueSeparator, values);
     }
 }

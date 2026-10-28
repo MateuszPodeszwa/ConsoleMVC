@@ -64,6 +64,11 @@ internal sealed class TerminalModeSession : IDisposable
 
     private void OnProcessExit(object? sender, EventArgs e) => Dispose();
 
-    // Not cancelled: Ctrl+C still stops the application, with the terminal put back
-    private void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e) => Dispose();
+    // When Ctrl+C is going to end the process (nothing cancelled it, as the run does for the first press so that it can
+    // end cleanly and put the terminal back itself), the terminal is put back now
+    private void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
+    {
+        if (!e.Cancel)
+            Dispose();
+    }
 }

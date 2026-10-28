@@ -1,0 +1,10 @@
+@model object
+
+<breadcrumbs />
+<text>Order @Model</text>
+<menu>
+    <option key="n" nav="Orders/Details?id=42">Order 42</option>
+    <option key="h" nav="Home/Index">Home</option>
+    <option key="b" back>Back</option>
+    <option key="q" quit>Quit</option>
+</menu>

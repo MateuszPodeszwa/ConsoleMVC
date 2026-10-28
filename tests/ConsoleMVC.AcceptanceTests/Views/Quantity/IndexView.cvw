@@ -1,0 +1,8 @@
+<number name="quantity" label="Quantity: " default="1" min="0" max="99" decimals="0" />
+<select name="colour" label="Colour:" filter>
+    <choice>Red</choice>
+    <choice>Green</choice>
+    <choice>Blue</choice>
+</select>
+
+return NavigationResult.ToAction("Show", Form);

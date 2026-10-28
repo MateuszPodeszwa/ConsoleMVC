@@ -69,9 +69,10 @@ public class RouteValueTests
     [Fact]
     public void Back_ReturnsToTheSameRecord()
     {
-        Run(NavigationResult.To("Item?id=3"), NavigationResult.ToAction("Index"), NavigationResult.Back());
+        // Item 3 and item 4 are two screens: Back from item 4 returns to item 3
+        Run(NavigationResult.To("Item?id=3"), NavigationResult.To("Item?id=4"), NavigationResult.Back());
 
-        Assert.Equal(["item:3::1:True", "item:3::1:True"], Items);
+        Assert.Equal(["item:3::1:True", "item:4::1:True", "item:3::1:True"], Items);
     }
 
     [Fact]

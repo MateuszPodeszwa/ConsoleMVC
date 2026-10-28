@@ -114,7 +114,7 @@ internal sealed class MouseDecoder(ITextInput inner, IMarkupRenderer renderer) :
         switch (report.Button)
         {
             case 0: // left button
-                if (renderer.KeysAt(report.Row) is { } keys)
+                if (renderer.KeysAt(report.Row, report.Column) is { } keys)
                 {
                     foreach (var key in keys)
                         _pending.Enqueue(key);

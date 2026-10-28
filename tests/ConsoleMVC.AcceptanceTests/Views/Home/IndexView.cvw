@@ -1,0 +1,16 @@
+<breadcrumbs />
+<text>Acceptance</text>
+<text color="red" bold>Styled warning</text>
+<menu>
+    <option key="1" nav="Account/Signup">Sign up</option>
+    <option key="2" nav="Numbers/Index">Numbers</option>
+    <option key="3" nav="Orders/Index">Orders</option>
+    <option key="4" nav="Quantity/Index">Quantity</option>
+    <option key="5" nav="Consent/Index">Consent</option>
+    <option key="6" nav="Services/Index">Services</option>
+    <option key="7" nav="Clock/Index">Clock</option>
+    <option key="8" nav="Size/Index">Size</option>
+    <option key="9" nav="Admin/Home/Index">Admin</option>
+    <option key="0" nav="admin/home/index">admin (typed in lower case)</option>
+    <option key="q" quit>Quit</option>
+</menu>

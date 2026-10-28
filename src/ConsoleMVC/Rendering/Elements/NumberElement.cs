@@ -18,7 +18,7 @@ namespace ConsoleMVC.Rendering;
 /// // Arrow keys: Age: 30  (Up/Down, type a number, Enter)
 /// </code>
 /// </example>
-public sealed class NumberElement : Element, IFormField
+public sealed class NumberElement : Element, IFormField, IPrefilledField
 {
     /// <summary>The message for text that is not a number.</summary>
     public const string NotANumberMessage = "Enter a number, e.g. 42 or 2.5.";
@@ -40,7 +40,12 @@ public sealed class NumberElement : Element, IFormField
     /// <summary>Gets or sets the text written before the number, e.g. <c>"Age: "</c>.</summary>
     public string? Label { get; set; }
 
-    /// <summary>Gets or sets the value used when the user enters nothing, and the starting value in arrow-key mode.</summary>
+    /// <summary>
+    /// Gets or sets the value used when the user enters nothing, and the starting value in arrow-key mode. It must be a
+    /// number the field accepts (within <see cref="Min"/> and <see cref="Max"/>, with no more than <see cref="Decimals"/>
+    /// places), or <see cref="Read"/> throws.
+    /// </summary>
+    /// <example><code>var qty = new NumberElement { Name = "Qty", Min = 1, Max = 99, Default = "1" };</code></example>
     public string? Default { get; set; }
 
     /// <summary>Gets or sets the smallest accepted value, or <see langword="null"/> for none.</summary>
@@ -97,7 +102,7 @@ public sealed class NumberElement : Element, IFormField
             case FieldMode.Keys:
                 spans.Add(new Span(_buffer.Length > 0 ? _buffer : " ", TextStyle.Plain.WithForeground(HighlightColour).WithDecoration(TextDecoration.Bold | TextDecoration.Underline)));
                 spans.Add(Span.Spaces(2));
-                spans.Add(new Span("(Up/Down, type a number, Enter)", FieldText.Hint));
+                spans.Add(new Span(FrameworkText.Current.NumberKeys, FieldText.Hint));
                 break;
             case FieldMode.Answered:
                 spans.Add(new Span(_buffer, TextStyle.Plain.WithDecoration(TextDecoration.Bold)));
@@ -112,7 +117,10 @@ public sealed class NumberElement : Element, IFormField
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when an argument is <see langword="null"/>.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when <see cref="Min"/> is greater than <see cref="Max"/>.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <see cref="Min"/> is greater than <see cref="Max"/>, or <see cref="Default"/> is not a number that
+    /// <see cref="Validate"/> accepts.
+    /// </exception>
     public string? Read(IMarkupRenderer renderer, ITextInput input)
     {
         ArgumentNullException.ThrowIfNull(renderer);
@@ -120,6 +128,10 @@ public sealed class NumberElement : Element, IFormField
 
         if (Min > Max)
             throw new InvalidOperationException($"<number> '{Name}' has min {Format(Min!.Value)} greater than max {Format(Max!.Value)}.");
+
+        // An empty answer takes the default, so a default the field refuses would ask again for ever
+        if (!string.IsNullOrWhiteSpace(Default) && Validate(Default.Trim(), out _) is { } problem)
+            throw new InvalidOperationException($"<number> '{Name}' has default '{Default.Trim()}', which it does not accept: {problem}");
 
         _error = null;
         return input.CanReadKeys && renderer.CanRewrite ? ReadWithKeys(renderer, input) : ReadTyped(renderer, input);
@@ -134,8 +146,9 @@ public sealed class NumberElement : Element, IFormField
     /// <example><code>var error = field.Validate("200", out _); // "Enter a number from 0 to 130."</code></example>
     public string? Validate(string text, out decimal value)
     {
+        // A whole-number field asks for a whole number, not for "42 or 2.5"
         if (!decimal.TryParse(text, Styles, CultureInfo.InvariantCulture, out value))
-            return FrameworkText.Current.NotANumber;
+            return Decimals == 0 ? FrameworkText.Current.WholeNumber : FrameworkText.Current.NotANumber;
 
         if (Decimals == 0 && value != decimal.Truncate(value))
             return FrameworkText.Current.WholeNumber;
@@ -201,6 +214,10 @@ public sealed class NumberElement : Element, IFormField
         _fresh = true;
         _mode = FieldMode.Keys;
         renderer.Render(this);
+
+        // Esc restores a changed value; when the value is the default, it is left to an application shortcut
+        var start = _buffer;
+        using var claim = FieldKeyClaim.Claim(key => key.Key == ConsoleKey.Escape && _buffer != start);
 
         while (true)
         {
@@ -307,5 +324,12 @@ public sealed class NumberElement : Element, IFormField
         Static,
         Keys,
         Answered
+    }
+
+    /// <inheritdoc />
+    void IPrefilledField.Prefill(string posted)
+    {
+        if (posted.Trim().Length > 0 && Validate(posted.Trim(), out _) is null)
+            Default = posted.Trim();
     }
 }

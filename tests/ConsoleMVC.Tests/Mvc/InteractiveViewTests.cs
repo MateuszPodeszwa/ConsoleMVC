@@ -51,12 +51,38 @@ public class InteractiveViewTests
     }
 
     [Fact]
-    public void ReadInput_EndOfInput_StoresEmptyValue()
+    public void Prefill_NeverFillsInAMaskedField()
+    {
+        var password = new InputElement { Name = "Password", Masked = true };
+        var name = new InputElement { Name = "Name" };
+
+        ((IPrefilledField)password).Prefill("secret");
+        ((IPrefilledField)name).Prefill("Ada");
+
+        Assert.Null(password.Default);
+        Assert.Equal("Ada", name.Default);
+    }
+
+    [Fact]
+    public void Prefill_TakesOnlyValuesAFieldAccepts()
+    {
+        var number = new NumberElement { Name = "Age", Min = 0, Max = 130, Decimals = 0, Default = "18" };
+        var date = new DateElement { Name = "When" };
+
+        ((IPrefilledField)number).Prefill("999");
+        ((IPrefilledField)date).Prefill("not a date");
+
+        Assert.Equal("18", number.Default);
+        Assert.Null(date.Default);
+    }
+
+    [Fact]
+    public void ReadInput_EndOfInput_EndsTheRunWithoutStoringAValue()
     {
         var view = View(new ScriptedInput());
 
-        Assert.Equal("", view.CallReadInput(new InputElement { Name = "Name" }));
-        Assert.Equal("", view.Form["Name"]);
+        Assert.Throws<InputEndedException>(() => view.CallReadInput(new InputElement { Name = "Name" }));
+        Assert.False(view.Form.ContainsKey("Name"));
     }
 
     [Theory]

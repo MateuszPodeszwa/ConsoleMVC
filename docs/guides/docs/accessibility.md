@@ -34,10 +34,12 @@ Every screen is then written as plain lines of text that a screen reader reads w
 
 Also:
 
-- No colours and no cursor movement. `<select>`, `<radio>`, `<checkbox>`, `<number>` and `<date>` list numbered
+- No colours, no styles and no cursor movement, even with your own `builder.Renderer`. `<select>`, `<radio>`, `<checkbox>`, `<number>` and `<date>` list numbered
   choices and read a typed answer instead of the arrow keys.
 - Screens are not erased: a blank line separates them, so what was read stays in the reader's history.
 - Live regions draw their final state once, `<scroll>` draws everything, and `FullScreen` is ignored.
+- Screens do not refresh (`@refresh`, `RefreshEvery`): the reader would read the whole page out again each time.
+  Leave the page and come back for fresh data.
 
 Your own elements are drawn as they are. To describe one in words, wrap the renderer yourself, or check
 `Renderer is ScreenReaderRenderer` in a view and draw something simpler.

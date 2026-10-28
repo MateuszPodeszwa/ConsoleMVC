@@ -21,11 +21,34 @@ internal abstract class AttributeType
     /// <summary>Gets a short human-readable description, used in error messages (e.g. "a colour").</summary>
     public abstract string Description { get; }
 
+    /// <summary>
+    /// Gets the kind of value, for tools that read the exported schema (<c>schema/cvw-schema.json</c>): <c>text</c>,
+    /// <c>integer</c>, <c>number</c>, <c>number-list</c>, <c>date</c>, <c>boolean</c>, <c>colour</c>, <c>length</c>,
+    /// <c>choice</c>, <c>route</c> or <c>model</c>.
+    /// </summary>
+    public abstract string Kind { get; }
+
+    /// <summary>Gets the keywords the value may be, for completion in editors; empty when it is not a fixed set.</summary>
+    public virtual IReadOnlyList<string> Values => Array.Empty<string>();
+
+    /// <summary>Gets the smallest value accepted, for whole numbers; otherwise <see langword="null"/>.</summary>
+    public virtual int? Minimum => null;
+
+    /// <summary>Gets the largest value accepted, for whole numbers; otherwise <see langword="null"/>.</summary>
+    public virtual int? Maximum => null;
+
     /// <summary>Gets a value indicating whether the attribute may be written without a value (<c>&lt;text bold&gt;</c>).</summary>
     public virtual bool AllowsFlag => false;
 
     /// <summary>Gets a value indicating whether the value may mix literal text and expressions (<c>title="Hi @Model.Name"</c>).</summary>
     public virtual bool AllowsInterpolation => false;
+
+    /// <summary>
+    /// Gets a value indicating whether the value may be an expression (<c>width=@Model.Width</c>); <see langword="false"/>
+    /// for a value the build must know, such as a partial's name.
+    /// </summary>
+    /// <example><code>bool dynamic = new LiteralTextAttributeType().AllowsExpression; // false</code></example>
+    public virtual bool AllowsExpression => true;
 
     /// <summary>
     /// Validates a literal value and translates it to C#.
@@ -52,6 +75,9 @@ internal sealed class StringAttributeType : AttributeType
     public override string Description => "text";
 
     /// <inheritdoc />
+    public override string Kind => "text";
+
+    /// <inheritdoc />
     public override bool AllowsInterpolation => true;
 
     /// <inheritdoc />
@@ -65,6 +91,30 @@ internal sealed class StringAttributeType : AttributeType
     /// <inheritdoc />
     public override string WrapExpression(string expressionCode) =>
         "global::ConsoleMVC.Rendering.MarkupValue.Format(" + expressionCode + ")";
+}
+
+/// <summary>
+/// Text that must be written literally, because the build uses it, e.g. a partial's name (checked by
+/// <c>PartialChecker</c>, which reports an expression as CVW114).
+/// </summary>
+internal sealed class LiteralTextAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "literal text";
+
+    /// <inheritdoc />
+    public override string Kind => "text";
+
+    /// <inheritdoc />
+    public override bool AllowsExpression => false;
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        error = "";
+        code = CSharpLiteral.String(literal ?? "");
+        return literal is not null;
+    }
 }
 
 /// <summary>A whole number within a range, e.g. padding.</summary>
@@ -88,6 +138,15 @@ internal sealed class IntegerAttributeType : AttributeType
     public override string Description => $"a whole number from {_minimum} to {_maximum}";
 
     /// <inheritdoc />
+    public override string Kind => "integer";
+
+    /// <inheritdoc />
+    public override int? Minimum => _minimum;
+
+    /// <inheritdoc />
+    public override int? Maximum => _maximum;
+
+    /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         code = "";
@@ -109,6 +168,7 @@ internal sealed class IntegerAttributeType : AttributeType
 internal sealed class DecimalAttributeType : AttributeType
 {
     private readonly string _suffix;
+    private readonly string _converter;
 
     /// <summary>
     /// Creates a number attribute type.
@@ -117,10 +177,23 @@ internal sealed class DecimalAttributeType : AttributeType
     public DecimalAttributeType(bool asDouble = false)
     {
         _suffix = asDouble ? "d" : "m";
+        _converter = asDouble ? "ToDouble" : "ToDecimal";
     }
 
     /// <inheritdoc />
-    public override string Description => "a number such as 0, -5 or 2.5";
+    public override string Description => "a number such as 0, -5 or 2.5, or an expression of any number type";
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Converts any number type (<c>int</c>, <c>double</c>, <c>decimal</c>, their nullable forms…) to the property's type
+    /// with <c>MarkupValue.ToDecimal</c> or <c>MarkupValue.ToDouble</c>, so <c>min="@(0.5)"</c> works on a
+    /// <c>decimal</c> property and <c>value="@Model.Total"</c> with a <c>decimal</c> total on a <c>double</c> one.
+    /// </remarks>
+    public override string WrapExpression(string expressionCode) =>
+        "global::ConsoleMVC.Rendering.MarkupValue." + _converter + "(" + expressionCode + ")";
+
+    /// <inheritdoc />
+    public override string Kind => "number";
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
@@ -145,6 +218,9 @@ internal sealed class NumberListAttributeType : AttributeType
 {
     /// <inheritdoc />
     public override string Description => "numbers separated by commas or spaces, e.g. '3, 5, 2', or an expression such as @Model.Values";
+
+    /// <inheritdoc />
+    public override string Kind => "number-list";
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
@@ -173,13 +249,24 @@ internal sealed class NumberListAttributeType : AttributeType
 }
 
 /// <summary>
-/// A date for <c>&lt;date&gt;</c>: <c>yyyy-MM-dd</c>, <c>today</c>, <c>today+N</c> or <c>today-N</c>; checked at build
-/// time and emitted as a string, which the element resolves when it is shown.
+/// A date for <c>&lt;date&gt;</c>: <c>yyyy-MM-dd</c>, <c>today</c>, <c>tomorrow</c>, <c>yesterday</c>, <c>today+N</c>,
+/// <c>today-N</c>, <c>+N</c> or <c>-N</c> (up to 100000 days), the forms <c>DateElement.TryParse</c> accepts; checked at
+/// build time and emitted as a string, which the element resolves when it is shown.
 /// </summary>
 internal sealed class DateAttributeType : AttributeType
 {
+    /// <summary>The most days a relative date may be from today, as in <c>DateElement.TryParse</c>.</summary>
+    /// <example><code>var latest = "today+" + DateAttributeType.MaximumDays; // accepted; one more day is not</code></example>
+    public const int MaximumDays = 100_000;
+
     /// <inheritdoc />
-    public override string Description => "a date such as 2026-10-27, today, today+7 or today-30";
+    public override string Description => "a date such as 2026-10-27, today, tomorrow, yesterday, today+7 or today-30";
+
+    /// <inheritdoc />
+    public override string Kind => "date";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Values { get; } = ["today", "tomorrow", "yesterday"];
 
     /// <inheritdoc />
     public override bool AllowsInterpolation => true;
@@ -188,17 +275,58 @@ internal sealed class DateAttributeType : AttributeType
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         code = "";
-        error = "expected " + Description;
+        error = "expected " + Description + ", at most " + MaximumDays.ToString(CultureInfo.InvariantCulture) + " days from today";
         var text = (literal ?? "").Trim().ToLowerInvariant();
 
-        var valid = text == "today"
-                    || (text.StartsWith("today", StringComparison.Ordinal) && text.Length > 6 && text[5] is '+' or '-'
-                        && int.TryParse(text.Substring(6), NumberStyles.None, CultureInfo.InvariantCulture, out _))
-                    || DateTime.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
-        if (!valid)
+        // An empty value is no value, as it is for the element's property
+        if (text.Length > 0 && !TryParse(text, out _, out _))
             return false;
 
         code = CSharpLiteral.String(text);
+        return true;
+    }
+
+    /// <summary>
+    /// Reads a literal date exactly as <c>DateElement.TryParse</c> does, without knowing what today is.
+    /// </summary>
+    /// <param name="text">The literal, e.g. <c>today+7</c> or <c>2026-10-27</c>.</param>
+    /// <param name="daysFromToday">The days from today, for a date relative to today; otherwise <see langword="null"/>.</param>
+    /// <param name="date">The date, for a fixed date; otherwise <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> when the runtime accepts the text as a date.</returns>
+    /// <example><code>DateAttributeType.TryParse("today-30", out var days, out _); // days == -30</code></example>
+    public static bool TryParse(string? text, out int? daysFromToday, out DateTime? date)
+    {
+        daysFromToday = null;
+        date = null;
+        var value = (text ?? "").Trim().ToLowerInvariant();
+
+        switch (value)
+        {
+            case "today":
+                daysFromToday = 0;
+                return true;
+            case "tomorrow":
+                daysFromToday = 1;
+                return true;
+            case "yesterday":
+                daysFromToday = -1;
+                return true;
+        }
+
+        if (value.StartsWith("today", StringComparison.Ordinal))
+            value = value.Substring("today".Length);
+
+        if (value.Length > 1 && value[0] is '+' or '-'
+            && int.TryParse(value.Substring(1), NumberStyles.None, CultureInfo.InvariantCulture, out var days) && days <= MaximumDays)
+        {
+            daysFromToday = value[0] == '+' ? days : -days;
+            return true;
+        }
+
+        if (!DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var fixedDate))
+            return false;
+
+        date = fixedDate;
         return true;
     }
 
@@ -212,6 +340,12 @@ internal sealed class BooleanAttributeType : AttributeType
 {
     /// <inheritdoc />
     public override string Description => "true or false";
+
+    /// <inheritdoc />
+    public override string Kind => "boolean";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Values { get; } = ["true", "false"];
 
     /// <inheritdoc />
     public override bool AllowsFlag => true;
@@ -244,6 +378,13 @@ internal sealed class ColourAttributeType : AttributeType
 
     /// <inheritdoc />
     public override string Description => "a colour name such as 'cyan' or 'darkgrey', or a hex value such as '#ff8800'";
+
+    /// <inheritdoc />
+    public override string Kind => "colour";
+
+    /// <inheritdoc />
+    /// <remarks>The named colours and <c>default</c>; hex values such as <c>#ff8800</c> are accepted too.</remarks>
+    public override IReadOnlyList<string> Values { get; } = ["default", .. Names.Keys.OrderBy(k => k, StringComparer.Ordinal)];
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
@@ -306,6 +447,12 @@ internal sealed class LengthAttributeType : AttributeType
     public override string Description => "'auto', a column count such as '40', a percentage such as '50%', or '*' for the remaining width";
 
     /// <inheritdoc />
+    public override string Kind => "length";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Values { get; } = ["auto", "*"];
+
+    /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         code = "";
@@ -360,6 +507,12 @@ internal sealed class ChoiceAttributeType : AttributeType
     public override string Description => "one of " + _displayChoices;
 
     /// <inheritdoc />
+    public override string Kind => "choice";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Values => _choices.Keys.ToArray();
+
+    /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         error = "expected " + Description;
@@ -382,7 +535,10 @@ internal sealed class ChoiceAttributeType : AttributeType
 internal sealed class RouteAttributeType : AttributeType
 {
     /// <inheritdoc />
-    public override string Description => "a route such as 'Home/Index', 'Index', 'Admin/Users/Index' or 'Orders/Details?id=42'";
+    public override string Description => "a route such as 'Home/Index', 'Index', 'Admin/Users/Index', 'Orders/Details?id=42' or '/Home/Index' (the application's, from an area)";
+
+    /// <inheritdoc />
+    public override string Kind => "route";
 
     /// <inheritdoc />
     public override bool AllowsInterpolation => true;
@@ -394,9 +550,13 @@ internal sealed class RouteAttributeType : AttributeType
         error = "expected " + Description;
         var text = (literal ?? "").Trim();
         var query = text.IndexOf('?');
-        var parts = (query < 0 ? text : text.Substring(0, query)).Split('/');
+        var path = query < 0 ? text : text.Substring(0, query);
 
-        if (parts.Length > 3 || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
+        // A leading '/' names the application's controller from inside an area: '/Home/Index' (never an action alone)
+        var root = path.StartsWith("/", StringComparison.Ordinal);
+        var parts = (root ? path.Substring(1) : path).Split('/');
+
+        if (parts.Length > 3 || (root && parts.Length < 2) || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
             return false;
 
         // Route values: key=value pairs separated by '&'; every key must have a name
@@ -406,7 +566,7 @@ internal sealed class RouteAttributeType : AttributeType
             return false;
         }
 
-        code = CSharpLiteral.String(string.Join("/", parts) + (query < 0 ? "" : text.Substring(query)));
+        code = CSharpLiteral.String((root ? "/" : "") + string.Join("/", parts) + (query < 0 ? "" : text.Substring(query)));
         return true;
     }
 
@@ -432,6 +592,9 @@ internal sealed class ModelAttributeType : AttributeType
 {
     /// <inheritdoc />
     public override string Description => "a model expression";
+
+    /// <inheritdoc />
+    public override string Kind => "model";
 
     /// <inheritdoc />
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)

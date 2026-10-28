@@ -1,0 +1,9 @@
+@model Acceptance.Models.SignupModel?
+
+<text>Sign up</text>
+<errors />
+<input name="Name" label="Name: " />
+<input name="Age" label="Age: " />
+<input name="Email" label="E-mail (optional): " />
+
+return NavigationResult.ToAction("Save", Form);

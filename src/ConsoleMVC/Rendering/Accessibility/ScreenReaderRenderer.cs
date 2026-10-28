@@ -4,7 +4,8 @@ namespace ConsoleMVC.Rendering;
 /// A renderer for people using a screen reader: every element is described in plain lines of text, without borders,
 /// bars or other box-drawing characters (<see cref="ScreenReaderText"/>); nothing is redrawn in place, so arrow-key
 /// fields ask for typed answers and live elements are drawn once; and screens are separated by a blank line instead of
-/// being erased, so what was said stays in the reader's history. Turned on with <c>builder.ScreenReader = true</c> or
+/// being erased, so what was said stays in the reader's history. Nothing is styled, whatever renderer it wraps: colour
+/// and style codes would be read out or garble the reader's text. Turned on with <c>builder.ScreenReader = true</c> or
 /// the <c>ConsoleMVC:ScreenReader</c> setting.
 /// </summary>
 /// <example>
@@ -44,7 +45,7 @@ public sealed class ScreenReaderRenderer : IMarkupRenderer
     {
         ArgumentNullException.ThrowIfNull(element);
         _drawn = true;
-        _inner.Render(ScreenReaderText.Describe(element));
+        _inner.Render(new UnstyledElement(ScreenReaderText.Describe(element)));
     }
 
     /// <inheritdoc />
@@ -54,7 +55,7 @@ public sealed class ScreenReaderRenderer : IMarkupRenderer
     public void WritePrompt(string text, TextStyle style)
     {
         _drawn = true;
-        _inner.WritePrompt(text, style);
+        _inner.WritePrompt(text, TextStyle.Plain);
     }
 
     /// <inheritdoc />
@@ -72,4 +73,16 @@ public sealed class ScreenReaderRenderer : IMarkupRenderer
     /// <inheritdoc />
     /// <remarks>Always <see langword="false"/>: the alternate screen would hide the history the reader relies on.</remarks>
     public bool SetFullScreen(bool on) => false;
+
+    /// <summary>
+    /// Lays an element out as it would be, with every span's colour and style removed, so even a renderer that writes
+    /// ANSI codes (<c>builder.Renderer = MarkupRenderer.CreateForConsole()</c>) writes plain text.
+    /// </summary>
+    private sealed class UnstyledElement(Element inner) : Element
+    {
+        public override int MeasureWidth(int maxWidth) => inner.MeasureWidth(maxWidth);
+
+        public override IReadOnlyList<RenderedLine> Layout(int width) =>
+            inner.Layout(width).Select(line => new RenderedLine(line.Spans.Select(span => span with { Style = TextStyle.Plain }))).ToArray();
+    }
 }

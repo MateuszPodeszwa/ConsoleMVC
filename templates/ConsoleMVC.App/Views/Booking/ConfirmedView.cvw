@@ -1,0 +1,20 @@
+@model ConsoleMVC.App.Models.BookingFormModel
+
+var extras = Model.Extras.Count == 0 ? "none" : string.Join(", ", Model.Extras);
+var summary = string.Join("\n",
+    "## Booked",
+    "",
+    $"**{Model.Name}**, table *{Model.Table}* for {Model.Guests} on {Model.Date:dddd d MMMM}.",
+    "",
+    $"- Extras: {extras}",
+    "",
+    "> Keep your PIN: you need it to change the booking.");
+
+@* Model data inside Markdown is sanitised like any other text, so a name cannot send escape sequences *@
+<markdown text="@summary" />
+
+<menu>
+    <option key="1" nav="Booking/Index">Book another table</option>
+    <option key="h" nav="Home/Index">Home</option>
+    <option key="q" quit>Exit</option>
+</menu>

@@ -27,11 +27,15 @@ To show progress while a long action works, draw a `<progress>` bar or a `<spinn
 
 Start the application with `await app.RunAsync()`. `app.Run()` still works; it waits for `RunAsync`.
 
-```csharp
-using var cancellation = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
+Ctrl+C ends the application cleanly, whatever the screen is doing: a screen waiting for the user is left at once, the
+token passed to running actions is cancelled, services are disposed, `Stopped` is logged, the terminal is put back,
+and `Run` and `RunAsync` return. A second Ctrl+C ends the process at once, for an action that ignores its token. To
+stop the application from your own code, pass a token:
 
-await app.RunAsync(cancellation.Token); // throws OperationCanceledException once cancelled
+```csharp
+using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(30));   // for example, a time limit
+
+await app.RunAsync(cancellation.Token); // throws OperationCanceledException once your token is cancelled
 ```
 
 ## Middleware
@@ -60,7 +64,7 @@ Add middleware before the application runs; adding it later throws `InvalidOpera
 |--------|---------|
 | `Route` | The controller, action and posted form data about to run. Settable, to rewrite the route before `next` |
 | `Services` | The services of the cycle's scope |
-| `Cancellation` | The token passed to `RunAsync` |
+| `Cancellation` | Cancelled when the token passed to `RunAsync` is, or when the user presses Ctrl+C |
 | `Controller` | The controller, once the action has run |
 | `ModelState` | Binding and validation errors, once the action has run |
 | `Result` | The action's result. Replace it, or set it without calling `next` to skip the action |

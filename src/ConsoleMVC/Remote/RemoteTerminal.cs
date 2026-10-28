@@ -158,6 +158,31 @@ public sealed class RemoteTerminal : IAsyncDisposable
     /// <summary>Gets the input the session reads keys and lines from.</summary>
     internal ITextInput Input => _textInput;
 
+    /// <summary>How long a session waits for the answer to <see cref="AskWindowSize"/> before its first screen.</summary>
+    internal static readonly TimeSpan WindowSizeWait = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>Gets whether the terminal was asked for its size (<c>ESC [ 18 t</c>), whose answer the session waits for.</summary>
+    internal bool WindowSizeAsked { get; private set; }
+
+    /// <summary>Asks the terminal for its size; <see cref="AwaitWindowSize"/> applies the answer.</summary>
+    /// <exception cref="IOException">Thrown when the client has gone.</exception>
+    internal void AskWindowSize()
+    {
+        WindowSizeAsked = true;
+        Output.Write("\u001b[18t");
+        Output.Flush();
+    }
+
+    /// <summary>
+    /// Waits briefly for the answer to <see cref="AskWindowSize"/> once the terminal has started, so the first screen is
+    /// laid out at the client's size rather than the default 80 by 24.
+    /// </summary>
+    internal void AwaitWindowSize()
+    {
+        if (WindowSizeAsked)
+            _textInput.AwaitWindowSize(WindowSizeWait);
+    }
+
     /// <summary>Gets the renderer drawing on the terminal with ANSI escape sequences.</summary>
     internal MarkupRenderer Renderer => _renderer;
 

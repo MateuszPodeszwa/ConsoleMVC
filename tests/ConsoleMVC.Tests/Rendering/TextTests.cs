@@ -45,7 +45,21 @@ public class TextTests
         // A malicious model value trying to clear the screen and recolour the terminal
         var hostile = "Bob\u001b[2J\u001b[31m";
 
-        Assert.Equal("Bob[2J[31m", TextSanitiser.Sanitise(hostile));
+        Assert.Equal("Bob", TextSanitiser.Sanitise(hostile));
+    }
+
+    [Theory]
+    [InlineData("a\u001b]0;Owned\u0007b", "ab")]             // a window title, ended by BEL
+    [InlineData("a\u001b]8;;https://x\u001b\\link\u001b]8;;\u001b\\b", "alinkb")]   // a hyperlink, ended by ESC \
+    [InlineData("a\u001bcb", "ab")]                           // ESC c resets the terminal
+    [InlineData("a\u001b(Bb", "ab")]                          // a character set choice: an intermediate and a final
+    [InlineData("a\u001b[?1049hb", "ab")]                     // the alternate screen
+    [InlineData("a\u001b[", "a")]                             // cut short at the end
+    [InlineData("a\u001b[12", "a12")]                         // unfinished: the rest is kept as text
+    [InlineData("a\u001b]0;never ended", "a0;never ended")]    // unterminated: only its introducer goes, not the text
+    public void TextSanitiser_RemovesWholeSequences_AndKeepsTheTextAfterThem(string input, string expected)
+    {
+        Assert.Equal(expected, TextSanitiser.Sanitise(input));
     }
 
     [Fact]
@@ -69,7 +83,9 @@ public class TextTests
     [Fact]
     public void TextSanitiser_RemovesC1Controls()
     {
-        Assert.Equal("ab", TextSanitiser.Sanitise("a\u009bb"));
+        Assert.Equal("ab", TextSanitiser.Sanitise("a\u0085b"));          // NEL, a C1 control
+        Assert.Equal("a", TextSanitiser.Sanitise("a\u009bb"));           // the C1 CSI introducer starts a sequence: 'b' ends it
+        Assert.Equal("ab", TextSanitiser.Sanitise("a\u009b31mb"));
     }
 
     // --- TextWrapper ---

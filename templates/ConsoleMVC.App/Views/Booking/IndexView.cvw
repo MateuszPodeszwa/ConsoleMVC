@@ -1,0 +1,39 @@
+@* The richer form fields. In a terminal each one is answered with the keys it shows beside it; with piped input
+   (or a screen reader) they are typed: a date as 2026-10-27, today, tomorrow or +7, choices by number or name. *@
+<box title="Book a table" class="brand" border="rounded">
+    <text>Choose a day, the number of guests and a table.</text>
+</box>
+<br />
+
+<errors />
+
+<input name="Name" label="Name: " required />
+
+@* <date> moves day by day with Up/Down (Left/Right choose day, month or year); 't' is today *@
+<date name="Date" label="Day:" default="today+1" min="today" max="today+60" />
+
+@* <number> steps with Up/Down and keeps to its range; [Range(1, 12)] on the model checks it again *@
+<number name="Guests" label="Guests:" default="2" min="1" max="12" decimals="0" />
+
+@* filter: typing narrows the list; size shows a few at a time *@
+<select name="Table" label="Table:" filter size="4" required>
+    <choice value="window-1">Window, for two</choice>
+    <choice value="window-2">Window, for four</choice>
+    <choice value="garden-1">Garden, for two</choice>
+    <choice value="garden-2">Garden, for six</choice>
+    <choice value="bar-1">Bar stools, for two</choice>
+    <choice value="hall-1">Hall, for eight</choice>
+    <choice value="hall-2">Hall, for twelve</choice>
+</select>
+
+@* multiple: Space ticks each one, Enter answers *@
+<select name="Extras" label="Extras:" multiple>
+    <choice value="cake">A birthday cake</choice>
+    <choice value="flowers">Flowers on the table</choice>
+    <choice value="high-chair">A high chair</choice>
+</select>
+
+@* masked: what is typed is shown as '*' and never filled in again *@
+<input name="Pin" label="PIN (four digits): " masked required />
+
+return NavigationResult.ToAction("Confirm", Form);

@@ -76,7 +76,7 @@ Every 5 seconds the action runs again (so it reads fresh data) and the screen is
 
 - **Refresh stops while the user answers.** As soon as a key is pressed on the screen, it waits for the user like any other.
 - The interval is a number with `ms`, `s` or `m` (`500ms`, `5s`, `1.5s`, `2m`), from 100 ms to 24 hours. Anything
-  else is build error CVW010.
+  else, or `@refresh` with no interval, is build error CVW010.
 - Only views refresh: a partial view or a layout with `@refresh` is CVW010 too.
 - A refresh shows the same screen again, so it does not add to the [navigation history](controllers-and-forms.md):
   Back still goes to the screen before.

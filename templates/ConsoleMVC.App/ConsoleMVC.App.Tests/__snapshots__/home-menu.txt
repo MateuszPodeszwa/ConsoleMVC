@@ -4,9 +4,11 @@ Home                                                                  ConsoleMVC
 ╰────────────────────────────────────────────────────────╯
 
 ────────────────────────────────────────────────────────────────────────────────
+F1 Help  Esc Back  Ctrl+X Quit
 [1] About
 [2] Greeting form
 [3] Calculator
 [4] Feature tour (tables)
+[5] Book a table (dates, filters, a PIN)
 [q] Exit
-Select an option: 
+Select an option:

@@ -37,7 +37,8 @@ Press Enter to continue...
 ## How markup and code interact
 
 * Top-level elements are rendered **immediately, in source order**. A `<box>` written before `Console.ReadLine()` appears before the prompt.
-* The view still returns a `NavigationResult` from C# code.
+* Outside elements the view is C#, written without `@`: `if (Model.IsAdmin) { <text>Admin</text> }`, `foreach (…) { … }`, `var total = 0;`. Writing `@if`, `@foreach`, `@{` or `@(` there is build error CVW122, which says to leave the `@` out.
+* The view still returns a `NavigationResult` from C# code, or ends with a `<menu>`, which returns the option chosen. A view with neither is build error CVW012; a view that returns on only some paths is reported by the compiler (CS0161) at the view.
 * Inside an element, `@` switches to C#:
 
 | Syntax | Meaning |
@@ -67,7 +68,7 @@ Text inside `<text>` follows HTML rules: runs of spaces and new lines collapse i
 
 ### Security
 
-Every value inserted into the screen is sanitised. Control characters, ANSI escape sequences and Unicode bidirectional overrides are removed, so model data typed by users cannot clear the screen, recolour the terminal or disguise text.
+Every value inserted into the screen is sanitised. Control characters, whole ANSI escape sequences (so `\u001b[2J` leaves nothing behind) and Unicode bidirectional overrides are removed, so model data typed by users cannot clear the screen, recolour the terminal or disguise text.
 
 ## Elements
 
@@ -96,7 +97,7 @@ A bordered panel. Its children are stacked vertically; text written directly ins
 | Attribute | Values | Default |
 |---|---|---|
 | `title` | text, may contain `@expressions` | none |
-| `width` | `auto`, a column count (`40`), a percentage (`50%`), or `*` (all the width) | `auto` (fit the content) |
+| `width` | `auto`, a column count (`40`), a percentage up to `100%` (`50%`), or `*` (all the width) | `auto` (fit the content) |
 | `border` | `single`, `double`, `rounded`, `heavy`, `ascii`, `none` | `single` |
 | `padding` | columns between border and content (0–20) | `1` |
 | `color` / `colour` | border colour | terminal default |
@@ -106,6 +107,10 @@ A bordered panel. Its children are stacked vertically; text written directly ins
 
 Boxes never grow wider than the terminal; content wraps to fit. `min-width` widens a small box and `max-width` stops a `width="100%"` box growing on a wide terminal; the terminal width always wins.
 
+A box is at least three columns wide (two of border and one of content), or one with `border="none"`, so a literal
+`width` or `max-width` narrower than that (`width="0"`, `width="0%"`, `width="2"`) is build error CVW101 unless a
+`min-width` widens it again. With a `class`, whose theme may change the border or the widths, it is not checked.
+
 ### `<separator />`
 
 A horizontal rule that fills its container (or the terminal at top level).
@@ -114,7 +119,7 @@ A horizontal rule that fills its container (or the terminal at top level).
 |---|---|---|
 | `style` | `single`, `double`, `heavy`, `dashed`, `ascii` | `single` |
 | `color` / `colour` | a [colour](#colours) | terminal default |
-| `width` | `auto` (fill), a column count, or a percentage | `auto` |
+| `width` | `auto` or `*` (fill), a column count, or a percentage | `auto` |
 | `class` | [theme](#themes-and-class) classes (the text colour is used) | none |
 
 ### `<br />`
@@ -209,7 +214,7 @@ return NavigationResult.ToAction("Result", Form);
 |---|---|---|
 | `name` | **required**: the key in `Form` (matched case-insensitively when binding) | |
 | `label` | the prompt written before reading | none |
-| `default` | used when the user enters nothing | empty |
+| `default` | used when the user enters nothing; shown after the label in brackets (`Favourite colour: [blue] `) so the user knows Enter keeps it (never for a masked field) | empty |
 | `required` | flag: ask again until a value is entered | off |
 | `masked` | flag: hide typed characters (shows one `*` per character); for passwords and other secrets. Backspace works, and Ctrl+D (or Ctrl+Z on Windows) on an empty line ends the input | off |
 | `color` / `colour` | label colour | terminal default |
@@ -279,7 +284,7 @@ Choose 1-3 [Green]: _
 | | `color` / `colour` | label colour | terminal default |
 | | `highlight-color` / `highlight-colour` | colour of the `>` marker | cyan |
 | `<select>` | `multiple` | flag: several choices may be ticked; the answer is their values separated by commas, in the order of the choices | off |
-| | `filter` | flag: typing narrows the list in a terminal (Backspace and Esc edit the filter); a typed answer may be part of a name that matches one choice | off |
+| | `filter` | flag: typing narrows the list in a terminal (Backspace and Esc edit the filter; with no filter typed, Esc is left to an application shortcut); a typed answer may be part of a name that matches one choice | off |
 | | `size` | how many choices a terminal shows at once; the list scrolls with the highlight and PageUp/PageDown move a page | all |
 | `<choice>` | `value` | what the form receives | the label text |
 | | style attributes | as for `<text>` | |
@@ -287,7 +292,13 @@ Choose 1-3 [Green]: _
 A `multiple` answer binds to `string[]`, `List<int>`, `IReadOnlyList<MyEnum>` and other collections (see
 [Model binding](controllers-and-forms.md#model-binding)), so its values cannot contain commas. A field without choices
 (for example built from an empty list) throws an `InvalidOperationException` when it is shown; two choices with the
-same value are an `ArgumentException`.
+same value are an `ArgumentException`. Values are compared ignoring case, and a choice without a `value` posts its
+text, so `<choice>Red</choice><choice>red</choice>` are the same value. The `default` must name choices by their
+values (an empty answer then stores those values, `default="m"` storing `M`); a default that names no choice throws an
+`InvalidOperationException` when the field is shown. When the choices are written literally, all of these are build
+errors instead: a field with no choices, a duplicate value, a comma in a value of a `multiple` select, and a default
+that is not a choice (CVW101, or CVW109 for a choice that has only its text). Choices made by C# code such as
+`@foreach` are checked when the view runs.
 
 ### `<number />` and `<date />`
 
@@ -313,15 +324,23 @@ Typed:     Quantity: _      (a number with a dot for decimals; Enter a number fr
 | | `label` | the text before the value (a space is added if it has none) | none |
 | | `required` | flag: an empty answer is asked again | off |
 | | `color` / `colour`, `highlight-color` / `highlight-colour` | label colour; colour of the value being edited | terminal default; cyan |
-| `<number>` | `default` | the answer to an empty line and the starting value | none |
-| | `min`, `max` | the range, e.g. `min="0" max="130"` or `max="@Model.Limit"` | none |
-| | `step` | how much Up/Down change the value (PageUp/PageDown change it by ten steps) | 1 |
+| `<number>` | `default` | the answer to an empty line and the starting value; a number the field accepts | none |
+| | `min`, `max` | the range, e.g. `min="0" max="130"` or `max="@Model.Limit"` (an expression of any [number type](#attribute-values)); `min` may equal `max` but not exceed it | none |
+| | `step` | how much Up/Down change the value (PageUp/PageDown change it by ten steps); more than 0 | 1 |
 | | `decimals` | the most decimal places; `0` for whole numbers | any |
-| `<date>` | `default`, `min`, `max` | `2026-10-27`, `today`, `today+N` or `today-N` (checked at build time) | none; the terminal starts today |
+| `<date>` | `default`, `min`, `max` | `2026-10-27`, `today`, `tomorrow`, `yesterday`, `today+N` or `today-N` (also `+N`, `-N`), up to 100000 days from today; `min` not after `max` | none; the terminal starts today |
+
+The runtime refuses settings it could never use, and so does the build when they are written literally: a `step` of 0
+or less (`ArgumentOutOfRangeException`), a `min` above `max` (`InvalidOperationException`), and a `default` that is
+not a number the field accepts: not a number, outside `min` and `max`, or with more places than `decimals`
+(`InvalidOperationException`, because an empty answer would otherwise be refused for ever). For `<date>`, a `min` after
+`max` is a build error when both are fixed dates or both count from today; a mix of the two depends on the day, so
+it is checked when the field is shown.
 
 In a terminal, digits replace the number (the first one replaces the starting value), Backspace edits it and Esc
-restores the default. A date's Up/Down change the part chosen with Left/Right, and the date never leaves its range.
-`DateElement.Clock` decides what *today* is, so tests can fix it.
+restores the default (once the value is the default, Esc is left to an application shortcut such as the template's
+Esc for Back). A date's Up/Down change the part chosen with Left/Right, and the date never leaves its range.
+Each date field's `Clock` property (`new DateElement { Clock = TimeProvider.System }`) decides what *today* is, so tests can fix it.
 
 ### `<checkbox />`
 
@@ -378,9 +397,15 @@ Select an option: _
 
 Literal `nav` targets are checked when you build: `nav="Orders/Detials"` gives warning CVW119 naming the actions
 `Orders` has. Targets with an `@` expression are only known at run time and are not checked. Make the warning an error
-with `dotnet_diagnostic.CVW119.severity = error` in `.editorconfig`.
+with `<WarningsAsErrors>$(WarningsAsErrors);CVW119</WarningsAsErrors>` in the project file. The markup diagnostics
+(CVW0xx and CVW1xx from views) are reported against `.cvw` files, which `.editorconfig` sections do not cover, so set
+their severity in the project file or in a `.globalconfig` file (`is_global = true`, then
+`dotnet_diagnostic.CVW119.severity = error`).
 
-Each option needs exactly one of `nav`, `quit` or `back`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
+Each option needs exactly one of `nav`, `quit` or `back`, and a key that is not empty and that no other option of the
+menu has. Keys are compared ignoring case and surrounding spaces, so `key="q"` and `key="Q"` are the same key: the
+runtime throws an `ArgumentException` for them, and when both are written literally they are build error CVW101 at
+the second key. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever. So does a form field: when the input ends before a field is answered, the application ends and the form is not posted.
 
 !!! note "Top level only"
     `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>`, `<menu>`, `<scroll>` and `<partial>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
@@ -505,7 +530,7 @@ are shown.
 
 ```
 <sparkline label="Queue " values="@Model.QueueHistory" show-last />     Queue ▁▂▂▃▅▇█▆▄▃▂▁ 3
-<sparkline values="3, 5, 2, 8" />                                       ▃▄▁█
+<sparkline values="3, 5, 2, 8" />                                       ▂▅▁█
 ```
 
 | Attribute | Values | Default |
@@ -540,6 +565,7 @@ Draws Markdown for the terminal: help pages, release notes, descriptions from a 
 | `---` | a rule across the width |
 | `**bold**`, `*italic*`, `` `code` `` | styled, without the markers; `\*` is a literal star |
 | `[text](https://…)`, `<https://…>` | the text, underlined, followed by the address |
+| `![a chart](chart.png)` | `[image: a chart]`, dimmed: a terminal cannot show the picture |
 
 | Attribute | Values | Default |
 |---|---|---|
@@ -557,7 +583,8 @@ the screen down. HTML, tables and images are shown as text.
 ### `<scroll>`
 
 Shows long content a page at a time. In a terminal the user scrolls with the arrow keys (or J and K), Page Up and
-Page Down (or B and Space), Home and End, and continues with Enter, Esc or Q; the page they end on stays on the screen
+Page Down (or B and Space), Home and End, and continues with Enter, Esc or Q (when Esc is an application shortcut, such as the template's Back, the
+shortcut wins); the page they end on stays on the screen
 and the view goes on below it. When the content fits, or input or output is piped, everything is drawn at once.
 
 ```
@@ -650,7 +677,7 @@ A layout frames every screen. It is a `.cvw` file in `Views/Shared` with a `<bod
 ```
 
 * `Views/Shared/_Layout.cvw` is used by every view. A view picks another with `@layout Plain`, or none with `@layout none`.
-* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
+* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`, its partials' included), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
 * A layout shares the view's `ViewData`, `ModelState`, `Form`, theme and services, and may use C# and `@inject`. It runs before the view's own code, so it sees `ViewData` set by the controller. It has no `@model`.
 * `<body />` appears once, at the top level of the layout, not inside an element or a C# block. Partials have no layout, and layouts cannot nest.
 
@@ -688,12 +715,28 @@ builder.Theme = Theme.Empty; // or start with no classes at all
 
 ## Attribute values
 
-* **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute.
+* **Literal values** (`width="40"`, `border="double"`) are validated when you build. A typo such as `colour="purpel"` is a compile error pointing at the attribute. So is an `=` with nothing after it (`<box title=>`), for every attribute: write `title=""` for an empty value.
 * **Expressions** (`width=@Model.Width`, `title="@Model.Name's account"`) are type-checked by the C# compiler. Expressions can be mixed with text only in text attributes such as `title`.
+* **Number attributes** (`<number>` `min`, `max` and `step`; `<progress>` `value` and `max`; `<bar>` `value`; `<bar-chart>` `max`; `<sparkline>` `min` and `max`) take an expression of any number type: `int`, `long`, `short`, `byte`, `float`, `double`, `decimal` and the other .NET number types, converted to the element's own type, so `<number min="@(0.5)">` and `<progress value="@Model.Total">` with a `decimal` total both work. A nullable number (`double?`) is accepted where the attribute may be left out (`min` and `max` of `<number>` and `<sparkline>`, `max` of `<bar-chart>`), and `null` means not set. A value that is not a number, such as a `string`, is a compile error at the attribute; a number too large for a `decimal` throws an `OverflowException`.
+
+Literal values are also checked against each other and against the element's literal children, with the rules the
+element applies when the view runs, so a value it would throw for (or could never use) is build error CVW101 at that
+attribute instead:
+
+| Element | Build error |
+|---|---|
+| `<number>` | `step` of 0 or less; `min` above `max`; a `default` that is not a number, is outside `min` and `max`, or has more places than `decimals` |
+| `<date>` | a value the element cannot read, or more than 100000 days from today; `min` after `max` (both fixed dates, or both counted from today) |
+| `<select>`, `<radio>` | no `<choice>` (CVW109); two choices with the same value, ignoring case; a comma in a value of a `multiple` select; a `default` that names no choice |
+| `<menu>` | an empty `key`; two options with the same key, ignoring case |
+| `<box>` | a `width` or `max-width` narrower than a box can be drawn (see [`<box>`](#box)) |
+
+The checks only use what is known when you build: an attribute written as an expression, or choices and options made
+by C# code such as `@foreach`, are checked by the element when the view runs.
 
 ### Colours
 
-The 16 console colours by name: `black`, `darkblue`, `darkgreen`, `darkcyan`, `darkred`, `darkmagenta`, `darkyellow`, `grey`, `darkgrey`, `blue`, `green`, `cyan`, `red`, `magenta`, `yellow`, `white`. Both `grey` and `gray` are accepted, and dashes are ignored (`dark-grey`). Hex values such as `#f80` and `#ff8800` use 24-bit colour where the terminal supports it and the nearest console colour otherwise.
+The 16 console colours by name: `black`, `darkblue`, `darkgreen`, `darkcyan`, `darkred`, `darkmagenta`, `darkyellow`, `grey`, `darkgrey`, `blue`, `green`, `cyan`, `red`, `magenta`, `yellow`, `white`. Both `grey` and `gray` are accepted, case, dashes, underscores and spaces are ignored (`Dark-Grey`), and `default` (or an empty value) is the terminal's own colour. Hex values such as `#f80` and `#ff8800` use 24-bit colour where the terminal supports it and the nearest console colour otherwise.
 
 Colour output is automatically disabled when output is redirected, when the `NO_COLOR` environment variable is set, or when `TERM=dumb`.
 
@@ -709,12 +752,14 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW004 | Two views generate the same class (for example `Views/Home` and `Views/home`, or an `Areas/X/Views/Home` copy); the later file is skipped |
 | CVW005 | The project's `RootNamespace` is not a valid C# namespace (set `<RootNamespace>` in the project file) |
 | CVW006 | `@model` is declared more than once; the last one is used (warning) |
-| CVW007 | `@inject` without a type and a property name, or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
+| CVW007 | `@inject` without a type and a property name, a type that is not one type (`@inject System.String Foo Bar`), or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
 | CVW008 | Two `@inject` directives declare the same property name |
 | CVW009 | A partial view file is named `Render`, the name of its own method |
-| CVW010 | `@refresh` with an interval that is not a number with `ms`, `s` or `m` from 100 ms to 24 hours, used twice, or used in a partial view or a layout |
+| CVW010 | `@refresh` without an interval, or with one that is not a number with `ms`, `s` or `m` from 100 ms to 24 hours, used twice, or used in a partial view or a layout |
+| CVW011 | `@model` or `@using` with nothing after it |
+| CVW012 | A view (not a partial or a layout) with neither a `<menu>` nor a `return`, so it never says where to go next; end it with `return NavigationResult...;` |
 | CVW100 | Unknown attribute |
-| CVW101 | Invalid attribute value |
+| CVW101 | Invalid attribute value, or literal values the element cannot use together (see [Attribute values](#attribute-values)) |
 | CVW102 | Missing or mismatched closing tag |
 | CVW103 | Element not allowed here (e.g. `<box>` inside `<text>`, `<row>` outside `<table>`, `<choice>` outside `<select>` or `<radio>`, `<menu>` inside `<box>` or in a partial view) |
 | CVW104 | Unterminated expression, string, comment or block |
@@ -722,7 +767,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW106 | Control flow or a code block inside `<text>` |
 | CVW107 | Attribute specified twice |
 | CVW108 | Malformed tag |
-| CVW109 | Element rule broken (an `<option>` needs exactly one of `nav`, `quit` or `back`) |
+| CVW109 | Element rule broken (an `<option>` needs exactly one of `nav`, `quit` or `back`; a `<select>` or `<radio>` needs a `<choice>`, and two choices without a `value` cannot have the same text) |
 | CVW110 | Text or an expression directly inside `<table>`, `<row>` or `<menu>` |
 | CVW111 | Required attribute missing (`<option key>`, `name` on `<input>`, `<select>`, `<radio>`, `<checkbox>`, `<number>`, `<date>` and `<partial>`, `<bar value>`, `<sparkline values>`, `<markdown text>`) |
 | CVW112 | `@()` contains no expression |
@@ -730,11 +775,13 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW114 | `<partial>` names no partial view in `Views/Shared`, or its name is not written literally |
 | CVW115 | A partial that declares `@model` is used without a `model` attribute |
 | CVW116 | A partial view renders itself |
-| CVW117 | `<body />` outside a layout in `Views/Shared`, used twice or inside a C# block; or a layout with `@model` or `@layout` |
+| CVW117 | `<body />` outside a layout in `Views/Shared`, used twice or inside a C# block; a layout with `@model` or `@layout`; or `@layout` with no name |
 | CVW118 | `@layout` names no layout (lists the available ones), or a partial uses `@layout` |
 | CVW119 | **Warning**: a literal `nav` target names a controller or action that does not exist (lists the ones that do) |
 | CVW120 | **Warning**: `RedirectToAction`, `NavigationResult.To` or `NavigationResult.ToAction` in C# names a controller or action that does not exist |
 | CVW121 | **Warning**: `View("Name")`, or `View()` in an action, has no view; the IDE offers **Create view Views/{Controller}/{Name}View.cvw** |
+| CVW123 | A controller has two actions with the same name (overloads, or names differing only in case); rename one or mark a helper `[NonAction]` |
+| CVW122 | Razor-style `@if`, `@foreach`, `@{` or `@(` where the view is already C# (at the top level, or inside a C# block); write the C# without `@` |
 
 ## Resizing the terminal
 
@@ -771,6 +818,7 @@ builder.Input = new ScriptedInput("1", "Ada", "q"); // your ITextInput implement
 Interactive elements work outside views too:
 
 ```csharp
+var renderer = MarkupRenderer.CreateForConsole();
 var name = new InputElement { Name = "Name", Label = "Name: ", Required = true };
 string? value = name.Read(renderer, ConsoleTextInput.Instance);
 

@@ -138,7 +138,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
                     var lost = Interlocked.Exchange(ref _dropped, 0);
                     if (lost > 0)
                         size += await WriteLineAsync(writer, string.Create(CultureInfo.InvariantCulture,
-                            $"{_clock.GetUtcNow():yyyy-MM-ddTHH:mm:ss.fffZ} WARN  ConsoleMVC.FileLogger: {lost} entries were dropped because the disk was too slow.")).ConfigureAwait(false);
+                            $"{_clock.GetUtcNow():yyyy-MM-ddTHH:mm:ss.fffZ} WARN  ConsoleMVC.FileLogger: {lost} {(lost == 1 ? "entry was" : "entries were")} dropped because the disk was too slow.")).ConfigureAwait(false);
 
                     size += await WriteLineAsync(writer, entry).ConfigureAwait(false);
 

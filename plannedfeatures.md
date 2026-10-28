@@ -26,6 +26,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 - [Charts](docs/design/charts.md): `<bar-chart>` and `<sparkline>` for dashboards
 - [Live screens](docs/design/live-elements.md): `<progress>` and `<spinner>` that update while an async action works, and views that refresh on a timer with `@refresh 5s`
 - [Native AOT and trimming](docs/guides/docs/native-aot.md): a generated route table instead of reflection; the template starts in about 18 ms as a native executable
+- [Editor support](docs/guides/docs/editor-support.md): `cvw-preview` draws a view without running the application, and `schema/cvw-schema.json` describes the markup for editor plugins
 - [Remote sessions](docs/guides/docs/remote-sessions.md): `--ConsoleMVC:Serve=2323` serves the application over Telnet (optionally TLS) to many users at once, each with their own session; SSH and web terminals through OpenSSH and ttyd
 - [Mouse support](docs/design/mouse.md): click menu options, choices and checkboxes, and scroll with the wheel
 - [Keyboard shortcuts](docs/design/shortcuts.md): `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` on every screen, listed by `<shortcuts />`
@@ -48,7 +49,7 @@ Everything above is built and released. The roadmap below lists what is left.
 
 Every item planned for the framework itself is now built. What remains lives outside this repository:
 
-- [ ] **IDE support for markup**: syntax highlighting, completion and a live preview for C-View Markup in Rider and VS Code. This is developed in its own repository, [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport) (the Rider plugin currently treats markup as plain text)
+- [ ] **IDE support for markup**: syntax highlighting, completion and a live preview for C-View Markup in Rider and VS Code. The foundations are in this repository since 1.34: the [markup schema](docs/guides/docs/editor-support.md#the-markup-schema) that plugins read, and the [`cvw-preview`](docs/guides/docs/editor-support.md#previewing-a-view) tool that draws their preview. The plugins themselves are developed in [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport)
 
 New ideas are welcome: open an issue with what you would like next.
 

@@ -54,11 +54,23 @@ public class RicherInputTests
     {
         var (renderer, output) = Typed();
 
-        Assert.Equal("30", Age().Read(renderer, new ScriptedInput("abc", "2.5", "131", "30")));
+        Assert.Equal("30", Age().Read(renderer, new ScriptedInput("2.5", "131", "30")));
 
-        Assert.Contains(NumberElement.NotANumberMessage, output.ToString());
         Assert.Contains(NumberElement.WholeNumberMessage, output.ToString());
         Assert.Contains("Enter a number from 0 to 130.", output.ToString());
+    }
+
+    [Fact]
+    public void NotANumber_AsksForAWholeNumber_OnlyWhenDecimalsAreNotAllowed()
+    {
+        var (renderer, output) = Typed();
+        var price = new NumberElement { Name = "Price", Label = "Price:" };
+
+        Assert.Equal("30", Age().Read(renderer, new ScriptedInput("abc", "30")));
+        Assert.Equal("2.5", price.Read(renderer, new ScriptedInput("abc", "2.5")));
+
+        Assert.Contains(NumberElement.WholeNumberMessage, output.ToString());
+        Assert.Contains(NumberElement.NotANumberMessage, output.ToString());
     }
 
     [Fact]

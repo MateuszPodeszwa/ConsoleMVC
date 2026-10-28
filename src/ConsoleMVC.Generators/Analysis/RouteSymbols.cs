@@ -27,6 +27,9 @@ internal static class RouteSymbols
     /// <summary>The navigation result returned by views.</summary>
     public const string NavigationResultType = "ConsoleMVC.Mvc.NavigationResult";
 
+    /// <summary>The application, whose <c>MapKey(key, "Help/Index")</c> names a route.</summary>
+    public const string ApplicationType = "ConsoleMVC.Mvc.MvcApplication";
+
     /// <summary>The attribute that puts a controller in an area.</summary>
     public const string AreaAttributeType = "ConsoleMVC.Mvc.AreaAttribute";
 
@@ -66,6 +69,10 @@ internal static class RouteSymbols
     /// </summary>
     public static string Qualify(string controller, string? current, System.Func<string, bool> exists)
     {
+        // '/Home': the application's controller, never the area's
+        if (controller.StartsWith("/", System.StringComparison.Ordinal))
+            return controller.Substring(1);
+
         var slash = current?.LastIndexOf('/') ?? -1;
         if (controller.Contains("/") || slash <= 0)
             return controller;
@@ -178,5 +185,52 @@ internal static class RouteSymbols
             foreach (var deeper in Nested(nested))
                 yield return deeper;
         }
+    }
+
+    /// <summary>The attribute the generator puts on an assembly with a route table: a ConsoleMVC application or module.</summary>
+    public const string RouteTableAttributeType = "ConsoleMVC.Mvc.RouteTableAttribute";
+
+    /// <summary>
+    /// The controllers of the referenced assemblies that carry a generated route table (ConsoleMVC modules), with their
+    /// actions, named as the router names them (<c>Billing/Invoices</c> for an area).
+    /// </summary>
+    /// <param name="compilation">The compilation whose references are searched.</param>
+    /// <returns>The controllers.</returns>
+    /// <example><code>var known = RouteSymbols.ModuleControllers(compilation).Select(c => c.Name);</code></example>
+    public static IEnumerable<Emit.ControllerEntry> ModuleControllers(Compilation compilation)
+    {
+        foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
+        {
+            if (!assembly.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == RouteTableAttributeType))
+                continue;
+
+            foreach (var type in AllTypes(assembly.GlobalNamespace))
+            {
+                if (type.DeclaredAccessibility == Accessibility.Public && ControllerName(type) is { } name)
+                    yield return new Emit.ControllerEntry(name, ActionNames(type));
+            }
+        }
+    }
+
+    /// <summary>The interface of a module's set-up class (<c>builder.AddModule&lt;TModule&gt;()</c>).</summary>
+    public const string ModuleInterfaceType = "ConsoleMVC.Mvc.IMvcModule";
+
+    /// <summary>
+    /// Whether a compilation is a ConsoleMVC module, which the application adds with <c>builder.AddModule</c>: a class
+    /// library with an <c>IMvcModule</c> class, or one whose project sets <c>&lt;ConsoleMVCModule&gt;true&lt;/ConsoleMVCModule&gt;</c>
+    /// (for <c>AddModule(assembly)</c>). Its views and code may navigate to the application's controllers, which it
+    /// cannot see, so those are not reported as unknown.
+    /// </summary>
+    /// <param name="compilation">The compilation.</param>
+    /// <param name="options">The project's build properties.</param>
+    /// <returns><see langword="true"/> for a module.</returns>
+    /// <example><code>if (RouteSymbols.IsModule(compilation, options)) { /* unknown controllers are the application's */ }</code></example>
+    public static bool IsModule(Compilation compilation, Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions options)
+    {
+        if (options.TryGetValue("build_property.ConsoleMVCModule", out var flag) && string.Equals(flag?.Trim(), "true", System.StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return compilation.Options.OutputKind == OutputKind.DynamicallyLinkedLibrary
+               && AllTypes(compilation.Assembly.GlobalNamespace).Any(type => type.AllInterfaces.Any(i => i.ToDisplayString() == ModuleInterfaceType));
     }
 }

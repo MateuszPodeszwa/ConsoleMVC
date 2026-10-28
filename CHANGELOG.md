@@ -2,6 +2,166 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.34.0]
+
+### Added
+
+- **Editor support** ([design](docs/design/editor-support.md), [guide](docs/guides/docs/editor-support.md)): the
+  `ConsoleMVC.Preview` .NET tool (`dotnet tool install -g ConsoleMVC.Preview`, command `cvw-preview`) draws a `.cvw`
+  view with the real rendering engine without building or running the application, as text, ANSI or HTML
+  (`--width`, `--format`, `--stdin` for an editor's unsaved text, `--high-contrast`). Expressions show as
+  placeholders, code is skipped, partial views and the layout are read from `Views/Shared`, and the markup's
+  diagnostics are reported with their line and column. It runs no project code and reads only shared views by plain
+  name.
+- `schema/cvw-schema.json` describes every element, attribute (kind, accepted values, range), directive, construct and
+  diagnostic of C-View Markup with documentation, for editor plugins. It is written from the generator's schema
+  (`MarkupSchemaExport`, `MarkupDocumentation`), and a test fails when it is out of date
+  (`UPDATE_SCHEMA=1 dotnet test` rewrites it).
+- CI installs the packed tool and previews the template's views; the publish workflow releases `ConsoleMVC.Preview`
+  with the other packages.
+- **Acceptance tests** (`tests/ConsoleMVC.AcceptanceTests`, run with `tests/ConsoleMVC.AcceptanceTests/run.sh`): an
+  application with real `.cvw` views that uses the packed `ConsoleMVC.Framework` and `ConsoleMVC.Testing` packages,
+  as a user's application would, and checks the documented behaviour through typed input. CI runs them.
+
+- CVW120 also checks the route of `app.MapKey(key, "Help/Index")`. CVW119, CVW120 and CVW121 suggest the closest name
+  (`Did you mean 'Details'?`) and list the others closest first, saying how many more there are.
+
+- New build diagnostics: CVW011 (`@model` or `@using` without a type or namespace), CVW012 (a page view with neither a
+  `<menu>` nor a `return`, which was the C# error CS0161 at an unhelpful place) and CVW122 (`@if`, `@foreach`, `@{` or
+  `@(` written in the view's C#, where `@` is not needed). A bare `@refresh` is CVW010 and a bare `@layout` CVW117.
+- `MarkupValue.ToDecimal` and `ToDouble`: number attributes (`<number min max step>`, `<progress>`, `<bar>`,
+  `<bar-chart max>`, `<sparkline>`) accept an expression of any number type, nullable ones included (`@(3.5)` was a
+  CS0266 error for `<number>`).
+- Every attribute in `schema/cvw-schema.json` says whether it accepts an `expression`.
+- CVW123: two actions of a controller with the same name (overloads, or names differing only in case) are a build
+  error; they used to build and then fail when navigated to.
+- A route starting with `/` names the application's controller from inside an area: `nav="/Home/Index"` leaves an
+  area that has its own Home for the application's (it was CVW101, and no route could reach it).
+- The template has a table booking form (`BookingController`): `<date>`, a `<number>` checked by `[Range]`,
+  `<select filter size>`, `<select multiple>` and a masked `<input>` checked by `[RegularExpression]`, logged with
+  `ILogger<T>`, in a box with a theme class of the application's own. F1 opens the help on every screen. It has an
+  `appsettings.Development.json`, a `.gitignore`, a quote and a link in the about page's Markdown, and its tests set the
+  application up as `Program.cs` does (theme, mouse, shortcuts) and cover the booking form, F1 and a mouse click.
+- An `<input>` with a default (or an answer kept from a form shown again) shows it after the label, `Name: [Ada]`, so
+  the user knows Enter keeps it. A masked field never shows one.
+- `ClickTarget.FromColumn` and `ToColumn` let several click targets share a line, and `IMarkupRenderer.KeysAt(row,
+  column)` finds the one clicked (the default implementation calls `KeysAt(row)`, so existing renderers keep working).
+
+### Changed
+
+- Ctrl+C ends a local run cleanly: the screen waiting for the user is left at once (it used to end only after the next
+  key, even with a cancellation token), services are disposed, `Stopped` is logged and `Run` returns. A second Ctrl+C
+  ends the process at once. A token passed to `RunAsync` also stops a screen that is waiting for the user.
+
+### Fixed
+
+- When the input ended (a pipe or file running out, or Ctrl+D) while a form field was waiting, the form was posted
+  with empty answers, ignoring `default` and `required`; a form shown again after failing validation then repeated for
+  ever, writing millions of lines. The application now ends, as a `<menu>` does at the end of input.
+- An empty value bound to a `string` gave `""`, so an optional `[EmailAddress] string? Email` left blank failed
+  validation. An empty value is now not bound, as for every other type: the field keeps its default (`null`).
+- A screen in the navigation history is its route with its route values: `Orders/Details?id=2` and
+  `Orders/Details?id=42` were one entry, so Back skipped a screen. Going to a screen already in the history (a menu's
+  Home option) now returns the history to it, so breadcrumbs no longer grow without end.
+- `MapKey` refuses Ctrl+H, Ctrl+I, Ctrl+J and Ctrl+M, which terminals send as Backspace, Tab and Enter (the shortcut
+  could never run), and the refused keys with Shift.
+- CVW120 quoted `NavigationResult.To("Orders", "Detials")` as `NavigationResult.To("Detials")`.
+- The markup diagnostics' severity is documented as set with `WarningsAsErrors` or a `.globalconfig`: `.editorconfig`
+  sections do not cover `.cvw` files, so `dotnet_diagnostic.CVW119.severity` there had no effect.
+- Screen-reader mode wrote colour and style codes when the application set its own renderer
+  (`builder.Renderer = MarkupRenderer.CreateForConsole()`, as the configuration guide shows); it now writes plain text
+  whatever the renderer.
+- With Esc mapped as a shortcut (the template maps it to Back), Esc in a changed `<number>` left the screen instead
+  of restoring the default. A field now keeps a key it has a use for at that moment (Esc in a changed `<number>` or a
+  `<select filter>` with a filter typed); otherwise the shortcut runs.
+- A `<checkbox>` answered key by key ignored the translated yes and no letters (`t` in Polish) and accepted only `y`
+  and `n`; it now accepts the translated letters, and `y` and `n` when they do not mean the opposite.
+- `ScriptedInput.Click` and `Wheel` with the mouse off failed with "the next step of the script is the key Escape";
+  the message now says to turn on `builder.Mouse`. The testing guide's samples compile as written (their `using`
+  directives, a mouse host for `Click`, `Router.ResolveController` on a router instance, `RemainingInput` as a count),
+  and it explains that with shortcuts or the mouse on, key steps are typed into text fields.
+- Resizing the terminal during a `<scroll>` garbled the screen: the page kept the old width (the terminal wrapped it),
+  the status counted the old lines, and the page left on the screen afterwards stayed at the old width. The page is now
+  laid out again at the new width.
+- A `Raw` remote session drew its first screen at 80 by 24 although the client reported its size: the answer was only
+  read with the first key. The session now waits up to half a second for it before the first screen.
+- Serving (`ConsoleMVC:Serve`) said nothing on the console, so with the log in a file a server looked stuck; it now
+  says where it listens and how to connect. The refusal to listen on a network without TLS names the
+  `ConsoleMVC:ServeAllowUnencrypted` setting, and a missing `ConsoleMVC:ServeCertificate` file is reported as missing
+  rather than as "Error occurred during a cryptographic operation".
+- A missing service in a view's `@inject` was named as the runtime writes it (`IOptions`1`); it is now named as in C#
+  (`IOptions<GreetingOptions>`). The configuration guide no longer claims that `Build()` checks the services of
+  controllers and views: they are checked when their screen opens.
+- The keys shown beside a field in a terminal (`(Space, Enter)`, `(Up/Down, Enter)`, …), `Filter: `, `(no matches)`
+  and the "more above/below" lines of a `<select size>` were always in English; they are now `FrameworkText`
+  properties (`CheckboxKeys`, `SelectKeys`, `SelectManyKeys`, `FilterKeys`, `FilterManyKeys`, `RadioKeys`, `NumberKeys`,
+  `DateKeys`, `FilterLabel`, `NoMatches`, `MoreAbove`, `MoreBelow`), and the template translates them, and the number,
+  date, choice and binding messages it lacked, into Polish. Its Polish number hint said `2,5`, which is refused.
+- A whole-number `<number decimals="0">` answered with something that is not a number said "Enter a number, e.g. 42 or
+  2.5", inviting an answer it refuses; it now says "Enter a whole number."
+- In screen-reader mode a screen with `@refresh` was written out again at every refresh; screens no longer refresh in
+  that mode.
+- Snapshots failed on differences nobody can see: a space at the end of a line (the prompt `Select an option: `) or a
+  final new line added by an editor. `Snapshot.Match` now ignores spaces at the ends of lines and blank lines at the
+  end, saves snapshots with a final line ending, and quotes the differing lines in its message so leading spaces show.
+- An on/off `ConsoleMVC:` setting with a value other than `true` or `false` (`--ConsoleMVC:ScreenReader=yes`) was
+  ignored, leaving the feature off; `Build()` now stops with a message naming the setting. The new
+  `ConsoleMVC:FullScreen` setting matches `builder.FullScreen`, and the configuration guide lists every `ConsoleMVC:`
+  setting.
+- Clicking a `<radio>` choice did nothing: a radio's choices are side by side, and only whole lines could be clicked.
+  The mouse guide spoke of a "vertical `<radio>`", which does not exist. A long radio choice on a narrow terminal was
+  cut off at the edge (`Large and extra wide choi`); it now wraps under its own text.
+- The build checks warned about navigation between an application and its modules: `nav="Billing/Invoices/Index"`
+  in the application (CVW119), and `nav="Home/Index"` or `RedirectToAction("Index", "Home")` in a module (CVW119,
+  CVW120), although both work. The application's checks now know the controllers of the modules it references, and a
+  module (a library with an `IMvcModule` class, or `<ConsoleMVCModule>true</ConsoleMVCModule>`) does not report the
+  application's controllers as unknown. The modules guide says where a module's area views live.
+- Literal values that the runtime refuses now fail the build (CVW101, or CVW109 for a `<choice>`), as the guide
+  promised: a `<number>` `step` of 0 or less, `min` above `max`, or a `default` that is not a number, out of range or
+  with too many decimals (an empty answer then asked again for ever); a `<select>` or `<radio>` without choices, with
+  duplicate values or with a `default` that names no choice; duplicate `<menu>` keys (`q` and `Q`); a `<date>` whose
+  `min` is after its `max`; a `<box>` narrower than its border. The runtime also refuses such a `<number>` or choice
+  default, and an empty answer stores the choice's own value (`default="m"` stores `M`). Date literals accept exactly
+  what a typed date does (`tomorrow`, `+7`).
+- An attribute written with `=` and no value (`<box title=>`) was accepted silently for some attributes; it is CVW101
+  for every one.
+- `@inject` with a name of a view's own member (`Breadcrumbs`, `NavigationHistory`, `ShortcutHints`, `ShowScroll`,
+  `InjectServices`, `RequireService`, …) or of the view's class gave C# errors at a line that does not exist; every
+  such name is now CVW007, and the dependency injection guide lists them. `@inject System.String Foo Bar` is CVW007 at
+  the type.
+- The schema said a `<partial name>` could be an expression; it must be written literally.
+- `cvw-preview`:
+  - reports the build's own checks of partials, layouts and directives (CVW114 to CVW118, CVW103, CVW010 in partials,
+    CVW001 to CVW003, CVW009, …) at the build's line and column; route checks still need a build, as the guide says;
+  - draws the layout's part after `<body />` before the view's first prompt, as the application does, and draws
+    fields as a terminal first shows them (`checked`, `default` values, the select and radio frames);
+  - refuses a `--width` outside 20 to 500 with a clear message (it clamped silently), accepts `--option=value`, and
+    says a shared view over 1 MB is too large rather than not found.
+- With piped input `<shortcuts />` still listed shortcuts, which do nothing there; it now lists none.
+- A route typed in another case (`admin/users/index`) kept that case in `RouteContext` and the breadcrumbs
+  (`Area` was `admin`); routes now read as the controller is declared.
+- Validation messages without an `ErrorMessage` can be translated once for every field: a resource named after the
+  attribute's English template (`The {0} field is required.`) is formatted like the original. A resource with the
+  whole message still wins.
+- `ViewResult.RefreshEvery` refuses an interval over 24 hours, like `@refresh` (`ViewResult.MaximumRefreshInterval`),
+  and says the range it accepts. The file log says "1 entry was dropped".
+- The sanitiser removes whole escape sequences: `Bob\u001b[2J` became `Bob[2J`, and now becomes `Bob`, as the guide
+  says.
+- Guides corrected where their samples did not work as written: the hosting guide's development logging (the
+  `Logging` section overrode `SetMinimumLevel`; it now uses `AddFilter`, with its `using` directives), `@inject
+  IOptions<…>` (needs `@using Microsoft.Extensions.Options`), `@Model.Total` formatting in Polish, the sparkline
+  sample's bars, the Native AOT executable size, and where relative log paths go (the application's folder, also in
+  the template's readme).
+- A Markdown image (`![a chart](chart.png)`) was drawn as `!a chart (chart.png)`; it is now `[image: a chart]`.
+- A form shown again after validation failed lost every answer (the greeting form went back to its first colour and an
+  empty name). Fields without an error now start from the answer posted, as ASP.NET Core forms do, so Enter keeps it;
+  fields with an error, and masked fields, are asked afresh.
+- The template: the greeting counter is thread-safe (remote sessions share the singleton), the calculator's numbers
+  are required (an empty answer was taken as 0), and `GreetController.Result`'s comment says what it does.
+- Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
+  hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
+  reject values that are not finite (`1e400`, `Infinity`, `NaN`).
+
 ## [1.33.0]
 
 ### Added

@@ -210,9 +210,10 @@ public class MvcApplicationBuilder
     /// <summary>
     /// Gets or sets whether the application runs on the terminal's alternate screen, like a full-screen editor: the
     /// user's scrollback is left untouched and comes back when the application ends (also after an error or Ctrl+C).
-    /// Defaults to <see langword="false"/>. Ignored when the output is not a terminal that supports it.
+    /// Defaults to <see langword="false"/>; also on when the <see cref="FullScreenSetting"/> setting is <c>true</c>.
+    /// Ignored when the output is not a terminal that supports it.
     /// </summary>
-    /// <example><code>builder.FullScreen = true;</code></example>
+    /// <example><code>builder.FullScreen = true; // or: dotnet run -- --ConsoleMVC:FullScreen=true</code></example>
     public bool FullScreen { get; set; }
 
     private readonly List<System.Reflection.Assembly> _modules = [];
@@ -301,7 +302,27 @@ public class MvcApplicationBuilder
     /// <summary>Gets whether screen-reader output is chosen in code or in the settings.</summary>
     internal bool UsesScreenReader => ScreenReader || IsOn(ScreenReaderSetting);
 
-    private bool IsOn(string setting) => bool.TryParse(Configuration[setting], out var on) && on;
+    /// <summary>The setting that turns on <see cref="FullScreen"/>: <c>--ConsoleMVC:FullScreen=true</c> or <c>ConsoleMVC__FullScreen=true</c>.</summary>
+    public const string FullScreenSetting = "ConsoleMVC:FullScreen";
+
+    /// <summary>Gets whether full-screen mode is chosen in code or in the settings.</summary>
+    internal bool UsesFullScreen => FullScreen || IsOn(FullScreenSetting);
+
+    /// <summary>
+    /// Whether an on/off setting is on: <c>true</c> or <c>false</c> in any casing, or not set (off). Any other value is
+    /// refused, rather than silently leaving the feature off (<c>--ConsoleMVC:ScreenReader=yes</c>).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when the setting has another value.</exception>
+    private bool IsOn(string setting)
+    {
+        var value = Configuration[setting];
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        return bool.TryParse(value.Trim(), out var on)
+            ? on
+            : throw new InvalidOperationException($"The {setting} setting is '{value}'; use true or false.");
+    }
 
     /// <summary>
     /// Builds and returns a fully configured <see cref="MvcApplication"/> instance

@@ -49,6 +49,11 @@ public class HomeController(ILiveDisplay live, ITerminalSession session) : Contr
 
                 Run it with `dotnet watch` and edit a `.cvw` file to see *live reload*.
                 This text is Markdown, drawn by `<markdown>`.
+
+                > Preview a view without running the app: `dotnet tool install -g ConsoleMVC.Preview`,
+                > then `cvw-preview Views/Home/IndexView.cvw`.
+
+                The guides are at [the documentation site](https://mateuszpodeszwa.github.io/ConsoleMVC/).
                 """
         };
 

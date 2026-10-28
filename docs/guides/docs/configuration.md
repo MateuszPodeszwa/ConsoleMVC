@@ -36,13 +36,31 @@ await app.RunAsync();
 | `HighContrast` | Use `Theme.CreateHighContrast()`; also on with the `ConsoleMVC:HighContrast` setting |
 | `Localization` | The run's culture, the framework's messages (`FrameworkText`) and translated validation messages; see [Localisation](localisation.md) |
 | `Mouse` | Click menu options, choices and checkboxes, and scroll with the wheel; also on with the `ConsoleMVC:Mouse` setting (see [Mouse](controllers-and-forms.md#mouse)) |
-| `FullScreen` | Run on the terminal's alternate screen, like a full-screen editor; the user's scrollback comes back when the application ends, also after an error or Ctrl+C. Ignored when the output is not a terminal that supports it |
+| `FullScreen` | Run on the terminal's alternate screen, like a full-screen editor; the user's scrollback comes back when the application ends, also after an error or Ctrl+C. Also on with the `ConsoleMVC:FullScreen` setting. Ignored when the output is not a terminal that supports it |
 | `ApplicationAssembly` | Where controllers and views are discovered |
 | `Renderer` | How markup is drawn: colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output are detected, and the screen is redrawn when the terminal is resized ([details](c-view-markup.md#resizing-the-terminal)) |
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from |
 
-`Build()` validates the service registrations, so a missing dependency fails at start-up rather than on the screen
-that needs it.
+`Build()` validates the service registrations: a registered service whose own dependencies are missing, or a
+singleton that depends on a scoped service, fails at start-up. Controllers and views are created when their screen
+opens, so a service missing from a controller's constructor or a view's `@inject` is reported then, naming the type
+to register; a test that visits every screen ([Testing](testing.md)) finds them before your users do.
+
+## Settings
+
+Users can choose these without a new build, in `appsettings.json` (`"ConsoleMVC": { "ScreenReader": true }`), an
+environment variable (`ConsoleMVC__ScreenReader=true`) or the command line (`--ConsoleMVC:ScreenReader=true`). An on/off
+setting turns a feature on when the builder leaves it off; it is `true` or `false` in any casing, and any other value
+(`yes`, `1`) stops `Build()` with a message naming the setting, rather than being ignored.
+
+| Setting | Value | Same as |
+|---|---|---|
+| `ConsoleMVC:ScreenReader` | `true` / `false` | `builder.ScreenReader` ([Accessibility](accessibility.md)) |
+| `ConsoleMVC:HighContrast` | `true` / `false` | `builder.HighContrast` |
+| `ConsoleMVC:Mouse` | `true` / `false` | `builder.Mouse` |
+| `ConsoleMVC:FullScreen` | `true` / `false` | `builder.FullScreen` |
+| `ConsoleMVC:Culture` | a culture name such as `pl-PL` | `builder.Localization.Culture`, which wins when both are set ([Localisation](localisation.md)) |
+| `ConsoleMVC:Serve` and the other `ConsoleMVC:Serve…` settings | where and how to serve remote sessions | `app.ServeAsync(...)` ([Remote Sessions](remote-sessions.md)) |
 
 ## Running and serving
 

@@ -1,0 +1,6 @@
+<breadcrumbs />
+<text>Orders</text>
+<menu>
+    <option key="2" nav="Orders/Details?id=2">Order 2</option>
+    <option key="b" back>Back</option>
+</menu>
