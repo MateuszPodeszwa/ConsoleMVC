@@ -33,12 +33,20 @@ public class AccessibilityAppTests
     [InlineData("true", true)]
     [InlineData("True", true)]
     [InlineData("false", false)]
-    [InlineData("yes", false)]
     public void ScreenReader_CanBeChosenInTheSettings(string value, bool expected)
     {
         var run = Host(builder => builder.Configuration[MvcApplicationBuilder.ScreenReaderSetting] = value).Run("i");
 
         Assert.Equal(expected, run.Output.Contains("Import: 100%"));
+    }
+
+    [Fact]
+    public void AScreenReaderSettingThatIsNotTrueOrFalse_IsRefused()
+    {
+        var host = Host(builder => builder.Configuration[MvcApplicationBuilder.ScreenReaderSetting] = "yes");
+
+        var error = Assert.Throws<InvalidOperationException>(() => host.Run("i"));
+        Assert.Contains("ConsoleMVC:ScreenReader", error.Message);
     }
 
     [Fact]
