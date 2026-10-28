@@ -1,0 +1,8 @@
+<breadcrumbs />
+<text>Acceptance</text>
+<menu>
+    <option key="1" nav="Account/Signup">Sign up</option>
+    <option key="2" nav="Numbers/Index">Numbers</option>
+    <option key="3" nav="Orders/Index">Orders</option>
+    <option key="q" quit>Quit</option>
+</menu>

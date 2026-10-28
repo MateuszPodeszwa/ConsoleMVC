@@ -34,7 +34,8 @@ jobs:
       - name: Test
         run: dotnet test ConsoleMVC.sln --configuration Release --no-build --verbosity normal
 
-  # Packs the framework, the testing package, the template and the preview tool, then checks that
+  # Packs the framework, the testing package, the template and the preview tool, runs the acceptance tests against the
+  # packed packages, then checks that
   # `dotnet new consolemvc` (with and without --tests) builds, that the generated tests pass, including the snapshot
   # shipped with the template, and that cvw-preview draws the template's views
   template:
@@ -58,6 +59,12 @@ jobs:
           dotnet pack src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj --configuration Release --no-build --output "$RUNNER_TEMP/feed"
           dotnet pack ConsoleMVC.Template.csproj --configuration Release --output "$RUNNER_TEMP/feed"
           dotnet pack src/ConsoleMVC.Preview/ConsoleMVC.Preview.csproj --configuration Release --output "$RUNNER_TEMP/feed"
+
+      - name: Run the acceptance tests against the packed packages
+        run: |
+          mkdir -p artifacts/feed
+          cp "$RUNNER_TEMP"/feed/ConsoleMVC.Framework.*.nupkg "$RUNNER_TEMP"/feed/ConsoleMVC.Testing.*.nupkg artifacts/feed/
+          dotnet test tests/ConsoleMVC.AcceptanceTests --verbosity normal
 
       - name: Generate and test projects from the template
         run: |

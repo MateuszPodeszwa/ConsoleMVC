@@ -19,8 +19,10 @@
 history: List<route>, oldest first; the last entry is the screen on display (at most 50)
 
 before a view renders for route R (the controller's declared action name):
-    if history.last is the same controller and action (case-insensitive): history.last ← R   # a form shown again
-    else history.add(R)
+    same(a, b) = same controller and action (case-insensitive) and the same route values   # 1.34: values count
+    i ← last index where same(history[i], R)
+    if i found: history ← history[0 .. i-1]   # a form shown again, a refresh, or a screen already in the trail
+    history.add(R)
 
 after the view returns navigation N:
     N.IsBack → if history.Count > 1: history.removeLast()

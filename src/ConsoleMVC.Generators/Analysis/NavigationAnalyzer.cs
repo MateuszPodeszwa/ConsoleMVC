@@ -21,9 +21,6 @@ namespace ConsoleMVC.Generators.Analysis;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 {
-    /// <summary>The most names listed in a message.</summary>
-    private const int MaxSuggestions = 8;
-
     /// <summary>The CVW121 property naming the controller (the view's folder), for the code fix that creates the view.</summary>
     public const string ControllerProperty = "Controller";
 
@@ -71,6 +68,14 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        // app.MapKey(ConsoleKey.F1, "Help/Index", "Help"): the target is a full route, checked like nav="Help/Index"
+        if (owner == RouteSymbols.ApplicationType && method.Name == "MapKey" && Argument(invocation, "target") is { } keyTarget)
+        {
+            if (Constant(keyTarget) is { } route)
+                CheckTarget(context, catalogue, keyTarget, $"MapKey(\"{route}\")", route, current: null);
+            return;
+        }
+
         if (owner != RouteSymbols.NavigationResultType)
             return;
 
@@ -84,22 +89,30 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
                 break;
 
             case "To" when Argument(invocation, "target") is { } target:
-                if (Constant(target) is not { } text)
-                    break;
-
-                var path = text.Split('?')[0].Trim();
-                var slash = path.LastIndexOf('/');
-                if (slash >= 0)
-                    Report(context, catalogue, target.Syntax.GetLocation(), $"NavigationResult.To(\"{text}\")",
-                        RouteSymbols.Qualify(path.Substring(0, slash), viewController, catalogue.Controllers.ContainsKey), path.Substring(slash + 1));
-                else if (viewController is not null)
-                    Report(context, catalogue, target.Syntax.GetLocation(), $"NavigationResult.To(\"{text}\")", viewController, path);
+                if (Constant(target) is { } text)
+                    CheckTarget(context, catalogue, target, $"NavigationResult.To(\"{text}\")", text, viewController);
                 break;
 
             case "To":
                 CheckRoute(context, catalogue, invocation, "NavigationResult.To", Argument(invocation, "controller"), Argument(invocation, "action"), viewController);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Checks a target written as one string, <c>"Orders/Details?id=4"</c>; an action alone is on
+    /// <paramref name="current"/>, and is not checked without one.
+    /// </summary>
+    private static void CheckTarget(OperationAnalysisContext context, Catalogue catalogue, IArgumentOperation target, string call,
+        string text, string? current)
+    {
+        var path = text.Split('?')[0].Trim();
+        var slash = path.LastIndexOf('/');
+        if (slash >= 0)
+            Report(context, catalogue, target.Syntax.GetLocation(), call,
+                RouteSymbols.Qualify(path.Substring(0, slash), current, catalogue.Controllers.ContainsKey), path.Substring(slash + 1));
+        else if (current is not null)
+            Report(context, catalogue, target.Syntax.GetLocation(), call, current, path);
     }
 
     /// <summary>Checks a controller argument (or the current controller when it is absent or null) and an action argument.</summary>
@@ -123,7 +136,10 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
         var location = (controllerArgument is { ArgumentKind: not ArgumentKind.DefaultValue } && !IsNull(controllerArgument) && !catalogue.Controllers.ContainsKey(controller)
             ? controllerArgument.Syntax
             : actionArgument.Syntax).GetLocation();
-        Report(context, catalogue, location, $"{call}(\"{action}\")", controller, action);
+        var written = controllerArgument is { ArgumentKind: not ArgumentKind.DefaultValue } && Constant(controllerArgument) is { } controllerText
+            ? $"{call}(\"{controllerText}\", \"{action}\")"
+            : $"{call}(\"{action}\")";
+        Report(context, catalogue, location, written, controller, action);
     }
 
     private static void Report(OperationAnalysisContext context, Catalogue catalogue, Location location, string call, string controller, string action)
@@ -131,14 +147,16 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
         if (!catalogue.Controllers.TryGetValue(controller, out var actions))
         {
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.UnknownCodeRoute, location,
-                $"{call}: there is no controller '{controller}'. Controllers: {List(catalogue.Controllers.Keys)}."));
+                $"{call}: there is no controller '{controller}'.{RouteSuggestions.DidYouMean(catalogue.Controllers.Keys, controller)} " +
+                $"Controllers: {RouteSuggestions.List(catalogue.Controllers.Keys, controller)}."));
             return;
         }
 
         if (!actions.Contains(action))
         {
             context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.UnknownCodeRoute, location,
-                $"{call}: the controller '{controller}' has no action '{action}'. Actions: {List(actions)}."));
+                $"{call}: the controller '{controller}' has no action '{action}'.{RouteSuggestions.DidYouMean(actions, action)} " +
+                $"Actions: {RouteSuggestions.List(actions, action)}."));
         }
     }
 
@@ -167,7 +185,7 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
         var existing = catalogue.Views.Where(v => v.StartsWith(controller + "/", StringComparison.OrdinalIgnoreCase))
             .Select(v => v.Substring(controller.Length + 1)).OrderBy(v => v, StringComparer.Ordinal).ToList();
-        var others = existing.Count == 0 ? "" : $" Views of '{controller}': {List(existing)}.";
+        var others = existing.Count == 0 ? "" : $"{RouteSuggestions.DidYouMean(existing, name)} Views of '{controller}': {RouteSuggestions.List(existing, name)}.";
 
         // What the code fix needs to create the view: its folder, its name and, when known, its model type
         var properties = ImmutableDictionary.CreateBuilder<string, string?>();
@@ -198,13 +216,6 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
 
     private static bool IsNull(IArgumentOperation argument) =>
         argument.Value.ConstantValue is { HasValue: true, Value: null };
-
-    private static string List(IEnumerable<string> names)
-    {
-        var all = names.OrderBy(n => n, StringComparer.Ordinal).ToList();
-        var shown = string.Join(", ", all.Take(MaxSuggestions));
-        return all.Count > MaxSuggestions ? shown + ", …" : shown;
-    }
 
     /// <summary>The controllers (with their actions) and views of a compilation, matched case-insensitively.</summary>
     private sealed class Catalogue

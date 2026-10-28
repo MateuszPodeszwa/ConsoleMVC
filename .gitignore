@@ -33,3 +33,4 @@ plugin-request.md
 
 # Snapshot test output (ConsoleMVC.Testing)
 *.received.txt
+artifacts/

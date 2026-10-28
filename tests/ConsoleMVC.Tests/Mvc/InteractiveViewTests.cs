@@ -51,12 +51,12 @@ public class InteractiveViewTests
     }
 
     [Fact]
-    public void ReadInput_EndOfInput_StoresEmptyValue()
+    public void ReadInput_EndOfInput_EndsTheRunWithoutStoringAValue()
     {
         var view = View(new ScriptedInput());
 
-        Assert.Equal("", view.CallReadInput(new InputElement { Name = "Name" }));
-        Assert.Equal("", view.Form["Name"]);
+        Assert.Throws<InputEndedException>(() => view.CallReadInput(new InputElement { Name = "Name" }));
+        Assert.False(view.Form.ContainsKey("Name"));
     }
 
     [Theory]

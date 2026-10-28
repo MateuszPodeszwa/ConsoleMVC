@@ -49,7 +49,8 @@ internal static class ModelBinder
     /// <param name="modelState">Receives conversion errors, or <see langword="null"/> to ignore them.</param>
     /// <returns>The bound arguments, or <see langword="null"/> when the method has no parameters.</returns>
     /// <remarks>
-    /// An empty value is not a conversion error: the field simply keeps its default. Use <c>[Required]</c> on a
+    /// An empty value is not a conversion error: the field simply keeps its default (its initialiser, the
+    /// parameter's default value, or <see langword="null"/> for a <see cref="string"/>). Use <c>[Required]</c> on a
     /// reference or nullable type (<c>string</c>, <c>int?</c>) to demand a value; a non-nullable value type such as
     /// <c>int</c> always has one (its default), so <c>[Required]</c> cannot fail on it.
     /// </remarks>
@@ -107,7 +108,9 @@ internal static class ModelBinder
 
     /// <summary>
     /// Attempts to convert a string to <paramref name="targetType"/> using the invariant culture.
-    /// Empty strings convert to <see langword="null"/> for nullable and reference types.
+    /// An empty string converts to <see langword="null"/> for a nullable value type, and is not converted for any
+    /// other type, <see cref="string"/> included, so the field keeps its default (as ASP.NET Core turns an empty
+    /// value into <see langword="null"/>; an optional <c>[EmailAddress] string? Email</c> left blank stays valid).
     /// </summary>
     /// <param name="value">The string to convert.</param>
     /// <param name="targetType">The destination type.</param>
@@ -128,14 +131,21 @@ internal static class ModelBinder
             targetType = underlyingType;
         }
 
+        if (string.IsNullOrEmpty(value))
+            return false;
+
         if (targetType == typeof(string))
         {
             result = value;
             return true;
         }
 
-        if (string.IsNullOrEmpty(value))
-            return false;
+        var parsed = TryParseNumber(value, targetType, out var number, out var isNumber);
+        if (isNumber)
+        {
+            result = number;
+            return parsed;
+        }
 
         var converter = TypeDescriptor.GetConverter(targetType);
         if (!converter.CanConvertFrom(typeof(string)))
@@ -158,6 +168,51 @@ internal static class ModelBinder
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Parses a number as the documentation promises: invariant culture, decimal digits only (no hexadecimal
+    /// <c>0x10</c>, <c>#10</c> or <c>&amp;H10</c>, no thousands separators), and only finite values (<c>1e400</c> is not
+    /// a <see cref="double"/>). <see cref="System.ComponentModel.TypeConverter"/>s accept more than that, and differently
+    /// for each type.
+    /// </summary>
+    /// <param name="value">The text, e.g. <c>"-1.5e3"</c>.</param>
+    /// <param name="type">The destination type.</param>
+    /// <param name="result">The number when <paramref name="value"/> is valid; otherwise <see langword="null"/>.</param>
+    /// <param name="isNumber">Whether <paramref name="type"/> is a numeric type this method handles.</param>
+    /// <returns><see langword="true"/> when <paramref name="value"/> is a valid number of <paramref name="type"/>.</returns>
+    /// <example><code>ModelBinder.TryParseNumber("0x10", typeof(int), out _, out var isNumber); // false, isNumber true</code></example>
+    internal static bool TryParseNumber(string value, Type type, out object? result, out bool isNumber)
+    {
+        const System.Globalization.NumberStyles whole = System.Globalization.NumberStyles.Integer;
+        const System.Globalization.NumberStyles real = System.Globalization.NumberStyles.Float;
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+        result = null;
+        isNumber = !type.IsEnum && (type == typeof(Half) || type == typeof(Int128) || type == typeof(UInt128)
+                                    || Type.GetTypeCode(type) is >= TypeCode.SByte and <= TypeCode.Decimal);
+        if (!isNumber)
+            return false;
+
+        static object? Done<T>(bool parsed, T number) => parsed ? number : null;
+
+        result = Type.GetTypeCode(type) switch
+        {
+            TypeCode.SByte => Done(sbyte.TryParse(value, whole, invariant, out var n), n),
+            TypeCode.Byte => Done(byte.TryParse(value, whole, invariant, out var n), n),
+            TypeCode.Int16 => Done(short.TryParse(value, whole, invariant, out var n), n),
+            TypeCode.UInt16 => Done(ushort.TryParse(value, whole, invariant, out var n), n),
+            TypeCode.Int32 => Done(int.TryParse(value, whole, invariant, out var n), n),
+            TypeCode.UInt32 => Done(uint.TryParse(value, whole, invariant, out var n), n),
+            TypeCode.Int64 => Done(long.TryParse(value, whole, invariant, out var n), n),
+            TypeCode.UInt64 => Done(ulong.TryParse(value, whole, invariant, out var n), n),
+            TypeCode.Single => Done(float.TryParse(value, real, invariant, out var n) && float.IsFinite(n), n),
+            TypeCode.Double => Done(double.TryParse(value, real, invariant, out var n) && double.IsFinite(n), n),
+            TypeCode.Decimal => Done(decimal.TryParse(value, real, invariant, out var n), n),
+            _ when type == typeof(Half) => Done(Half.TryParse(value, real, invariant, out var n) && Half.IsFinite(n), n),
+            _ when type == typeof(Int128) => Done(Int128.TryParse(value, whole, invariant, out var n), n),
+            _ => Done(UInt128.TryParse(value, whole, invariant, out var n), n)
+        };
+        return result is not null;
     }
 
     /// <summary>

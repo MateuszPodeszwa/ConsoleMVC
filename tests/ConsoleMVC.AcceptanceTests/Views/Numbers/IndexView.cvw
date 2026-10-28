@@ -1,0 +1,6 @@
+<input name="count" label="Count: " />
+<input name="ratio" label="Ratio: " />
+<input name="small" label="Small: " />
+<input name="big" label="Big: " />
+
+return NavigationResult.ToAction("Show", Form);

@@ -1,0 +1,6 @@
+@model Acceptance.Models.SignupModel
+
+<text>Welcome, @Model.Name. E-mail: [@(Model.Email ?? "none")]</text>
+<menu>
+    <option key="q" quit>Quit</option>
+</menu>

@@ -19,6 +19,31 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   (`UPDATE_SCHEMA=1 dotnet test` rewrites it).
 - CI installs the packed tool and previews the template's views; the publish workflow releases `ConsoleMVC.Preview`
   with the other packages.
+- **Acceptance tests** (`tests/ConsoleMVC.AcceptanceTests`, run with `tests/ConsoleMVC.AcceptanceTests/run.sh`): an
+  application with real `.cvw` views that uses the packed `ConsoleMVC.Framework` and `ConsoleMVC.Testing` packages,
+  as a user's application would, and checks the documented behaviour through typed input. CI runs them.
+
+- CVW120 also checks the route of `app.MapKey(key, "Help/Index")`. CVW119, CVW120 and CVW121 suggest the closest name
+  (`Did you mean 'Details'?`) and list the others closest first, saying how many more there are.
+
+### Fixed
+
+- When the input ended (a pipe or file running out, or Ctrl+D) while a form field was waiting, the form was posted
+  with empty answers, ignoring `default` and `required`; a form shown again after failing validation then repeated for
+  ever, writing millions of lines. The application now ends, as a `<menu>` does at the end of input.
+- An empty value bound to a `string` gave `""`, so an optional `[EmailAddress] string? Email` left blank failed
+  validation. An empty value is now not bound, as for every other type: the field keeps its default (`null`).
+- A screen in the navigation history is its route with its route values: `Orders/Details?id=2` and
+  `Orders/Details?id=42` were one entry, so Back skipped a screen. Going to a screen already in the history (a menu's
+  Home option) now returns the history to it, so breadcrumbs no longer grow without end.
+- `MapKey` refuses Ctrl+H, Ctrl+I, Ctrl+J and Ctrl+M, which terminals send as Backspace, Tab and Enter (the shortcut
+  could never run), and the refused keys with Shift.
+- CVW120 quoted `NavigationResult.To("Orders", "Detials")` as `NavigationResult.To("Detials")`.
+- The markup diagnostics' severity is documented as set with `WarningsAsErrors` or a `.globalconfig`: `.editorconfig`
+  sections do not cover `.cvw` files, so `dotnet_diagnostic.CVW119.severity` there had no effect.
+- Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
+  hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
+  reject values that are not finite (`1e400`, `Infinity`, `NaN`).
 
 ## [1.33.0]
 

@@ -378,9 +378,12 @@ Select an option: _
 
 Literal `nav` targets are checked when you build: `nav="Orders/Detials"` gives warning CVW119 naming the actions
 `Orders` has. Targets with an `@` expression are only known at run time and are not checked. Make the warning an error
-with `dotnet_diagnostic.CVW119.severity = error` in `.editorconfig`.
+with `<WarningsAsErrors>$(WarningsAsErrors);CVW119</WarningsAsErrors>` in the project file. The markup diagnostics
+(CVW0xx and CVW1xx from views) are reported against `.cvw` files, which `.editorconfig` sections do not cover, so set
+their severity in the project file or in a `.globalconfig` file (`is_global = true`, then
+`dotnet_diagnostic.CVW119.severity = error`).
 
-Each option needs exactly one of `nav`, `quit` or `back`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
+Each option needs exactly one of `nav`, `quit` or `back`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever. So does a form field: when the input ends before a field is answered, the application ends and the form is not posted.
 
 !!! note "Top level only"
     `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>`, `<menu>`, `<scroll>` and `<partial>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.

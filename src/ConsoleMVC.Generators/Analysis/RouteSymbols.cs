@@ -27,6 +27,9 @@ internal static class RouteSymbols
     /// <summary>The navigation result returned by views.</summary>
     public const string NavigationResultType = "ConsoleMVC.Mvc.NavigationResult";
 
+    /// <summary>The application, whose <c>MapKey(key, "Help/Index")</c> names a route.</summary>
+    public const string ApplicationType = "ConsoleMVC.Mvc.MvcApplication";
+
     /// <summary>The attribute that puts a controller in an area.</summary>
     public const string AreaAttributeType = "ConsoleMVC.Mvc.AreaAttribute";
 

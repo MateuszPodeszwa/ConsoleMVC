@@ -928,6 +928,7 @@ ConsoleMVC/
     ConsoleMVC.Tests/                     # Framework and rendering unit/integration tests
     ConsoleMVC.Generators.Tests/          # Runs the generator, compiles and executes views
     ConsoleMVC.Preview.Tests/             # Previews of views and the cvw-preview command line
+    ConsoleMVC.AcceptanceTests/           # An application on the packed packages, checked through typed input (run.sh)
   docs/
     design/                               # Designs: UML, grammar, pseudocode for each feature
     guides/                               # MkDocs user guides
@@ -1007,6 +1008,20 @@ dotnet nuget add source https://nuget.pkg.github.com/MateuszPodeszwa/index.json 
     --name github --username YOUR_GITHUB_USERNAME --password YOUR_TOKEN
 dotnet add package ConsoleMVC.Framework --source github
 ```
+
+### Acceptance Tests
+
+`tests/ConsoleMVC.AcceptanceTests` is an application with its own controllers and `.cvw` views that references the
+**packed** `ConsoleMVC.Framework` and `ConsoleMVC.Testing` packages (from `artifacts/feed`), as a user's application
+does, and checks the documented behaviour by typing into it with `MvcTestHost`. It is not in `ConsoleMVC.sln`, because
+it needs the packages first:
+
+```bash
+tests/ConsoleMVC.AcceptanceTests/run.sh      # packs both packages into artifacts/feed, then runs the tests
+```
+
+Write a new acceptance test from the documentation, not from the code: start from what a guide promises, check that
+the test fails against the package before your change, and passes after it. CI runs them on every pull request.
 
 ### Updating the Template
 

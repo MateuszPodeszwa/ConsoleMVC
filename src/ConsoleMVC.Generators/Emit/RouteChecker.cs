@@ -15,9 +15,6 @@ namespace ConsoleMVC.Generators.Emit;
 /// </summary>
 internal static class RouteChecker
 {
-    /// <summary>The most names listed in a message.</summary>
-    private const int MaxSuggestions = 8;
-
     /// <summary>
     /// Returns a warning for every literal <c>nav</c> target that names a missing controller or action.
     /// </summary>
@@ -74,18 +71,13 @@ internal static class RouteChecker
         }
 
         if (!routes.TryGetController(controller, out var actions))
-            return $"nav=\"{text}\": there is no controller '{controller}'. Controllers: {List(routes.ControllerNames)}.";
+            return $"nav=\"{text}\": there is no controller '{controller}'.{Analysis.RouteSuggestions.DidYouMean(routes.ControllerNames, controller)} " +
+                   $"Controllers: {Analysis.RouteSuggestions.List(routes.ControllerNames, controller)}.";
 
         if (!actions.Contains(action))
-            return $"nav=\"{text}\": the controller '{controller}' has no action '{action}'. Actions: {List(routes.ActionNamesOf(controller))}.";
+            return $"nav=\"{text}\": the controller '{controller}' has no action '{action}'.{Analysis.RouteSuggestions.DidYouMean(routes.ActionNamesOf(controller), action)} " +
+                   $"Actions: {Analysis.RouteSuggestions.List(routes.ActionNamesOf(controller), action)}.";
 
         return null;
-    }
-
-    private static string List(IEnumerable<string> names)
-    {
-        var all = names.ToList();
-        var shown = string.Join(", ", all.Take(MaxSuggestions));
-        return all.Count > MaxSuggestions ? shown + ", …" : shown;
     }
 }

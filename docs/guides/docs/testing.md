@@ -63,7 +63,8 @@ you want them. Each `Run` builds a fresh application, so tests do not share stat
 | `Routes` | `Controller/Action` for every navigation cycle, redirects included |
 | `RemainingInput` | Script steps the application never read |
 
-When the script ends, menus quit, so a run always finishes.
+When the script ends, the run ends, whether a menu or a form field is waiting (a form is never posted with answers
+nobody gave), so a run always finishes.
 
 ## Scripting lines and keys
 

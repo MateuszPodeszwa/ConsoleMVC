@@ -91,7 +91,11 @@ public abstract class ConsoleViewBase
     /// every top-level field.
     /// </summary>
     /// <param name="field">The field to read.</param>
-    /// <returns>The value read; an empty string when the input has ended.</returns>
+    /// <returns>The value read.</returns>
+    /// <remarks>
+    /// When the input ends before the field is answered, the application ends, as a <c>&lt;menu&gt;</c> quits at the end
+    /// of input: the view's remaining fields are not asked and nothing is posted.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="field"/> is <see langword="null"/>.</exception>
     /// <example><code>var answer = ReadInput(new CheckboxElement { Name = "Newsletter", Label = "Send news" });</code></example>
     protected internal string ReadInput(IFormField field)
@@ -99,7 +103,7 @@ public abstract class ConsoleViewBase
         ArgumentNullException.ThrowIfNull(field);
 
         BeforeInteraction?.Invoke();
-        var value = field.Read(Renderer, Input) ?? "";
+        var value = field.Read(Renderer, Input) ?? throw new InputEndedException();
         Form[field.Name] = value;
         return value;
     }

@@ -221,8 +221,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         if (!IsShortcutKey(gesture))
         {
             throw new ArgumentException(
-                $"{gesture} is needed for typing or for the input itself. Use F1 to F24, Esc, Insert, or a key with Ctrl or Alt " +
-                "(except Ctrl+C, Ctrl+D, Ctrl+Z, and Ctrl+Q and Ctrl+S, which terminals use for flow control).", nameof(gesture));
+                $"{gesture} is needed for typing or for the input itself. Use F1 to F24, Esc, Insert, or a key with Ctrl or Alt, " +
+                "except Ctrl+C (interrupts), Ctrl+D and Ctrl+Z (end the input), Ctrl+H, Ctrl+I, Ctrl+J and Ctrl+M (terminals send " +
+                "them as Backspace, Tab and Enter), and Ctrl+Q and Ctrl+S (flow control), with or without Shift.", nameof(gesture));
         }
 
         if (_shortcuts.Any(s => s.Gesture == gesture))
@@ -237,9 +238,14 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     {
         var withModifier = (gesture.Modifiers & (ConsoleModifiers.Control | ConsoleModifiers.Alt)) != 0;
         if (withModifier)
-            // Ctrl+C interrupts, Ctrl+D and Ctrl+Z end the input, and terminals keep Ctrl+Q and Ctrl+S for flow control
-            return !(gesture.Modifiers == ConsoleModifiers.Control
-                     && gesture.Key is ConsoleKey.C or ConsoleKey.D or ConsoleKey.Z or ConsoleKey.Q or ConsoleKey.S);
+        {
+            // Ctrl+C interrupts, Ctrl+D and Ctrl+Z end the input, terminals send Ctrl+H, Ctrl+I, Ctrl+J and Ctrl+M as
+            // Backspace, Tab and Enter, and keep Ctrl+Q and Ctrl+S for flow control. Shift does not change the byte a
+            // terminal sends for Ctrl and a letter, so Ctrl+Shift+S is Ctrl+S.
+            var controlOnly = (gesture.Modifiers & ~ConsoleModifiers.Shift) == ConsoleModifiers.Control;
+            return !(controlOnly && gesture.Key is ConsoleKey.C or ConsoleKey.D or ConsoleKey.Z or ConsoleKey.Q or ConsoleKey.S
+                                                 or ConsoleKey.H or ConsoleKey.I or ConsoleKey.J or ConsoleKey.M);
+        }
 
         return gesture.Key is >= ConsoleKey.F1 and <= ConsoleKey.F24 or ConsoleKey.Escape or ConsoleKey.Insert;
     }
@@ -679,6 +685,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                             navigation = shortcut.Navigation;
                             refreshing = false;
                         }
+                        catch (InputEndedException)
+                        {
+                            // A form field got no answer before the input ended: end the run, as a menu does
+                            return;
+                        }
                         catch (ViewRefreshException)
                         {
                             // Nothing typed in time: run the same route again for fresh data, on a cleared screen
@@ -807,8 +818,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
-    /// Adds the screen about to be shown to the history. Showing the same screen again (a form after validation failed,
-    /// or the screen reached with Back) replaces the last entry instead.
+    /// Adds the screen about to be shown to the history. A screen is its controller, action and route values, so
+    /// <c>Orders/Details?id=2</c> and <c>Orders/Details?id=42</c> are two screens. Showing the last screen again (a form
+    /// after validation failed, a refresh, or the screen reached with Back) replaces the last entry, and going to a
+    /// screen that is already in the history (a menu's Home option) returns the history to it, so the breadcrumbs are
+    /// always the path to the current screen and Back never revisits it.
     /// </summary>
     private static void RecordScreen(NavigationState state, ActionContext context)
     {
@@ -817,10 +831,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         var screen = new RouteContext { Controller = route.Controller, Action = route.Action, RouteValues = route.RouteValues };
 
         var history = state.History;
-        if (history.Count > 0 && SameScreen(history[^1], screen))
-            history[^1] = screen;
-        else
-            history.Add(screen);
+        var earlier = history.FindLastIndex(entry => SameScreen(entry, screen));
+        if (earlier >= 0)
+            history.RemoveRange(earlier, history.Count - earlier);
+
+        history.Add(screen);
 
         if (history.Count > MaxHistory)
             history.RemoveAt(0);
@@ -840,9 +855,28 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         return new RouteContext { Controller = previous.Controller, Action = previous.Action, RouteValues = previous.RouteValues };
     }
 
+    /// <summary>Whether two routes are the same screen: the same controller and action (in any casing) and route values.</summary>
     private static bool SameScreen(RouteContext a, RouteContext b) =>
         string.Equals(a.Controller, b.Controller, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(a.Action, b.Action, StringComparison.OrdinalIgnoreCase);
+        && string.Equals(a.Action, b.Action, StringComparison.OrdinalIgnoreCase)
+        && SameRouteValues(a.RouteValues, b.RouteValues);
+
+    /// <summary>Whether two sets of route values are equal: keys in any casing, values exactly; none and empty are equal.</summary>
+    private static bool SameRouteValues(IReadOnlyDictionary<string, string>? a, IReadOnlyDictionary<string, string>? b)
+    {
+        var left = a ?? EmptyRouteValues;
+        var right = b ?? EmptyRouteValues;
+        if (left.Count != right.Count)
+            return false;
+
+        var lookup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in right)
+            lookup.TryAdd(key, value);
+
+        return left.All(pair => lookup.TryGetValue(pair.Key, out var value) && string.Equals(value, pair.Value, StringComparison.Ordinal));
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyRouteValues = new Dictionary<string, string>();
 
     /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.

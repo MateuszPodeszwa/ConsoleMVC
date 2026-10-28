@@ -67,6 +67,15 @@ public class NavigationHistoryTests
     }
 
     [Fact]
+    public void GoingToAScreenInTheTrail_ReturnsTheTrailToIt()
+    {
+        Run(NavigationResult.ToAction("List"), NavigationResult.ToAction("Details"), NavigationResult.ToAction("Index"), NavigationResult.Back());
+
+        Assert.Equal(["Index [Trail]", "List [Trail > List]", "Details(0) [Trail > List > Details]", "Index [Trail]", "Index [Trail]"],
+            HistoryScript.Log);
+    }
+
+    [Fact]
     public void Redirects_AreNotScreens()
     {
         Run(NavigationResult.ToAction("Jump"), NavigationResult.Back());
@@ -78,7 +87,7 @@ public class NavigationHistoryTests
     public void History_IsCapped()
     {
         var steps = Enumerable.Range(0, MvcApplication.MaxHistory + 5)
-            .Select(i => NavigationResult.ToAction(i % 2 == 0 ? "List" : "Details"))
+            .Select(i => NavigationResult.To($"Details?id={i}")) // a different screen each time
             .ToArray();
 
         Run(steps);
