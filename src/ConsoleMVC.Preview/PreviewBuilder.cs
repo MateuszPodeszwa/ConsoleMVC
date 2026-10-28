@@ -47,9 +47,19 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
             return page;
 
         var layoutName = document.Layout?.Value ?? PartialChecker.DefaultLayout;
-        if (layoutName == PartialChecker.NoLayout || LoadShared(layoutName) is not { } layout || !layout.HasBodyPlaceholder)
+        if (layoutName == PartialChecker.NoLayout)
+            return page;
+
+        var file = ReadShared(layoutName);
+        if (file is { IsTooLarge: true })
         {
-            if (document.Layout is not null && layoutName != PartialChecker.NoLayout)
+            problems.Add($"The layout '{file.Name}' is {TooLarge}; the view is shown without it.");
+            return page;
+        }
+
+        if (Parse(file) is not { } layout || !layout.HasBodyPlaceholder)
+        {
+            if (document.Layout is not null)
                 problems.Add($"The layout '{layoutName}' was not found in Views/Shared, so the view is shown without it.");
             return page;
         }
@@ -111,9 +121,12 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
             return;
         }
 
-        if (LoadShared(name) is not { } partial)
+        var file = ReadShared(name);
+        if (Parse(file) is not { } partial)
         {
-            problems.Add($"The partial view '{name}' was not found in Views/Shared.");
+            problems.Add(file is { IsTooLarge: true }
+                ? $"The partial view '{file.Name}' is {TooLarge}."
+                : $"The partial view '{name}' was not found in Views/Shared.");
             output.Add(Note($"partial view {name}"));
             return;
         }
@@ -123,8 +136,13 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
         _partials.Pop();
     }
 
-    private CvwDocument? LoadShared(string name) =>
-        ProjectViewFiles.IsPlainName(name) && files.ReadShared(name) is { } text ? CvwDocumentParser.Parse(text, MarkupSchema.Default) : null;
+    /// <summary>Why a shared view over the size limit is not drawn, after its name.</summary>
+    private static readonly string TooLarge = $"larger than {ProjectViewFiles.MaxFileSize / (1024 * 1024)} MB, so the preview does not read it";
+
+    private SharedView? ReadShared(string name) => ProjectViewFiles.IsPlainName(name) ? files.ReadShared(name) : null;
+
+    private static CvwDocument? Parse(SharedView? file) =>
+        file?.Text is { } text ? CvwDocumentParser.Parse(text, MarkupSchema.Default) : null;
 
     /// <summary>
     /// Creates the runtime object of an element node with its attributes and content: usually an <see cref="Element"/>,

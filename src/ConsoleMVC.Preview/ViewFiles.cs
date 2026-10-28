@@ -1,5 +1,16 @@
 namespace ConsoleMVC.Preview;
 
+/// <summary>A shared view (a partial view or a layout) found by <see cref="IViewFiles.ReadShared"/>.</summary>
+/// <param name="Name">Its name, such as <c>Header</c>.</param>
+/// <param name="Text">Its text, or <see langword="null"/> when the file is larger than <see cref="ProjectViewFiles.MaxFileSize"/>.</param>
+/// <example><code>if (files.ReadShared("Header") is { IsTooLarge: false } header) Parse(header.Text!);</code></example>
+internal sealed record SharedView(string Name, string? Text)
+{
+    /// <summary>Gets whether the file exists but is too large to be read, so its content is unknown.</summary>
+    /// <example><code>if (view.IsTooLarge) notes.Add($"'{view.Name}' is too large");</code></example>
+    public bool IsTooLarge => Text is null;
+}
+
 /// <summary>
 /// Finds the partial views and layouts a view uses, by name. Implemented over the project's files by
 /// <see cref="ProjectViewFiles"/>, and in memory by tests.
@@ -7,15 +18,15 @@ namespace ConsoleMVC.Preview;
 /// <example>
 /// <code>
 /// IViewFiles files = ProjectViewFiles.ForView("Views/Home/IndexView.cvw");
-/// string? header = files.ReadShared("Header"); // the text of Views/Shared/Header.cvw
+/// string? header = files.ReadShared("Header")?.Text; // the text of Views/Shared/Header.cvw
 /// </code>
 /// </example>
 internal interface IViewFiles
 {
     /// <summary>Reads a partial view or layout from the shared views.</summary>
     /// <param name="name">The name, such as <c>Header</c> or <c>_Layout</c>; already checked to be a plain name.</param>
-    /// <returns>The file's text, or <see langword="null"/> when there is no such file.</returns>
-    string? ReadShared(string name);
+    /// <returns>The shared view, or <see langword="null"/> when there is no such file.</returns>
+    SharedView? ReadShared(string name);
 
     /// <summary>Gets whether the view being previewed is itself a shared view (a partial or a layout).</summary>
     bool IsShared { get; }
@@ -29,7 +40,7 @@ internal interface IViewFiles
 /// <example><code>var files = ProjectViewFiles.ForView(@"C:\Shop\Views\Orders\ListView.cvw");</code></example>
 internal sealed class ProjectViewFiles : IViewFiles
 {
-    /// <summary>The largest shared view read, in bytes; a bigger file is treated as missing.</summary>
+    /// <summary>The largest shared view read, in bytes; a bigger file is found but not read (<see cref="SharedView.IsTooLarge"/>).</summary>
     public const long MaxFileSize = 1024 * 1024;
 
     private readonly IReadOnlyList<string> _sharedFolders;
@@ -76,7 +87,7 @@ internal sealed class ProjectViewFiles : IViewFiles
     }
 
     /// <inheritdoc />
-    public string? ReadShared(string name)
+    public SharedView? ReadShared(string name)
     {
         if (!IsPlainName(name))
             return null;
@@ -84,8 +95,8 @@ internal sealed class ProjectViewFiles : IViewFiles
         foreach (var folder in _sharedFolders)
         {
             var file = new FileInfo(Path.Combine(folder, name + ".cvw"));
-            if (file.Exists && file.Length <= MaxFileSize)
-                return File.ReadAllText(file.FullName);
+            if (file.Exists)
+                return new SharedView(name, file.Length <= MaxFileSize ? File.ReadAllText(file.FullName) : null);
         }
 
         return null;

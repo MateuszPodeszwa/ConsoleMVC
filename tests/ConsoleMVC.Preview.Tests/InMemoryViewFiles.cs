@@ -18,9 +18,9 @@ internal sealed class InMemoryViewFiles(Dictionary<string, string> shared, bool 
     public bool IsShared { get; } = isShared;
 
     /// <inheritdoc />
-    public string? ReadShared(string name)
+    public SharedView? ReadShared(string name)
     {
         Requested.Add(name);
-        return shared.GetValueOrDefault(name);
+        return shared.TryGetValue(name, out var text) ? new SharedView(name, text) : null;
     }
 }

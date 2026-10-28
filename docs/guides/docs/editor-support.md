@@ -97,8 +97,8 @@ In text and ANSI output they go to standard error; in HTML they follow the scree
 
 The tool runs no code from the project and loads none of its assemblies. It reads the view, and only the shared views
 it names in `Views/Shared` (and the area's `Views/Shared`). Partial and layout names must be plain names (letters,
-digits and underscores), so a view cannot make the tool read another file, and shared views larger than 1 MB are
-ignored. All text in the HTML output is encoded, so a view cannot add markup to an editor's preview panel.
+digits and underscores), so a view cannot make the tool read another file, and a shared view larger than 1 MB is not
+read: the preview draws a note in its place and says that the file is too large. All text in the HTML output is encoded, so a view cannot add markup to an editor's preview panel.
 
 ## The markup schema
 
