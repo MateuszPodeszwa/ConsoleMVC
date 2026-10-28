@@ -78,6 +78,7 @@ public class HomeViewModel
 - **Markdown**: `<markdown text="@Model.Notes" />` (`MarkdownElement`) draws headings, lists, quotes, code, emphasis and links, sanitised
 - **Charts**: `<bar-chart>` with `<bar />` children and `<sparkline values="@Model.History" />` (`BarChartElement`, `SparklineElement`)
 - **Live screens**: `<progress>` and `<spinner>`, kept up to date while an async action works with `ILiveDisplay.Start(element)`, and views that refresh on a timer with `@refresh 5s` or `View(model).RefreshEvery(...)` until the user types
+- **Areas and modules**: `Areas/{Area}/Views` with `[Area]` or `*.Areas.{Area}` controllers and `Area/Controller/Action` routes, and `builder.AddModule<TModule>()` (`IMvcModule`) for controllers and views in other assemblies
 - **Localisation**: `IStringLocalizer<T>` in views and controllers, `builder.Localization` (culture, `FrameworkText` translated from resources, localised DataAnnotations messages), and the `ConsoleMVC:Culture` setting
 - **Accessibility**: `builder.ScreenReader` (`ScreenReaderRenderer`: plain text, no borders, typed answers) and `builder.HighContrast` (`Theme.CreateHighContrast()`), also chosen by users with the `ConsoleMVC:ScreenReader` and `ConsoleMVC:HighContrast` settings
 - **Secure output**: model values are sanitised so they cannot inject terminal escape sequences

@@ -53,7 +53,7 @@ internal static class RouteChecker
         var path = text.Split('?')[0];
         length = Math.Max(path.Length, 1);
 
-        var slash = path.IndexOf('/');
+        var slash = path.LastIndexOf('/');
         string controller;
         string action;
         if (slash < 0)
@@ -67,7 +67,9 @@ internal static class RouteChecker
         }
         else
         {
-            controller = path.Substring(0, slash);
+            // Inside an area, a controller named without one is the area's own when it has one
+            controller = Analysis.RouteSymbols.Qualify(path.Substring(0, slash), view.IsPartial ? null : view.ControllerName,
+                name => routes.TryGetController(name, out _));
             action = path.Substring(slash + 1);
         }
 

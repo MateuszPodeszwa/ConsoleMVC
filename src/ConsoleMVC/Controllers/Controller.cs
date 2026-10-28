@@ -170,13 +170,7 @@ public abstract class Controller
     /// from the concrete type name.
     /// </summary>
     /// <returns>The controller name without the <c>Controller</c> suffix.</returns>
-    private string GetControllerName()
-    {
-        var name = GetType().Name;
-        return name.EndsWith("Controller")
-            ? name[..^"Controller".Length]
-            : name;
-    }
+    private string GetControllerName() => Router.ControllerKey(GetType());
 
     /// <summary>
     /// Gets or sets the resources that translate validation messages, when

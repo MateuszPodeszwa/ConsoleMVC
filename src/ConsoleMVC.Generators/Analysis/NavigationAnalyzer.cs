@@ -88,9 +88,10 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
                     break;
 
                 var path = text.Split('?')[0].Trim();
-                var slash = path.IndexOf('/');
+                var slash = path.LastIndexOf('/');
                 if (slash >= 0)
-                    Report(context, catalogue, target.Syntax.GetLocation(), $"NavigationResult.To(\"{text}\")", path.Substring(0, slash), path.Substring(slash + 1));
+                    Report(context, catalogue, target.Syntax.GetLocation(), $"NavigationResult.To(\"{text}\")",
+                        RouteSymbols.Qualify(path.Substring(0, slash), viewController, catalogue.Controllers.ContainsKey), path.Substring(slash + 1));
                 else if (viewController is not null)
                     Report(context, catalogue, target.Syntax.GetLocation(), $"NavigationResult.To(\"{text}\")", viewController, path);
                 break;
@@ -112,7 +113,7 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
         if (controllerArgument is null || controllerArgument.ArgumentKind == ArgumentKind.DefaultValue || IsNull(controllerArgument))
             controller = current;
         else if (Constant(controllerArgument) is { } named)
-            controller = named;
+            controller = RouteSymbols.Qualify(named, current, catalogue.Controllers.ContainsKey);
         else
             return; // a controller computed at run time
 
@@ -179,7 +180,14 @@ public sealed class NavigationAnalyzer : DiagnosticAnalyzer
             properties[ModelProperty] = modelType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
 
         context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.MissingView, location, properties.ToImmutable(),
-            $"There is no view '{controller}/{name}'. Add Views/{controller}/{name}View.cvw.{others}"));
+            $"There is no view '{controller}/{name}'. Add {ViewFolder(controller)}/{name}View.cvw.{others}"));
+    }
+
+    /// <summary>Where the views of <paramref name="controller"/> live: <c>Views/Orders</c>, or <c>Areas/Admin/Views/Users</c>.</summary>
+    internal static string ViewFolder(string controller)
+    {
+        var slash = controller.LastIndexOf('/');
+        return slash < 0 ? "Views/" + controller : $"Areas/{controller.Substring(0, slash)}/Views/{controller.Substring(slash + 1)}";
     }
 
     private static IArgumentOperation? Argument(IInvocationOperation invocation, string parameter) =>

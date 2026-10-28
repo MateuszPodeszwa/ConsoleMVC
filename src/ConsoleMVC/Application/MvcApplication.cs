@@ -61,6 +61,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     private readonly bool _clearScreenBetweenViews;
     private readonly bool _fullScreen;
     private readonly MvcLocalizationOptions _localization;
+    private readonly Assembly[] _modules;
     private RouteContext _currentRoute;
 
     /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
@@ -87,6 +88,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
         _fullScreen = builder.FullScreen;
         _localization = builder.Localization.Copy();
+        _modules = builder.Modules.ToArray();
     }
 
     /// <summary>
@@ -427,6 +429,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     {
         var router = new Router();
         router.DiscoverAll(assembly);
+        foreach (var module in _modules.Where(m => m != assembly))
+            router.DiscoverAll(module);
         _router = router;
         DiscoveryCount++;
     }
@@ -495,7 +499,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                             ? PreviousScreen()
                             : new RouteContext
                             {
-                                Controller = navigation.Controller ?? context.Route.Controller,
+                                // Inside an area, a controller named without one is looked for in the area first
+                                Controller = navigation.Controller is { } named ? _router.Qualify(named, context.Route.Controller) : context.Route.Controller,
                                 Action = navigation.Action ?? context.Route.Action,
                                 FormData = navigation.FormData,
                                 RouteValues = navigation.RouteValues
@@ -513,7 +518,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
 
                         _currentRoute = new RouteContext
                         {
-                            Controller = redirect.ControllerName,
+                            Controller = _router.Qualify(redirect.ControllerName, context.Route.Controller),
                             Action = redirect.ActionName,
                             RouteValues = redirect.RouteValues
                         };

@@ -95,4 +95,14 @@ public class AppTests
         Assert.Contains("To pole jest wymagane.", run.Screens[1]);      // the framework's own message, translated
         Assert.Contains("Wybierz opcję:", run.Screens[0]);
     }
+
+    [Fact]
+    public void SettingsPage_IsInTheAdminArea()
+    {
+        var run = Host().Run("4", "3", "1", "q");
+
+        Assert.Equal(["Home/Index", "Home/Features", "Admin/Settings/Index", "Home/Index"], run.Routes);
+        Assert.Contains("Admin: settings", run.Screens[2]);
+        Assert.Contains("en-GB", run.Screens[2]);
+    }
 }

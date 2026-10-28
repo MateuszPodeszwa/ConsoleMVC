@@ -137,7 +137,7 @@ public abstract class ConsoleViewBase
     /// </summary>
     /// <example><code>&lt;text&gt;@string.Join(" / ", Breadcrumbs)&lt;/text&gt;</code></example>
     public IReadOnlyList<string> Breadcrumbs =>
-        NavigationHistory.Select(r => string.Equals(r.Action, "Index", StringComparison.OrdinalIgnoreCase) ? r.Controller : r.Action).ToArray();
+        NavigationHistory.Select(r => string.Equals(r.Action, "Index", StringComparison.OrdinalIgnoreCase) ? r.ControllerName : r.Action).ToArray();
 
     /// <summary>Theme used by views created outside the application (for example in unit tests).</summary>
     private static readonly Lazy<Theme> DefaultTheme = new(Theme.CreateDefault);

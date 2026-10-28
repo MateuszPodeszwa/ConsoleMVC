@@ -36,7 +36,7 @@ public class GeneratorRegressionTests
         var result = ViewHarness.GenerateFiles(
         [
             ("/app/Views/Home/IndexView.cvw", "return NavigationResult.Quit();"),
-            ("/app/Areas/X/Views/Home/IndexView.cvw", "return NavigationResult.Quit();")
+            ("/app/Other/Views/Home/IndexView.cvw", "return NavigationResult.Quit();") // not an area: the same class
         ]);
 
         Assert.DoesNotContain(result.GeneratorDiagnostics, d => d.Id == "CS8785");

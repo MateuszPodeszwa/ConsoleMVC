@@ -44,12 +44,12 @@ public sealed class CreateViewCodeFix : CodeFixProvider
         {
             if (!diagnostic.Properties.TryGetValue(ControllerProperty, out var controller) || controller is null
                 || !diagnostic.Properties.TryGetValue(ViewProperty, out var view) || view is null
-                || !IsName(controller) || !IsName(view))
+                || !controller.Split('/').All(IsName) || controller.Split('/').Length > 2 || !IsName(view))
                 continue;
 
             diagnostic.Properties.TryGetValue(ModelProperty, out var model);
             var project = context.Document.Project;
-            var title = $"Create view Views/{controller}/{view}View.cvw";
+            var title = $"Create view {string.Join("/", Folders(controller))}/{view}View.cvw";
 
             context.RegisterCodeFix(
                 CodeAction.Create(title, cancellationToken => CreateViewAsync(project, controller, view, model, cancellationToken), title),
@@ -60,10 +60,11 @@ public sealed class CreateViewCodeFix : CodeFixProvider
     }
 
     /// <summary>
-    /// Adds the view to the project as an additional file in <c>Views/{controller}</c>.
+    /// Adds the view to the project as an additional file in <c>Views/{controller}</c>, or in
+    /// <c>Areas/{area}/Views/{controller}</c> for an area's controller (<c>Admin/Users</c>).
     /// </summary>
     /// <param name="project">The project.</param>
-    /// <param name="controller">The controller name, which is the view's folder.</param>
+    /// <param name="controller">The controller's route name, <c>Orders</c> or <c>Admin/Users</c>, which gives the view's folder.</param>
     /// <param name="view">The view name, without the <c>View</c> suffix.</param>
     /// <param name="model">The model's type, or <see langword="null"/> for <c>object</c>.</param>
     /// <param name="cancellationToken">Cancels the fix.</param>
@@ -73,14 +74,22 @@ public sealed class CreateViewCodeFix : CodeFixProvider
     {
         var fileName = view + "View.cvw";
         var folder = Path.GetDirectoryName(project.FilePath ?? "") ?? "";
-        var path = Path.Combine(folder, "Views", controller, fileName);
+        var folders = Folders(controller);
+        var path = Path.Combine([folder, ..folders, fileName]);
 
         if (project.AdditionalDocuments.Any(d => string.Equals(d.FilePath, path, System.StringComparison.OrdinalIgnoreCase)))
             return Task.FromResult(project.Solution);
 
         var text = SourceText.From(Content(view, model));
-        var document = project.AddAdditionalDocument(fileName, text, ["Views", controller], path);
+        var document = project.AddAdditionalDocument(fileName, text, folders, path);
         return Task.FromResult(document.Project.Solution);
+    }
+
+    /// <summary>The folders of a controller's views: <c>Views/Orders</c>, or <c>Areas/Admin/Views/Users</c>.</summary>
+    private static string[] Folders(string controller)
+    {
+        var slash = controller.LastIndexOf('/');
+        return slash < 0 ? ["Views", controller] : ["Areas", controller.Substring(0, slash), "Views", controller.Substring(slash + 1)];
     }
 
     /// <summary>The new view: its model, a heading and a way back.</summary>

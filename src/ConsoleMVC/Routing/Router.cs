@@ -182,8 +182,10 @@ public class Router
 
         if (!_controllers.TryGetValue(controllerName, out var type))
         {
+            var inAreas = _controllers.Keys.Where(k => k.EndsWith("/" + controllerName, StringComparison.OrdinalIgnoreCase)).ToList();
             throw new InvalidOperationException(
                 $"Controller '{controllerName}' not found. " +
+                (inAreas.Count > 0 ? $"It is in an area: navigate to {string.Join(" or ", inAreas.Select(k => $"'{k}/…'"))}. " : "") +
                 $"Available controllers: {string.Join(", ", _controllers.Keys)}.");
         }
 
@@ -200,10 +202,12 @@ public class Router
 
         if (!_views.TryGetValue(ViewKey(controllerName, actionName), out var type))
         {
+            var slash = controllerName.LastIndexOf('/');
+            var folder = slash < 0 ? $"Views/{controllerName}" : $"Areas/{controllerName[..slash]}/Views/{controllerName[(slash + 1)..]}";
             throw new InvalidOperationException(
                 $"View '{actionName}' not found for controller '{controllerName}'. " +
-                $"Expected 'Views/{controllerName}/{actionName}View.cvw' " +
-                $"(class '{actionName}View' in namespace '*.Views.{controllerName}').");
+                $"Expected '{folder}/{actionName}View.cvw' " +
+                $"(class '{actionName}View' in namespace '*.{folder.Replace('/', '.')}').");
         }
 
         return type;
@@ -232,8 +236,7 @@ public class Router
                                               && controllerBaseType.IsAssignableFrom(t)
                                               && t.Name.EndsWith("Controller", StringComparison.Ordinal)))
         {
-            var name = type.Name[..^"Controller".Length];
-            Register(_controllers, "Controller", name, type);
+            Register(_controllers, "Controller", ControllerKey(type), type);
         }
     }
 
@@ -260,11 +263,61 @@ public class Router
                 continue;
             }
 
-            var controllerName = segments[^1];
+            // *.Areas.{Area}.Views.{Controller}: the view of an area's controller
+            var controllerName = segments.Length >= 4 && segments[^4] == "Areas" ? segments[^3] + "/" + segments[^1] : segments[^1];
             var actionName = type.Name[..^"View".Length];
 
             Register(_views, "View", ViewKey(controllerName, actionName), type);
         }
+    }
+
+    /// <summary>
+    /// Returns the route name of a controller type: its name without <c>Controller</c>, preceded by its area when it has
+    /// one (<see cref="AreaAttribute"/>, or a namespace containing <c>.Areas.{Area}.</c>), e.g. <c>Admin/Users</c>.
+    /// </summary>
+    /// <param name="controllerType">The controller type.</param>
+    /// <returns>The name used in routes.</returns>
+    /// <example><code>Router.ControllerKey(typeof(UsersController)); // "Admin/Users" in MyApp.Areas.Admin.Controllers</code></example>
+    public static string ControllerKey(Type controllerType)
+    {
+        ArgumentNullException.ThrowIfNull(controllerType);
+
+        var name = controllerType.Name.EndsWith("Controller", StringComparison.Ordinal) && controllerType.Name.Length > "Controller".Length
+            ? controllerType.Name[..^"Controller".Length]
+            : controllerType.Name;
+
+        return AreaOf(controllerType) is { } area ? area + "/" + name : name;
+    }
+
+    /// <summary>The area of a controller type: its <see cref="AreaAttribute"/>, or the segment after <c>Areas</c> in its namespace.</summary>
+    private static string? AreaOf(Type controllerType)
+    {
+        if (controllerType.GetCustomAttribute<AreaAttribute>(inherit: true) is { Name: { Length: > 0 } named })
+            return named.Trim();
+
+        var segments = (controllerType.Namespace ?? "").Split('.');
+        var index = Array.LastIndexOf(segments, "Areas");
+        return index >= 0 && index + 1 < segments.Length ? segments[index + 1] : null;
+    }
+
+    /// <summary>
+    /// Returns the controller a navigation means: <paramref name="controller"/> as it is when it names an area or the
+    /// current screen is outside one; otherwise the same name in the current screen's area, when that area has it.
+    /// </summary>
+    /// <param name="controller">The controller named by the navigation, e.g. <c>Portal</c>.</param>
+    /// <param name="current">The controller of the current screen, e.g. <c>Admin/Users</c>.</param>
+    /// <returns>For example <c>Admin/Portal</c>, when the Admin area has a Portal controller.</returns>
+    /// <example><code>router.Qualify("Portal", "Admin/Users"); // "Admin/Portal"</code></example>
+    public string Qualify(string controller, string? current)
+    {
+        ArgumentNullException.ThrowIfNull(controller);
+
+        var slash = current?.LastIndexOf('/') ?? -1;
+        if (controller.Contains('/') || slash <= 0)
+            return controller;
+
+        var inArea = current![..slash] + "/" + controller;
+        return _controllers.ContainsKey(inArea) ? inArea : controller;
     }
 
     /// <summary>

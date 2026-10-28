@@ -37,6 +37,16 @@ public class RouteContext
     /// </summary>
     public IReadOnlyDictionary<string, string>? RouteValues { get; init; }
 
+    /// <summary>
+    /// Gets the area of the controller (<c>Admin</c> for <c>Admin/Users</c>), or <see langword="null"/> outside an area.
+    /// </summary>
+    /// <example><code>if (route.Area == "Admin") { /* … */ }</code></example>
+    public string? Area => Controller.LastIndexOf('/') is var slash and > 0 ? Controller[..slash] : null;
+
+    /// <summary>Gets the controller's name without its area: <c>Users</c> for <c>Admin/Users</c>.</summary>
+    /// <example><code>var label = route.ControllerName;</code></example>
+    public string ControllerName => Controller[(Controller.LastIndexOf('/') + 1)..];
+
     /// <summary>Returns the route as <c>Controller/Action</c>.</summary>
     /// <returns>For example <c>"Home/Index"</c>.</returns>
     /// <example><code>logger.LogInformation("Showing {Route}", context.Route);</code></example>

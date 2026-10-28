@@ -27,16 +27,52 @@ internal static class RouteSymbols
     /// <summary>The navigation result returned by views.</summary>
     public const string NavigationResultType = "ConsoleMVC.Mvc.NavigationResult";
 
+    /// <summary>The attribute that puts a controller in an area.</summary>
+    public const string AreaAttributeType = "ConsoleMVC.Mvc.AreaAttribute";
+
     /// <summary>
     /// Returns the route name of a controller (<c>Orders</c> for <c>OrdersController</c>), or <see langword="null"/>
     /// when the type is not one the router discovers: a non-abstract, non-generic class named <c>*Controller</c>
     /// deriving from <see cref="ControllerType"/>.
     /// </summary>
-    public static string? ControllerName(INamedTypeSymbol type) =>
-        type.TypeKind == TypeKind.Class && !type.IsAbstract && !type.IsGenericType
-        && type.Name.EndsWith("Controller") && type.Name.Length > "Controller".Length && DerivesFrom(type, ControllerType)
-            ? type.Name.Substring(0, type.Name.Length - "Controller".Length)
-            : null;
+    public static string? ControllerName(INamedTypeSymbol type)
+    {
+        if (type.TypeKind != TypeKind.Class || type.IsAbstract || type.IsGenericType
+            || !type.Name.EndsWith("Controller") || type.Name.Length <= "Controller".Length || !DerivesFrom(type, ControllerType))
+            return null;
+
+        var name = type.Name.Substring(0, type.Name.Length - "Controller".Length);
+        return AreaOf(type) is { } area ? area + "/" + name : name;
+    }
+
+    /// <summary>A controller's area, as the runtime finds it: <c>[Area("…")]</c> (also inherited), or the namespace segment after <c>Areas</c>.</summary>
+    private static string? AreaOf(INamedTypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            var attribute = current.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == AreaAttributeType);
+            if (attribute is { ConstructorArguments.Length: 1 } && attribute.ConstructorArguments[0].Value is string { Length: > 0 } named)
+                return named.Trim();
+        }
+
+        var segments = type.ContainingNamespace?.ToDisplayString().Split('.') ?? [];
+        var index = System.Array.LastIndexOf(segments, "Areas");
+        return index >= 0 && index + 1 < segments.Length ? segments[index + 1] : null;
+    }
+
+    /// <summary>
+    /// The controller a navigation means, as the runtime resolves it: inside an area (<paramref name="current"/> is
+    /// <c>Area/Controller</c>), a controller named without an area is the area's own when it has one.
+    /// </summary>
+    public static string Qualify(string controller, string? current, System.Func<string, bool> exists)
+    {
+        var slash = current?.LastIndexOf('/') ?? -1;
+        if (controller.Contains("/") || slash <= 0)
+            return controller;
+
+        var inArea = current!.Substring(0, slash) + "/" + controller;
+        return exists(inArea) ? inArea : controller;
+    }
 
     /// <summary>
     /// Returns the actions of a controller: public instance methods declared on it or a base class below
@@ -71,18 +107,22 @@ internal static class RouteSymbols
             || !DerivesFrom(type, ConsoleViewType))
             return null;
 
-        var segments = type.ContainingNamespace.ToDisplayString().Split('.');
-        if (segments.Length < 2 || segments[segments.Length - 2] != "Views")
-            return null;
-
-        return segments[segments.Length - 1] + "/" + type.Name.Substring(0, type.Name.Length - "View".Length);
+        return ViewController(type) is { } controller ? controller + "/" + type.Name.Substring(0, type.Name.Length - "View".Length) : null;
     }
 
-    /// <summary>The controller a view belongs to, from its namespace (<c>*.Views.{Controller}</c>), or <see langword="null"/>.</summary>
+    /// <summary>
+    /// The controller a view belongs to, from its namespace (<c>*.Views.{Controller}</c>, or <c>Area/Controller</c> for
+    /// <c>*.Areas.{Area}.Views.{Controller}</c>), or <see langword="null"/>.
+    /// </summary>
     public static string? ViewController(INamedTypeSymbol type)
     {
         var segments = type.ContainingNamespace?.ToDisplayString().Split('.') ?? [];
-        return segments.Length >= 2 && segments[segments.Length - 2] == "Views" ? segments[segments.Length - 1] : null;
+        if (segments.Length < 2 || segments[segments.Length - 2] != "Views")
+            return null;
+
+        return segments.Length >= 4 && segments[segments.Length - 4] == "Areas"
+            ? segments[segments.Length - 3] + "/" + segments[segments.Length - 1]
+            : segments[segments.Length - 1];
     }
 
     /// <summary>An <c>ActionResult</c>, or a <c>Task</c> or <c>ValueTask</c> of one, as the router accepts.</summary>

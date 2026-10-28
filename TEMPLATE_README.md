@@ -46,6 +46,7 @@ The template includes working examples of:
 - **Form data posting with model binding**: a greeting form with a text `<input>`, a colour `<select>` (arrow keys in a terminal) and a `<checkbox>`, posted to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
 - **Logging**: `Program.cs` sends logs to `logs/app.log` with `builder.Logging.AddFile`, since the console shows the application
 - **Configuration**: the greeting's salutation comes from the `Greeting` section of `appsettings.json` through `IOptions<GreetingOptions>`; try `dotnet run -- --Greeting:Salutation=Hi`
+- **Areas**: the feature tour's settings page is in the Admin area, `Areas/Admin/Controllers/SettingsController.cs` and `Areas/Admin/Views/Settings/IndexView.cvw`, reached with `nav="Admin/Settings/Index"`
 - **Localisation**: the greeting form's text comes from `Resources/SharedResource.resx`, with a Polish translation (including the framework's prompts and the validation messages): try `dotnet run -- --ConsoleMVC:Culture=pl-PL`
 - **Accessibility**: run with `dotnet run -- --ConsoleMVC:ScreenReader=true` for plain text a screen reader reads well, or `--ConsoleMVC:HighContrast=true` for bold, bright colours
 - **Full screen and scrolling**: `Program.cs` sets `builder.FullScreen = true`, so the app runs on the alternate screen and your scrollback comes back afterwards; the feature tour's table is paged with `<scroll height="12">`

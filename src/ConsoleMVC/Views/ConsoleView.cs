@@ -49,7 +49,7 @@ public abstract class ConsoleView : ConsoleViewBase
         {
             throw new InvalidOperationException(
                 $"Menu option '{option.Key}' in view '{GetType().Name}' has an invalid target '{target}'. " +
-                "Use 'Controller/Action' or 'Action', optionally followed by '?key=value'.");
+                "Use 'Area/Controller/Action', 'Controller/Action' or 'Action', optionally followed by '?key=value'.");
         }
 
         var formData = option.PostForm ? new Dictionary<string, string>(Form, StringComparer.OrdinalIgnoreCase) : null;

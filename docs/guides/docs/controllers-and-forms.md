@@ -57,6 +57,7 @@ A view ends by returning a `NavigationResult`, or with a `<menu>`, which returns
 | `NavigationResult.To("Controller", "Action", formData)` | Go to an action and post form data |
 | `NavigationResult.ToAction("Action")` / `ToAction("Action", formData)` | The same, on the current controller |
 | `NavigationResult.To("Orders/Details?id=42")` | Go to an action with [route values](#route-values) |
+| `NavigationResult.To("Admin/Users/Index")` | Go to an action in an [area](areas-and-modules.md) |
 | `NavigationResult.Back()` | Return to the previous screen (the same as a menu option marked `back`) |
 | `NavigationResult.Quit()` | Exit the application |
 

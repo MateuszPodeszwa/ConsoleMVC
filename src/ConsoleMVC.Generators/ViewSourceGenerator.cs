@@ -198,9 +198,15 @@ public class ViewSourceGenerator : IIncrementalGenerator
             return;
         }
 
-        if (!IsValidName(info.ControllerName))
+        if (info.Area is { } area && !IsValidName(area))
         {
-            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ControllerName, "controller folder"));
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), area, "area folder"));
+            return;
+        }
+
+        if (!IsValidName(info.ControllerFolder))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CvwDiagnostics.InvalidIdentifier, Location.Create(path, default, default), info.ControllerFolder, "controller folder"));
             return;
         }
 

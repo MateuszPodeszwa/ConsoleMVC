@@ -382,7 +382,7 @@ internal sealed class ChoiceAttributeType : AttributeType
 internal sealed class RouteAttributeType : AttributeType
 {
     /// <inheritdoc />
-    public override string Description => "a route such as 'Home/Index', 'Index' or 'Orders/Details?id=42'";
+    public override string Description => "a route such as 'Home/Index', 'Index', 'Admin/Users/Index' or 'Orders/Details?id=42'";
 
     /// <inheritdoc />
     public override bool AllowsInterpolation => true;
@@ -396,7 +396,7 @@ internal sealed class RouteAttributeType : AttributeType
         var query = text.IndexOf('?');
         var parts = (query < 0 ? text : text.Substring(0, query)).Split('/');
 
-        if (parts.Length > 2 || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
+        if (parts.Length > 3 || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
             return false;
 
         // Route values: key=value pairs separated by '&'; every key must have a name

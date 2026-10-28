@@ -18,6 +18,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 
 - [C-View Markup 1.0](docs/guides/docs/c-view-markup.md): text, boxes, tables, column layouts that stack on narrow terminals, themes with `class="…"`, inputs, menus and validation messages
 - [Partial views](docs/design/partial-views.md) and [layouts](docs/design/layout-views.md): reusable markup in `Views/Shared`, checked at build time
+- [Areas and modules](docs/guides/docs/areas-and-modules.md): `Areas/{Area}` with `Area/Controller/Action` routes, and feature modules from other assemblies with `builder.AddModule`
 - [Localisation](docs/guides/docs/localisation.md): `IStringLocalizer` in views, translated framework and validation messages, and the culture chosen with a setting
 - [Accessibility](docs/guides/docs/accessibility.md): a screen-reader mode without box drawing, and a high-contrast theme, chosen by users with a setting
 - [Full screen and scrolling](docs/design/full-screen.md): `builder.FullScreen = true` on the alternate screen, and `<scroll>` to page long content
@@ -54,7 +55,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 - [ ] **IDE support for markup**: syntax highlighting, completion and a live preview for C-View Markup in Rider and VS Code (the Rider plugin currently treats markup as plain text)
 - [ ] **Native AOT and trimming**: a generated route table instead of reflection, for instant start-up and single-file tools
 - [ ] **Remote sessions**: serve a ConsoleMVC application over SSH or a web terminal, one session per user
-- [ ] **Areas and modules**: group large applications into areas, and load feature modules from other assemblies
 - [ ] **Mouse support**: click menu options and buttons in terminals that report mouse events
 
 ---

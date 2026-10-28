@@ -56,12 +56,13 @@ public static class RouteValues
     }
 
     /// <summary>
-    /// Splits a navigation target into its controller, action and route values: <c>Controller/Action?key=value&amp;…</c>
-    /// or <c>Action?…</c>. Keys and values are URL-decoded; a key without <c>=</c> gets an empty value.
+    /// Splits a navigation target into its controller, action and route values: <c>Area/Controller/Action?…</c> (the
+    /// controller is then <c>Area/Controller</c>), <c>Controller/Action?key=value&amp;…</c> or <c>Action?…</c>. Keys and
+    /// values are URL-decoded; a key without <c>=</c> gets an empty value.
     /// </summary>
     /// <param name="target">The target, e.g. <c>"Orders/Details?id=42"</c>.</param>
     /// <returns>The controller (<see langword="null"/> for the current one), the action, and the values (<see langword="null"/> when there are none).</returns>
-    /// <exception cref="ArgumentException">Thrown when the target is not <c>Controller/Action</c> or <c>Action</c>.</exception>
+    /// <exception cref="ArgumentException">Thrown when the target is not <c>Area/Controller/Action</c>, <c>Controller/Action</c> or <c>Action</c>.</exception>
     /// <example><code>var (controller, action, values) = RouteValues.ParseTarget("Orders/Details?id=42");</code></example>
     public static (string? Controller, string Action, Dictionary<string, string>? Values) ParseTarget(string target)
     {
@@ -70,8 +71,8 @@ public static class RouteValues
         var query = target.IndexOf('?');
         var path = (query < 0 ? target : target[..query]).Trim();
         var parts = path.Split('/');
-        if (parts.Length > 2 || parts.Any(p => p.Trim().Length == 0))
-            throw new ArgumentException($"'{target}' is not a valid navigation target. Use 'Controller/Action' or 'Action', optionally followed by '?key=value'.", nameof(target));
+        if (parts.Length > 3 || parts.Any(p => p.Trim().Length == 0))
+            throw new ArgumentException($"'{target}' is not a valid navigation target. Use 'Area/Controller/Action', 'Controller/Action' or 'Action', optionally followed by '?key=value'.", nameof(target));
 
         Dictionary<string, string>? values = null;
         if (query >= 0)
@@ -88,7 +89,12 @@ public static class RouteValues
             }
         }
 
-        return parts.Length == 2 ? (parts[0].Trim(), parts[1].Trim(), values) : (null, parts[0].Trim(), values);
+        return parts.Length switch
+        {
+            3 => (parts[0].Trim() + "/" + parts[1].Trim(), parts[2].Trim(), values),
+            2 => (parts[0].Trim(), parts[1].Trim(), values),
+            _ => (null, parts[0].Trim(), values)
+        };
     }
 
     private static void Add(Dictionary<string, string> result, string key, object? value)

@@ -215,6 +215,45 @@ public class MvcApplicationBuilder
     /// <example><code>builder.FullScreen = true;</code></example>
     public bool FullScreen { get; set; }
 
+    private readonly List<System.Reflection.Assembly> _modules = [];
+
+    /// <summary>Gets the assemblies of the modules added with <see cref="AddModule{TModule}"/>, in the order they were added.</summary>
+    /// <example><code>foreach (var module in builder.Modules) Console.WriteLine(module.GetName().Name);</code></example>
+    public IReadOnlyList<System.Reflection.Assembly> Modules => _modules;
+
+    /// <summary>
+    /// Adds a feature module: the controllers and views of <typeparamref name="TModule"/>'s assembly are discovered with the
+    /// application's, and <see cref="IMvcModule.Configure"/> registers its services. Adding a module twice does nothing.
+    /// </summary>
+    /// <typeparam name="TModule">The module, in the assembly that holds its controllers and views.</typeparam>
+    /// <returns>This builder, for chaining.</returns>
+    /// <example><code>builder.AddModule&lt;BillingModule&gt;().AddModule&lt;ReportsModule&gt;();</code></example>
+    public MvcApplicationBuilder AddModule<TModule>() where TModule : IMvcModule, new()
+    {
+        var assembly = typeof(TModule).Assembly;
+        if (_modules.Contains(assembly))
+            return this;
+
+        _modules.Add(assembly);
+        new TModule().Configure(this);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds the controllers and views of <paramref name="assembly"/>, for a module without an <see cref="IMvcModule"/> class.
+    /// </summary>
+    /// <param name="assembly">The module's assembly.</param>
+    /// <returns>This builder, for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="assembly"/> is <see langword="null"/>.</exception>
+    /// <example><code>builder.AddModule(typeof(Billing.InvoicesController).Assembly);</code></example>
+    public MvcApplicationBuilder AddModule(System.Reflection.Assembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        if (!_modules.Contains(assembly))
+            _modules.Add(assembly);
+        return this;
+    }
+
     /// <summary>
     /// Gets the localisation options: the run's culture, the framework's own messages and translated validation messages.
     /// <c>IStringLocalizer&lt;T&gt;</c> is registered for views and controllers either way.

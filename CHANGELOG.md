@@ -2,6 +2,24 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.30.0]
+
+### Added
+
+- **Areas** ([design](docs/design/areas-and-modules.md), [guide](docs/guides/docs/areas-and-modules.md)): controllers in
+  `*.Areas.{Area}.*` namespaces or with `[Area("…")]` (`AreaAttribute`) have routes such as `Admin/Users/Index`, and
+  their views live in `Areas/{Area}/Views/{Controller}` (namespace `*.Areas.{Area}.Views.{Controller}`). Inside an area,
+  a controller named without one is the area's own when it has one. `RouteContext.Area` and `ControllerName`,
+  `Router.ControllerKey` and `Router.Qualify`. The build checks (CVW119 to CVW121) and the Create view fix know areas.
+- **Modules**: `builder.AddModule<TModule>()` (`IMvcModule.Configure`) and `builder.AddModule(assembly)` add the
+  controllers and views of other assemblies; `builder.Modules`.
+- The template's settings page is in an Admin area.
+
+### Changed
+
+- Navigation targets may have three parts (`Area/Controller/Action`); four or more are still invalid.
+- The package's build props include `Areas/**/*.cvw` as views.
+
 ## [1.29.0]
 
 ### Added
