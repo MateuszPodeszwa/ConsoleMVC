@@ -102,7 +102,7 @@ public sealed class ScrollElement : ContainerElement
             var page = lines.Skip(top).Take(size).ToList();
             if (withStatus)
             {
-                var status = $"Lines {top + 1}-{top + page.Count} of {lines.Count}  ↑↓ PgUp PgDn Home End  Enter continues";
+                var status = FrameworkText.Format(FrameworkText.Current.ScrollStatus, top + 1, top + page.Count, lines.Count);
                 page.Add(new RenderedLine([new Span(TextWidth.Truncate(status, width), TextStyle.Plain.WithForeground(colour))]));
             }
 

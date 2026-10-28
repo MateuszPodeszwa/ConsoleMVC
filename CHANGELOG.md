@@ -2,6 +2,22 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.29.0]
+
+### Added
+
+- **Localisation** ([design](docs/design/localisation.md), [guide](docs/guides/docs/localisation.md)):
+  `IStringLocalizer<T>` is registered for views and controllers. `builder.Localization` (`MvcLocalizationOptions`)
+  sets the run's `Culture` (or the `ConsoleMVC:Culture` setting), the framework's own messages (`FrameworkText`,
+  translated with `FrameworkTextResource` or set in code) and `LocalizeValidation`: DataAnnotations `ErrorMessage`
+  and `[Display(Name)]` are translated and formatted with the attribute's own arguments.
+- The template translates the greeting form, the framework's prompts and the validation messages into Polish.
+
+### Changed
+
+- Every built-in message and prompt (menus, fields, `<scroll>`, binding errors) now comes from `FrameworkText.Current`;
+  the English defaults are unchanged.
+
 ## [1.28.0]
 
 ### Added

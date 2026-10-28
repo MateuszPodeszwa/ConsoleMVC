@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.28: accessibility, with a screen-reader mode (`--ConsoleMVC:ScreenReader=true`) and a high-contrast theme. 1.27 added full-screen mode and `<scroll>`, 1.26 `<markdown>`, 1.25 charts (`<bar-chart>`, `<sparkline>`). All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.29: localisation, with `IStringLocalizer` in views, translated framework and validation messages, and the run's culture (`--ConsoleMVC:Culture=pl-PL`). 1.28 added a screen-reader mode and a high-contrast theme, 1.27 full-screen mode and `<scroll>`, 1.26 `<markdown>`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -24,6 +24,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Charts**: `<bar-chart>` with `<bar label value />` (bars ending in eighths of a cell) and `<sparkline values="@Model.History" />` for dashboards
 - **Live screens**: `<progress>` and `<spinner>` redraw in place while an async action works (`ILiveDisplay`), and `@refresh 5s` redraws a dashboard with fresh data until the user starts typing
 - **Declarative input and navigation**: `<input>`, `<number>` and `<date>` collect form values, `<select>` (with type-to-filter), `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Localisation**: `@inject IStringLocalizer<SharedResource> L` in views, the framework's own messages and DataAnnotations messages translated from `.resx` resources, and the culture chosen in code or with `--ConsoleMVC:Culture=pl-PL`
 - **Accessible**: users turn on a screen-reader mode (plain text, tables read as `Header: value`, typed answers) or a high-contrast theme with `--ConsoleMVC:ScreenReader=true` or `--ConsoleMVC:HighContrast=true`, no new build needed
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
@@ -67,6 +68,7 @@ This scaffolds a ready-to-run application with the following structure:
 MyApp/
   MyApp.csproj
   Program.cs
+  SharedResource.cs             # Names Resources/SharedResource.resx (English) and .pl.resx (Polish)
   appsettings.json              # Settings read by builder.Configuration
   MyApp.Tests/                  # Only with --tests: xUnit tests using ConsoleMVC.Testing
   Controllers/
@@ -810,6 +812,7 @@ app.Run();
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
 | `ScreenReader` | Plain text for screen readers: tables read as `Header: value`, no borders, bars or clearing ([Accessibility](docs/guides/docs/accessibility.md)) |
 | `HighContrast` | Bold, bright theme colours with no dim text (`Theme.CreateHighContrast()`) |
+| `Localization` | Culture, translated framework messages and validation messages ([Localisation](docs/guides/docs/localisation.md)) |
 | `FullScreen` | Run on the terminal's alternate screen; the user's scrollback is restored when the application ends |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |

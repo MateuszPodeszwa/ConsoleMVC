@@ -78,7 +78,7 @@ public sealed class InputElement : Element, IFormField
                 return value;
 
             var error = new TextElement { Foreground = Colour.Red };
-            error.AppendText(RequiredMessage);
+            error.AppendText(FrameworkText.Current.Required);
             renderer.Render(error);
         }
     }

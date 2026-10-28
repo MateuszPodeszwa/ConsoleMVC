@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Reflection;
 using ConsoleMVC.Rendering;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -58,6 +60,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     private int _running;
     private readonly bool _clearScreenBetweenViews;
     private readonly bool _fullScreen;
+    private readonly MvcLocalizationOptions _localization;
     private RouteContext _currentRoute;
 
     /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
@@ -83,6 +86,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         _services = services;
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
         _fullScreen = builder.FullScreen;
+        _localization = builder.Localization.Copy();
     }
 
     /// <summary>
@@ -322,16 +326,58 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         if (Interlocked.Exchange(ref _running, 1) == 1)
             throw new InvalidOperationException("The application is already running.");
 
+        var culture = CultureInfo.CurrentCulture;
+        var uiCulture = CultureInfo.CurrentUICulture;
         try
         {
+            if (ResolveCulture() is { } chosen)
+            {
+                CultureInfo.CurrentCulture = chosen;
+                CultureInfo.CurrentUICulture = chosen;
+            }
+
+            using var text = FrameworkText.Use(ResolveFrameworkText());
             var pipeline = _pipeline ??= ActionPipeline.Build(_middleware, InvokeActionAsync);
             await RunOnceAsync(pipeline, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = uiCulture;
             Volatile.Write(ref _running, 0);
         }
     }
+
+    /// <summary>The culture chosen in code, or else in the <see cref="MvcLocalizationOptions.CultureSetting"/> setting.</summary>
+    private CultureInfo? ResolveCulture()
+    {
+        if (_localization.Culture is { } culture)
+            return culture;
+
+        var name = Configuration[MvcLocalizationOptions.CultureSetting];
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        try
+        {
+            return CultureInfo.GetCultureInfo(name.Trim(), predefinedOnly: true);
+        }
+        catch (CultureNotFoundException)
+        {
+            throw new InvalidOperationException(
+                $"The {MvcLocalizationOptions.CultureSetting} setting '{name}' is not a known culture; use a name such as 'en-GB' or 'pl-PL'.");
+        }
+    }
+
+    /// <summary>The framework's messages, translated from <see cref="MvcLocalizationOptions.FrameworkTextResource"/> when set.</summary>
+    private FrameworkText ResolveFrameworkText() =>
+        _localization.FrameworkTextResource is { } resource
+            ? FrameworkText.FromLocalizer(_services.GetRequiredService<IStringLocalizerFactory>().Create(resource), _localization.Text)
+            : _localization.Text;
+
+    /// <summary>Returns the localiser for validation messages of <paramref name="type"/>, when they are translated.</summary>
+    private IStringLocalizer ValidationLocalizer(Type type) =>
+        _services.GetRequiredService<IStringLocalizerFactory>().Create(_localization.ValidationResource ?? type);
 
     /// <summary>Discovers controllers and views, then runs navigation cycles until a view quits.</summary>
     private async Task RunOnceAsync(ActionDelegate pipeline, CancellationToken cancellationToken)
@@ -528,10 +574,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         var modelState = new ModelStateDictionary();
         var args = ModelBinder.BindParameters(actionMethod, route.FormData, route.RouteValues, modelState);
         if (route.FormData is not null)
-            ModelValidator.Validate(actionMethod, args, modelState);
+            ModelValidator.Validate(actionMethod, args, modelState, _localization.LocalizeValidation ? ValidationLocalizer : null);
 
         SupplyCancellationTokens(actionMethod, args, context.Cancellation);
         controller.ModelState = modelState;
+        controller.ValidationLocalizer = _localization.LocalizeValidation ? ValidationLocalizer : null;
         context.ModelState = modelState;
 
         context.Result = await ActionInvoker.InvokeAsync(actionMethod, controller, args).ConfigureAwait(false);

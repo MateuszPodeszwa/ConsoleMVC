@@ -33,6 +33,7 @@ await app.RunAsync();
 | `ClearScreenBetweenViews` | Clear the console before each view |
 | `ScreenReader` | Plain text for screen readers: no borders or bars, typed answers, no clearing; also on with the `ConsoleMVC:ScreenReader` setting (see [Accessibility](accessibility.md)) |
 | `HighContrast` | Use `Theme.CreateHighContrast()`; also on with the `ConsoleMVC:HighContrast` setting |
+| `Localization` | The run's culture, the framework's messages (`FrameworkText`) and translated validation messages; see [Localisation](localisation.md) |
 | `FullScreen` | Run on the terminal's alternate screen, like a full-screen editor; the user's scrollback comes back when the application ends, also after an error or Ctrl+C. Ignored when the output is not a terminal that supports it |
 | `ApplicationAssembly` | Where controllers and views are discovered |
 | `Renderer` | How markup is drawn: colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output are detected, and the screen is redrawn when the terminal is resized ([details](c-view-markup.md#resizing-the-terminal)) |

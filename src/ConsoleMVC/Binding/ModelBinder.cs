@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using ConsoleMVC.Rendering;
 
 namespace ConsoleMVC.Mvc;
 
@@ -385,7 +386,7 @@ internal static class ModelBinder
         if (modelState is null || string.IsNullOrWhiteSpace(raw))
             return;
 
-        modelState.AddBindingError(key, $"The value '{raw}' is not valid for {displayName}.");
+        modelState.AddBindingError(key, FrameworkText.Format(FrameworkText.Current.InvalidValue, raw, displayName));
     }
 
     private static object? DefaultOf(Type type) => type.IsValueType ? Activator.CreateInstance(type) : null;

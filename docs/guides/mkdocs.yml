@@ -44,4 +44,5 @@ nav:
   - Builder Options: configuration.md
   - Testing: testing.md
   - Accessibility: accessibility.md
+  - Localisation: localisation.md
   - API Reference: ../api/

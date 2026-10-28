@@ -1,5 +1,7 @@
 # Validation
 
+To show validation messages in the user's language, see [Localisation](localisation.md#validation-messages).
+
 Posted form data is validated **before the action runs** with the standard `System.ComponentModel.DataAnnotations`
 attributes, and the results are in `ModelState`, as in ASP.NET Core MVC.
 

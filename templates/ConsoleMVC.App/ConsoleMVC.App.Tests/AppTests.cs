@@ -1,3 +1,5 @@
+using System.Globalization;
+using ConsoleMVC.App;
 using ConsoleMVC.App.Controllers;
 using ConsoleMVC.App.Services;
 using ConsoleMVC.Testing;
@@ -12,10 +14,17 @@ namespace ConsoleMVC.App.Tests;
 public class AppTests
 {
     /// <summary>The application with the services Program.cs registers; replace any of them with a fake here.</summary>
-    private static MvcTestHost Host() => MvcTestHost.For<HomeController>(builder =>
+    private static MvcTestHost Host(string? culture = null) => MvcTestHost.For<HomeController>(builder =>
     {
         builder.Services.AddSingleton<IGreetingService, GreetingService>();
         builder.Services.Configure<GreetingOptions>(options => options.Salutation = "Hello");
+
+        // The localisation set up in Program.cs, in a fixed culture so the tests read the same everywhere
+        builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+        builder.Localization.Culture = CultureInfo.GetCultureInfo(culture ?? "en-GB");
+        builder.Localization.FrameworkTextResource = typeof(SharedResource);
+        builder.Localization.LocalizeValidation = true;
+        builder.Localization.ValidationResource = typeof(SharedResource);
     });
 
     [Fact]
@@ -74,5 +83,16 @@ public class AppTests
 
         Assert.Contains("Each page has its own Controller, View and Model", run.Screens[1]); // **bold** without the stars
         Assert.Contains("• Navigation with <menu>", run.Screens[1]);
+    }
+
+    [Fact]
+    public void GreetingForm_SpeaksPolish()
+    {
+        var run = Host("pl-PL").Run("2", "", "Ada", "3", "n", "q");
+
+        Assert.Contains("Formularz powitania", run.Screens[1]);
+        Assert.Contains("Imię:", run.Screens[1]);
+        Assert.Contains("To pole jest wymagane.", run.Screens[1]);      // the framework's own message, translated
+        Assert.Contains("Wybierz opcję:", run.Screens[0]);
     }
 }

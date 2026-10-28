@@ -111,7 +111,7 @@ public abstract class Controller
     protected bool TryValidateModel(object model)
     {
         ArgumentNullException.ThrowIfNull(model);
-        return ModelValidator.ValidateModel(model, ModelState);
+        return ModelValidator.ValidateModel(model, ModelState, ValidationLocalizer);
     }
 
     /// <summary>
@@ -177,4 +177,10 @@ public abstract class Controller
             ? name[..^"Controller".Length]
             : name;
     }
+
+    /// <summary>
+    /// Gets or sets the resources that translate validation messages, when
+    /// <see cref="MvcLocalizationOptions.LocalizeValidation"/> is on; assigned by the application before the action runs.
+    /// </summary>
+    internal Func<Type, Microsoft.Extensions.Localization.IStringLocalizer>? ValidationLocalizer { get; set; }
 }

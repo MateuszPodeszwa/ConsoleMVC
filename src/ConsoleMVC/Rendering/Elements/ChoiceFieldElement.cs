@@ -188,7 +188,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
                 if (!Required || fallback.Length > 0)
                     return fallback;
 
-                ShowError(renderer, InputElement.RequiredMessage);
+                ShowError(renderer, FrameworkText.Current.Required);
                 continue;
             }
 
@@ -206,7 +206,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
                     if (matches.Count == 1)
                         index = matches[0];
                     else if (matches.Count > 1)
-                        problem = string.Format(CultureInfo.InvariantCulture, AmbiguousMessage, token,
+                        problem = FrameworkText.Format(FrameworkText.Current.Ambiguous, token,
                             string.Join(", ", matches.Take(5).Select(i => _choices[i].LabelText)) + (matches.Count > 5 ? ", …" : ""));
                 }
 
@@ -221,13 +221,13 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
             if (unknown is not null)
             {
-                ShowError(renderer, problem ?? string.Format(CultureInfo.InvariantCulture, UnknownChoiceMessage, unknown));
+                ShowError(renderer, problem ?? FrameworkText.Format(FrameworkText.Current.UnknownChoice, unknown));
                 continue;
             }
 
             if (chosen.Count == 0 && Required)
             {
-                ShowError(renderer, InputElement.RequiredMessage);
+                ShowError(renderer, FrameworkText.Current.Required);
                 continue;
             }
 
@@ -258,7 +258,9 @@ public abstract class ChoiceFieldElement : Element, IFormField
     private string TypedPrompt()
     {
         var range = _choices.Count == 1 ? "1" : "1-" + _choices.Count.ToString(CultureInfo.InvariantCulture);
-        var prompt = AllowsSeveral ? $"Choose one or more of {range}, e.g. 1,{_choices.Count}" : "Choose " + range;
+        var prompt = AllowsSeveral
+            ? FrameworkText.Format(FrameworkText.Current.ChooseSeveral, range, "1," + _choices.Count.ToString(CultureInfo.InvariantCulture))
+            : FrameworkText.Format(FrameworkText.Current.ChooseOne, range);
 
         var defaults = DefaultIndices();
         if (defaults.Count > 0)
@@ -343,13 +345,13 @@ public abstract class ChoiceFieldElement : Element, IFormField
             case ConsoleKey.Enter:
                 if (!AllowsSeveral && position < 0)
                 {
-                    _error = string.Format(CultureInfo.InvariantCulture, NoMatchMessage, _filter);
+                    _error = FrameworkText.Format(FrameworkText.Current.NoMatch, _filter);
                     return KeyOutcome.Changed;
                 }
 
                 if (Required && SelectedIndices().Count == 0)
                 {
-                    _error = InputElement.RequiredMessage;
+                    _error = FrameworkText.Current.Required;
                     return KeyOutcome.Changed;
                 }
 

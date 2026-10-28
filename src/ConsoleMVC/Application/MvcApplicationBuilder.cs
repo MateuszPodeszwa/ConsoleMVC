@@ -215,6 +215,13 @@ public class MvcApplicationBuilder
     /// <example><code>builder.FullScreen = true;</code></example>
     public bool FullScreen { get; set; }
 
+    /// <summary>
+    /// Gets the localisation options: the run's culture, the framework's own messages and translated validation messages.
+    /// <c>IStringLocalizer&lt;T&gt;</c> is registered for views and controllers either way.
+    /// </summary>
+    /// <example><code>builder.Localization.Culture = CultureInfo.GetCultureInfo("pl-PL");</code></example>
+    public MvcLocalizationOptions Localization { get; } = new();
+
     /// <summary>The setting that turns on <see cref="ScreenReader"/>: <c>--ConsoleMVC:ScreenReader=true</c> or <c>ConsoleMVC__ScreenReader=true</c>.</summary>
     public const string ScreenReaderSetting = "ConsoleMVC:ScreenReader";
 
@@ -301,6 +308,7 @@ public class MvcApplicationBuilder
         services.TryAddSingleton<IConfiguration>(Configuration);
         services.TryAddSingleton(Environment);
         services.AddOptions();
+        services.AddLocalization(); // adds only what is missing, so an earlier AddLocalization(options => …) still applies
         services.AddLogging(logging => logging.AddConfiguration(Configuration.GetSection("Logging")));
 
         if (Input is not null)

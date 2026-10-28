@@ -1,3 +1,4 @@
+using ConsoleMVC.App;
 using ConsoleMVC.App.Services;
 using ConsoleMVC.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,13 @@ builder.Logging.AddFile("logs/app.log");
 
 // Run on the terminal's alternate screen, like a full-screen editor: your scrollback comes back when the app ends
 builder.FullScreen = true;
+
+// Localisation: views use IStringLocalizer<SharedResource> (Resources/SharedResource*.resx), and the framework's own
+// messages and validation messages are translated too. Try: dotnet run -- --ConsoleMVC:Culture=pl-PL
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+builder.Localization.FrameworkTextResource = typeof(SharedResource);
+builder.Localization.LocalizeValidation = true;
+builder.Localization.ValidationResource = typeof(SharedResource);
 
 // Accessibility: users choose without a new build, e.g. dotnet run -- --ConsoleMVC:ScreenReader=true
 // (plain text for screen readers) or --ConsoleMVC:HighContrast=true (bold, bright colours)

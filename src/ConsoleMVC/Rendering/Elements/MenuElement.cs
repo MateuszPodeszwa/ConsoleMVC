@@ -60,10 +60,10 @@ public sealed class MenuElement : Element
     private readonly List<MenuOptionElement> _options = [];
 
     /// <summary>Gets or sets the prompt written before reading the choice.</summary>
-    public string Prompt { get; set; } = DefaultPrompt;
+    public string Prompt { get; set; } = FrameworkText.Current.MenuPrompt;
 
     /// <summary>Gets or sets the message shown after an invalid choice.</summary>
-    public string ErrorMessage { get; set; } = DefaultErrorMessage;
+    public string ErrorMessage { get; set; } = FrameworkText.Current.MenuInvalidChoice;
 
     /// <summary>Gets or sets the colour of the <c>[key]</c> labels.</summary>
     public Colour KeyColour { get; set; }
