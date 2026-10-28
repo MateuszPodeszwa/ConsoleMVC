@@ -259,7 +259,9 @@ public class ViewSourceGenerator : IIncrementalGenerator
 
         var document = CvwDocumentParser.Parse(text.ToString(), MarkupSchema.Default);
 
-        IReadOnlyList<ParseDiagnostic> compositionErrors = document.HasErrors ? [] : PartialChecker.Check(document, info, partials);
+        IReadOnlyList<ParseDiagnostic> compositionErrors = document.HasErrors
+            ? []
+            : [..PartialChecker.Check(document, info, partials), ..ViewChecker.Check(document, info)];
 
         // Warnings only: the view is still generated
         IReadOnlyList<ParseDiagnostic> routeWarnings = document.HasErrors ? [] : RouteChecker.Check(document, info, routes);

@@ -111,8 +111,9 @@ public class GeneratorReviewRegressionTests
     {
         var result = ViewHarness.Generate("@inject TestApp.IFoo   IndexView\n<text>x</text>" + Quit, extraSource: Service);
 
-        var error = result.CompilationDiagnostics.First(d => d.Id == "CS0542");
-        Assert.Equal(23, error.Location.GetMappedLineSpan().StartLinePosition.Character);
+        // Named after its own class: reported by the generator at the name, not by the compiler (CS0542)
+        var error = result.GeneratorDiagnostics.Single(d => d.Id == "CVW007");
+        Assert.Equal(23, error.Location.GetLineSpan().StartLinePosition.Character);
     }
 
     [Fact]

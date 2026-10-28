@@ -34,13 +34,21 @@ internal static class CvwDocumentParser
     private const string RefreshDirective = "@refresh";
 
     /// <summary>
-    /// Names an <c>@inject</c> property may not use: the <c>Render</c> parameter and the members of
-    /// <c>ConsoleView</c>, which the property would hide.
+    /// Names an <c>@inject</c> property may not use: the <c>Render</c> parameter and every member a view can see on
+    /// <c>ConsoleViewBase</c>, <c>ConsoleView</c>, <c>ConsolePartialView</c>, <c>ConsoleLayoutView</c> and
+    /// <see cref="object"/>, which the property would hide or clash with. The generator tests read these members from
+    /// the real classes, so the list cannot fall behind them.
     /// </summary>
-    private static readonly string[] ReservedInjectNames =
+    internal static readonly string[] ReservedInjectNames =
     [
-        "Model", "ViewData", "ModelState", "Renderer", "Input", "Form", "Theme", "Services", "Render", "RenderInternal",
-        "ReadInput", "RunMenu", "PreparePartial", "Equals", "GetHashCode", "GetType", "ToString", "MemberwiseClone"
+        "Model",
+        // ConsoleViewBase
+        "ViewData", "ModelState", "Renderer", "Input", "Form", "Theme", "Services", "ReadInput", "ShowScroll", "ShortcutHints",
+        "NavigationHistory", "Breadcrumbs", "PreparePartial", "InjectServices", "RequireService",
+        // ConsoleView, ConsolePartialView, ConsoleLayoutView
+        "Render", "RenderInternal", "RunMenu", "RefreshInterval", "UseLayout", "RenderHeader", "RenderFooter",
+        // object
+        "Equals", "GetHashCode", "GetType", "ToString", "MemberwiseClone", "Finalize", "ReferenceEquals"
     ];
 
     /// <summary>Identifiers starting with this prefix are reserved for generated code.</summary>
