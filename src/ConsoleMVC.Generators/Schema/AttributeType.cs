@@ -47,6 +47,7 @@ internal abstract class AttributeType
     /// Gets a value indicating whether the value may be an expression (<c>width=@Model.Width</c>); <see langword="false"/>
     /// for a value the build must know, such as a partial's name.
     /// </summary>
+    /// <example><code>bool dynamic = new LiteralTextAttributeType().AllowsExpression; // false</code></example>
     public virtual bool AllowsExpression => true;
 
     /// <summary>
@@ -255,6 +256,7 @@ internal sealed class NumberListAttributeType : AttributeType
 internal sealed class DateAttributeType : AttributeType
 {
     /// <summary>The most days a relative date may be from today, as in <c>DateElement.TryParse</c>.</summary>
+    /// <example><code>var latest = "today+" + DateAttributeType.MaximumDays; // accepted; one more day is not</code></example>
     public const int MaximumDays = 100_000;
 
     /// <inheritdoc />
