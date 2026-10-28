@@ -89,7 +89,9 @@ Build(nodes):
         inline content                    → AppendText, with "{expression}" for each @expression; <br /> → AppendLineBreak
         block content                     → children; runs of text become an implicit <text> (as the emitter does)
     <partial name="X" />                  → Views/Shared/X.cvw (or the area's Shared folder), built in place (depth ≤ 8)
-    the view                              → drawn inside @layout's (or _Layout's) layout at its <body />
+    the view                              → drawn inside @layout's (or _Layout's) layout: the part before <body />,
+                                            then the view, with the part after <body /> just before the view's first
+                                            field or menu (or at the end), as ConsoleView.UseLayout draws it
 Render: Theme.CreateDefault() (or high contrast), MarkupRenderer at --width, one element after another
 Output: html  → <pre> with a <span style> per run of one style, colours from ConsolePalette
         text  → plain lines;  ansi → AnsiRenderTarget

@@ -41,7 +41,7 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
     public IReadOnlyList<Element> BuildView(CvwDocument document)
     {
         var page = new List<Element>();
-        BuildTopLevel(document.Body, page, body: null);
+        BuildTopLevel(document.Body, page);
 
         if (files.IsShared)
             return page;
@@ -64,23 +64,37 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
             return page;
         }
 
+        // The part before <body /> is drawn first; the part after it just before the view first waits for the user
+        // (its first field or menu, its partials' included), or at the end when it never waits, as ConsoleView.UseLayout does
+        var split = layout.Body.ToList().FindIndex(n => n is ElementNode { Schema.Tag: MarkupSchema.BodyTag });
         var framed = new List<Element>();
-        BuildTopLevel(layout.Body, framed, body: page);
+        BuildTopLevel(layout.Body.Take(split).ToList(), framed);
+
+        var footer = new List<Element>();
+        BuildTopLevel(layout.Body.Skip(split + 1).ToList(), footer);
+
+        var prompt = page.FindIndex(IsPrompt);
+        framed.AddRange(prompt < 0 ? [.. page, .. footer] : [.. page.Take(prompt), .. footer, .. page.Skip(prompt)]);
         return framed;
     }
 
-    /// <summary>Builds top-level nodes: elements, partials and the layout's body; C# is skipped.</summary>
+    /// <summary>Whether drawing <paramref name="element"/> waits for the user: a form field or a menu.</summary>
+    /// <param name="element">A top-level element.</param>
+    /// <returns><see langword="true"/> for <see cref="IFormField"/>s and <see cref="MenuElement"/>s.</returns>
+    /// <example><code>var first = elements.ToList().FindIndex(PreviewBuilder.IsPrompt);</code></example>
+    public static bool IsPrompt(Element element) => element is IFormField or MenuElement;
+
+    /// <summary>Builds top-level nodes: elements, partials and a shared view's <c>&lt;body /&gt;</c>; C# is skipped.</summary>
     /// <param name="nodes">The nodes.</param>
     /// <param name="output">Receives the elements.</param>
-    /// <param name="body">The page drawn at a layout's <c>&lt;body /&gt;</c>, or <see langword="null"/>.</param>
-    private void BuildTopLevel(IReadOnlyList<Node> nodes, List<Element> output, IReadOnlyList<Element>? body)
+    private void BuildTopLevel(IReadOnlyList<Node> nodes, List<Element> output)
     {
         foreach (var node in nodes.OfType<ElementNode>())
         {
             switch (node.Schema.Tag)
             {
                 case MarkupSchema.BodyTag:
-                    output.AddRange(body ?? [Note("the page's content")]);
+                    output.Add(Note("the page's content"));
                     break;
 
                 case MarkupSchema.PartialTag:
@@ -132,7 +146,7 @@ internal sealed class PreviewBuilder(Theme theme, IViewFiles files, List<string>
         }
 
         _partials.Push(name);
-        BuildTopLevel(partial.Body, output, body: null);
+        BuildTopLevel(partial.Body, output);
         _partials.Pop();
     }
 

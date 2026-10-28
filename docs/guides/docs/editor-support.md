@@ -31,13 +31,18 @@ Home › Page                                                 ConsoleMVC
 │  {Model.Message}  │
 ╰───────────────────╯
 
-[1] About
-[2] Greeting form
-[q] Exit
-Select an option:
 ──────────────────────────────────────────────────────────────────────
 Esc Back  Ctrl+X Quit
+[1] About
+[2] Greeting form
+[3] Calculator
+[4] Feature tour (tables)
+[q] Exit
+Select an option:
 ```
+
+The layout's separator and shortcuts come before the menu, as in the application: the part of a layout after
+`<body />` is drawn just before the view first waits for the user.
 
 | Option | Meaning |
 |---|---|
@@ -70,7 +75,7 @@ The tool reads markup, not C#, so a preview is a sketch of the screen rather tha
 | `@foreach`, `@if`, `@{ … }` | The code is skipped; elements inside loops are drawn once, and both branches of an `if` are drawn |
 | `values="@Model.Load"` on a chart, `value="@…"` on `<progress>` or `<bar>` | Sample numbers, so the chart or bar is visible |
 | `<partial name="Header" />` | The partial view from `Views/Shared` (an area's own `Shared` folder first), drawn in place |
-| The view's layout (`_Layout`, or `@layout Name`) | The view is drawn inside it, at `<body />`; `@layout none` draws the view alone |
+| The view's layout (`_Layout`, or `@layout Name`) | The view is drawn inside it, as in the application: the part before `<body />` first, the part after it just before the view's first `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>` (or at the end when there is none). `@layout none` draws the view alone |
 | A view in `Views/Shared` | Drawn on its own; `<body />` shows as `[the page's content]` |
 | `<menu>`, `<input>`, `<select>`, `<radio>`, `<checkbox>` | The first frame the user would see: options and prompt, labels and choices |
 | `<errors />` | A sample message, `{validation message}` |
