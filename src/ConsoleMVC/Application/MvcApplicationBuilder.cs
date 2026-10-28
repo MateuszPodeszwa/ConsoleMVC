@@ -208,6 +208,102 @@ public class MvcApplicationBuilder
     public bool ClearScreenBetweenViews { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets whether the application runs on the terminal's alternate screen, like a full-screen editor: the
+    /// user's scrollback is left untouched and comes back when the application ends (also after an error or Ctrl+C).
+    /// Defaults to <see langword="false"/>. Ignored when the output is not a terminal that supports it.
+    /// </summary>
+    /// <example><code>builder.FullScreen = true;</code></example>
+    public bool FullScreen { get; set; }
+
+    private readonly List<System.Reflection.Assembly> _modules = [];
+
+    /// <summary>Gets the assemblies of the modules added with <see cref="AddModule{TModule}"/>, in the order they were added.</summary>
+    /// <example><code>foreach (var module in builder.Modules) Console.WriteLine(module.GetName().Name);</code></example>
+    public IReadOnlyList<System.Reflection.Assembly> Modules => _modules;
+
+    /// <summary>
+    /// Adds a feature module: the controllers and views of <typeparamref name="TModule"/>'s assembly are discovered with the
+    /// application's, and <see cref="IMvcModule.Configure"/> registers its services. Adding a module twice does nothing.
+    /// </summary>
+    /// <typeparam name="TModule">The module, in the assembly that holds its controllers and views.</typeparam>
+    /// <returns>This builder, for chaining.</returns>
+    /// <example><code>builder.AddModule&lt;BillingModule&gt;().AddModule&lt;ReportsModule&gt;();</code></example>
+    public MvcApplicationBuilder AddModule<TModule>() where TModule : IMvcModule, new()
+    {
+        var assembly = typeof(TModule).Assembly;
+        if (_modules.Contains(assembly))
+            return this;
+
+        _modules.Add(assembly);
+        new TModule().Configure(this);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds the controllers and views of <paramref name="assembly"/>, for a module without an <see cref="IMvcModule"/> class.
+    /// </summary>
+    /// <param name="assembly">The module's assembly.</param>
+    /// <returns>This builder, for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="assembly"/> is <see langword="null"/>.</exception>
+    /// <example><code>builder.AddModule(typeof(Billing.InvoicesController).Assembly);</code></example>
+    public MvcApplicationBuilder AddModule(System.Reflection.Assembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        if (!_modules.Contains(assembly))
+            _modules.Add(assembly);
+        return this;
+    }
+
+    /// <summary>
+    /// Gets the localisation options: the run's culture, the framework's own messages and translated validation messages.
+    /// <c>IStringLocalizer&lt;T&gt;</c> is registered for views and controllers either way.
+    /// </summary>
+    /// <example><code>builder.Localization.Culture = CultureInfo.GetCultureInfo("pl-PL");</code></example>
+    public MvcLocalizationOptions Localization { get; } = new();
+
+    /// <summary>The setting that turns on <see cref="Mouse"/>: <c>--ConsoleMVC:Mouse=true</c> or <c>ConsoleMVC__Mouse=true</c>.</summary>
+    public const string MouseSetting = "ConsoleMVC:Mouse";
+
+    /// <summary>
+    /// Gets or sets whether the mouse can be used: clicking a menu option chooses it, clicking a choice or a checkbox
+    /// answers it, and the wheel scrolls lists and <c>&lt;scroll&gt;</c> like the arrow keys. Also on when the
+    /// <see cref="MouseSetting"/> setting is <c>true</c>. Needs a terminal that reports the mouse (most do; the legacy
+    /// Windows console does not); lines are then read key by key, as they are with keyboard shortcuts.
+    /// </summary>
+    /// <example><code>builder.Mouse = true;</code></example>
+    public bool Mouse { get; set; }
+
+    /// <summary>Gets whether mouse support is chosen in code or in the settings.</summary>
+    internal bool UsesMouse => Mouse || IsOn(MouseSetting);
+
+    /// <summary>The setting that turns on <see cref="ScreenReader"/>: <c>--ConsoleMVC:ScreenReader=true</c> or <c>ConsoleMVC__ScreenReader=true</c>.</summary>
+    public const string ScreenReaderSetting = "ConsoleMVC:ScreenReader";
+
+    /// <summary>The setting that turns on <see cref="HighContrast"/>: <c>--ConsoleMVC:HighContrast=true</c> or <c>ConsoleMVC__HighContrast=true</c>.</summary>
+    public const string HighContrastSetting = "ConsoleMVC:HighContrast";
+
+    /// <summary>
+    /// Gets or sets whether screens are drawn for a screen reader (<see cref="ScreenReaderRenderer"/>): plain lines of
+    /// text without borders or bars, typed answers instead of arrow keys, and no clearing. Also on when the
+    /// <see cref="ScreenReaderSetting"/> setting is <c>true</c>, so users can choose it without a new build. Wraps
+    /// <see cref="Renderer"/> when it is set. Overrides <see cref="FullScreen"/>.
+    /// </summary>
+    /// <example><code>builder.ScreenReader = true; // or: dotnet run -- --ConsoleMVC:ScreenReader=true</code></example>
+    public bool ScreenReader { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the built-in classes use <see cref="Theme.CreateHighContrast"/> instead of <see cref="Theme"/>.
+    /// Also on when the <see cref="HighContrastSetting"/> setting is <c>true</c>.
+    /// </summary>
+    /// <example><code>builder.HighContrast = true; // or: ConsoleMVC__HighContrast=true dotnet run</code></example>
+    public bool HighContrast { get; set; }
+
+    /// <summary>Gets whether screen-reader output is chosen in code or in the settings.</summary>
+    internal bool UsesScreenReader => ScreenReader || IsOn(ScreenReaderSetting);
+
+    private bool IsOn(string setting) => bool.TryParse(Configuration[setting], out var on) && on;
+
+    /// <summary>
     /// Builds and returns a fully configured <see cref="MvcApplication"/> instance
     /// ready to be started with <see cref="MvcApplication.Run"/>.
     /// </summary>
@@ -246,17 +342,29 @@ public class MvcApplicationBuilder
         foreach (var descriptor in Services)
             services.Add(descriptor);
 
+        var screenReader = UsesScreenReader;
         if (Renderer is not null)
-            services.AddSingleton(Renderer); // the last registration wins
+        {
+            // The last registration wins
+            services.AddSingleton(screenReader && Renderer is not ScreenReaderRenderer ? new ScreenReaderRenderer(Renderer) : Renderer);
+        }
         else
-            services.TryAddSingleton<IMarkupRenderer>(_ => MarkupRenderer.CreateForConsole());
+        {
+            services.TryAddSingleton<IMarkupRenderer>(_ => screenReader
+                ? new ScreenReaderRenderer(MarkupRenderer.CreateForScreenReader())
+                : MarkupRenderer.CreateForConsole());
+        }
 
-        services.AddSingleton(Theme ?? Theme.Empty);
+        services.AddSingleton(HighContrast || IsOn(HighContrastSetting) ? Theme.CreateHighContrast() : Theme ?? Theme.Empty);
+        // Live elements draw on the terminal of the session that started them
+        services.TryAddSingleton<ILiveDisplay>(provider => new SessionLiveDisplay(new LiveDisplay(provider.GetRequiredService<IMarkupRenderer>())));
+        services.TryAddTransient<ITerminalSession>(_ => TerminalSession.Current ?? TerminalSession.Local);
 
         // Also when Services was cleared: these calls only add what is missing
         services.TryAddSingleton<IConfiguration>(Configuration);
         services.TryAddSingleton(Environment);
         services.AddOptions();
+        services.AddLocalization(); // adds only what is missing, so an earlier AddLocalization(options => …) still applies
         services.AddLogging(logging => logging.AddConfiguration(Configuration.GetSection("Logging")));
 
         if (Input is not null)

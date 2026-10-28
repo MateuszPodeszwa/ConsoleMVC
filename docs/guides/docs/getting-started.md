@@ -31,7 +31,7 @@ dotnet add package ConsoleMVC.Framework
 
 ## Project Structure
 
-A ConsoleMVC application follows a convention-based layout. Controllers live at the project root (or wherever you prefer) and are discovered automatically by reflection. Views are placed under a `Views/` folder, organised by controller name, and use the `.cvw` file extension:
+A ConsoleMVC application follows a convention-based layout. Controllers live in `Controllers/` (or wherever you prefer) and are found automatically: the build generates a route table of every controller and view. Views are placed under a `Views/` folder, organised by controller name, and use the `.cvw` file extension:
 
 ```
 MyApp/

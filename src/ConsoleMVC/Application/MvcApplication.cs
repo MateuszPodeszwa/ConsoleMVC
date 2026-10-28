@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection;
 using ConsoleMVC.Rendering;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -49,7 +52,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// </summary>
     public const int MaxHistory = 50;
 
-    private Router _router = new();
+    private volatile Router _router = new();
+    private readonly object _discoveryLock = new();
     private int _reloadRequested;
     private readonly Assembly? _applicationAssembly;
     private readonly ServiceProvider _services;
@@ -57,10 +61,15 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     private ActionDelegate? _pipeline;
     private int _running;
     private readonly bool _clearScreenBetweenViews;
-    private RouteContext _currentRoute;
+    private readonly bool _fullScreen;
+    private readonly bool _mouse;
+    private readonly bool _screenReader;
+    private readonly MvcLocalizationOptions _localization;
+    private readonly Assembly[] _modules;
+    private readonly RouteContext _defaultRoute;
 
-    /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
-    private readonly List<RouteContext> _history = [];
+    /// <summary>Where local runs are; kept between runs, so running again continues from the last screen.</summary>
+    private readonly NavigationState _local;
 
     /// <summary>The keyboard shortcuts mapped with <see cref="MapKey(KeyGesture, NavigationResult, string?)"/>.</summary>
     private readonly List<KeyShortcut> _shortcuts = [];
@@ -73,14 +82,20 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <param name="services">The root service provider built from <see cref="MvcApplicationBuilder.Services"/>.</param>
     internal MvcApplication(MvcApplicationBuilder builder, ServiceProvider services)
     {
-        _currentRoute = new RouteContext
+        _defaultRoute = new RouteContext
         {
             Controller = builder.DefaultController,
             Action = builder.DefaultAction
         };
+        _local = new NavigationState(_defaultRoute);
         _applicationAssembly = builder.ApplicationAssembly;
         _services = services;
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
+        _fullScreen = builder.FullScreen;
+        _mouse = builder.UsesMouse;
+        _screenReader = builder.UsesScreenReader;
+        _localization = builder.Localization.Copy();
+        _modules = builder.Modules.ToArray();
     }
 
     /// <summary>
@@ -266,7 +281,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <returns>This application, for chaining.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the application is already running.</exception>
     /// <example><code>app.UseMiddleware&lt;RequireSignInMiddleware&gt;();</code></example>
-    public MvcApplication UseMiddleware<TMiddleware>() where TMiddleware : IActionMiddleware =>
+    public MvcApplication UseMiddleware<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TMiddleware>()
+        where TMiddleware : IActionMiddleware =>
         Use((context, next) =>
         {
             // A registered middleware belongs to the container; one created here is disposed with the cycle
@@ -317,13 +333,20 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        // The ConsoleMVC:Serve setting serves the application instead of running it here
+        if (TerminalServerOptions.FromConfiguration(Configuration) is { } serve)
+        {
+            await ServeUntilStoppedAsync(serve, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         if (Interlocked.Exchange(ref _running, 1) == 1)
             throw new InvalidOperationException("The application is already running.");
 
         try
         {
-            var pipeline = _pipeline ??= ActionPipeline.Build(_middleware, InvokeActionAsync);
-            await RunOnceAsync(pipeline, cancellationToken).ConfigureAwait(false);
+            await WithCultureAsync(() => RunOnceAsync(Pipeline(), _local, null, null, cancellationToken)).ConfigureAwait(false);
         }
         finally
         {
@@ -331,34 +354,245 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         }
     }
 
-    /// <summary>Discovers controllers and views, then runs navigation cycles until a view quits.</summary>
-    private async Task RunOnceAsync(ActionDelegate pipeline, CancellationToken cancellationToken)
+    /// <summary>
+    /// Runs one session of the application on a remote terminal, from the default route until a view quits, the client
+    /// disconnects or <paramref name="cancellationToken"/> is cancelled. Sessions run side by side, each with its own
+    /// screen, history and <see cref="ITerminalSession"/>; controllers, views, middleware and services are shared.
+    /// <see cref="TerminalServer"/> calls this for every client; call it yourself to serve another transport.
+    /// </summary>
+    /// <param name="terminal">The client's terminal.</param>
+    /// <param name="cancellationToken">Ends the session; also passed to actions, together with the client disconnecting.</param>
+    /// <returns>A task that completes when the session ends, including when the client disconnects.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="terminal"/> is <see langword="null"/>.</exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled.</exception>
+    /// <example>
+    /// <code>
+    /// await using var terminal = new RemoteTerminal(stream, new RemoteTerminalOptions { Columns = 100, Rows = 30 });
+    /// await app.RunSessionAsync(terminal, cancellationToken);
+    /// </code>
+    /// </example>
+    public Task RunSessionAsync(RemoteTerminal terminal, CancellationToken cancellationToken = default) =>
+        RunSessionAsync(terminal, cancellationToken, started: null);
+
+    /// <summary>Runs a session, telling <paramref name="started"/> which session it is once it has started.</summary>
+    internal async Task RunSessionAsync(RemoteTerminal terminal, CancellationToken cancellationToken, Action<ITerminalSession>? started)
     {
+        ArgumentNullException.ThrowIfNull(terminal);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var assembly = ResolveApplicationAssembly();
-        Discover(assembly);
-        var renderer = _services.GetRequiredService<IMarkupRenderer>();
-        var input = _services.GetRequiredService<ITextInput>();
-        if (_shortcuts.Count > 0)
-        {
-            // Lines are then read key by key so shortcuts work in menus and text fields; the keys are echoed to the console
-            var echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
-            input = new ShortcutInput(input, _shortcuts.ToArray(), echo);
-        }
-        var theme = _services.GetRequiredService<Theme>();
-        var logger = _services.GetRequiredService<ILogger<MvcApplication>>();
-        MvcApplicationLog.Starting(logger, _currentRoute, Environment.EnvironmentName);
-
-        HotReloadHandler.Updated += OnHotReload;
+        // Cancelling disconnects the client, so a session waiting for a key ends too
+        using var disconnect = cancellationToken.Register(terminal.Disconnect);
+        using var ended = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, terminal.Disconnected);
         try
         {
-            await RunLoopAsync(pipeline, assembly, renderer, input, theme, logger, cancellationToken).ConfigureAwait(false);
+            // Views wait for keys synchronously: the session gets a thread of its own rather than blocking the caller
+            // or a thread-pool thread
+            await Task.Factory.StartNew(
+                    () => WithCultureAsync(() => RunOnceAsync(Pipeline(), new NavigationState(_defaultRoute), terminal, started, ended.Token)),
+                    CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)
+                .Unwrap().ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is OperationCanceledException or IOException or ObjectDisposedException
+                                  && terminal.Disconnected.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // The client disconnected (or its connection broke while the screen was written): the session is over
+        }
+
+        // Cancelling disconnected the client, which can end the session as if it had quit: report the cancellation
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>
+    /// Serves the application to remote terminals (<see cref="TerminalServer"/>) until <paramref name="cancellationToken"/>
+    /// is cancelled, then disconnects every client and waits for their sessions to end. Setting <c>ConsoleMVC:Serve</c>
+    /// makes <see cref="Run"/> and <see cref="RunAsync"/> do the same until Ctrl+C.
+    /// </summary>
+    /// <param name="options">Where to listen, the protocol, TLS and limits.</param>
+    /// <param name="cancellationToken">Stops the server.</param>
+    /// <returns>A task that completes when the server has stopped.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the options are not secure enough (see <see cref="TerminalServerOptions.AllowUnencryptedNetworkAccess"/>).</exception>
+    /// <example><code>await app.ServeAsync(new TerminalServerOptions { EndPoint = new IPEndPoint(IPAddress.Loopback, 2323) }, token);</code></example>
+    public async Task ServeAsync(TerminalServerOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        await using var server = new TerminalServer(this, options);
+        server.Start();
+        try
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Stopping is the normal end of serving
+        }
+        finally
+        {
+            await server.StopAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Serves until the token is cancelled or the user presses Ctrl+C in the server's console.</summary>
+    private async Task ServeUntilStoppedAsync(TerminalServerOptions options, CancellationToken cancellationToken)
+    {
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        ConsoleCancelEventHandler onCancel = (_, e) =>
+        {
+            e.Cancel = true; // stop gracefully: the sessions are told and the terminals put back
+            stop.Cancel();
+        };
+
+        Console.CancelKeyPress += onCancel;
+        try
+        {
+            await ServeAsync(options, stop.Token).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        finally
+        {
+            Console.CancelKeyPress -= onCancel;
+        }
+    }
+
+    /// <summary>Runs <paramref name="run"/> in the chosen culture with the framework's messages, then puts the culture back.</summary>
+    private async Task WithCultureAsync(Func<Task> run)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        var uiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            if (ResolveCulture() is { } chosen)
+            {
+                CultureInfo.CurrentCulture = chosen;
+                CultureInfo.CurrentUICulture = chosen;
+            }
+
+            using var text = FrameworkText.Use(ResolveFrameworkText());
+            await run().ConfigureAwait(false);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = uiCulture;
+        }
+    }
+
+    /// <summary>The middleware pipeline, built once when the application first runs (by whichever session comes first).</summary>
+    private ActionDelegate Pipeline()
+    {
+        if (_pipeline is { } built)
+            return built;
+
+        Interlocked.CompareExchange(ref _pipeline, ActionPipeline.Build(_middleware, InvokeActionAsync), null);
+        return _pipeline;
+    }
+
+    /// <summary>Where a run or a session is: the screen to show next and the screens shown, oldest first.</summary>
+    private sealed class NavigationState(RouteContext start)
+    {
+        /// <summary>The route of the next navigation cycle; the screen on show while it waits for input.</summary>
+        public RouteContext Current { get; set; } = start;
+
+        /// <summary>The screens shown, oldest first; the last one is on screen now.</summary>
+        public List<RouteContext> History { get; } = [];
+    }
+
+    /// <summary>The culture chosen in code, or else in the <see cref="MvcLocalizationOptions.CultureSetting"/> setting.</summary>
+    private CultureInfo? ResolveCulture()
+    {
+        if (_localization.Culture is { } culture)
+            return culture;
+
+        var name = Configuration[MvcLocalizationOptions.CultureSetting];
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        try
+        {
+            return CultureInfo.GetCultureInfo(name.Trim(), predefinedOnly: true);
+        }
+        catch (CultureNotFoundException)
+        {
+            throw new InvalidOperationException(
+                $"The {MvcLocalizationOptions.CultureSetting} setting '{name}' is not a known culture; use a name such as 'en-GB' or 'pl-PL'.");
+        }
+    }
+
+    /// <summary>The framework's messages, translated from <see cref="MvcLocalizationOptions.FrameworkTextResource"/> when set.</summary>
+    private FrameworkText ResolveFrameworkText() =>
+        _localization.FrameworkTextResource is { } resource
+            ? FrameworkText.FromLocalizer(_services.GetRequiredService<IStringLocalizerFactory>().Create(resource), _localization.Text)
+            : _localization.Text;
+
+    /// <summary>Returns the localiser for validation messages of <paramref name="type"/>, when they are translated.</summary>
+    private IStringLocalizer ValidationLocalizer(Type type) =>
+        _services.GetRequiredService<IStringLocalizerFactory>().Create(_localization.ValidationResource ?? type);
+
+    /// <summary>
+    /// Discovers controllers and views, then runs navigation cycles until a view quits: on the console, or on
+    /// <paramref name="terminal"/> for a remote session.
+    /// </summary>
+    private async Task RunOnceAsync(ActionDelegate pipeline, NavigationState state, RemoteTerminal? terminal,
+        Action<ITerminalSession>? started, CancellationToken cancellationToken)
+    {
+        var assembly = ResolveApplicationAssembly();
+        IMarkupRenderer renderer;
+        ITextInput input;
+        TextWriter echo;
+        TerminalSession session;
+        if (terminal is null)
+        {
+            Discover(assembly);
+            renderer = _services.GetRequiredService<IMarkupRenderer>();
+            input = _services.GetRequiredService<ITextInput>();
+            echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
+            session = TerminalSession.ForLocalRun();
+        }
+        else
+        {
+            // Sessions share what the first one discovered; a hot reload still rediscovers
+            EnsureDiscovered(assembly);
+            renderer = _screenReader ? terminal.CreateScreenReaderRenderer() : terminal.Renderer;
+            input = terminal.Input;
+            echo = terminal.Output;
+            session = TerminalSession.ForRemote(terminal, new LiveDisplay(renderer));
+            terminal.Start();
+        }
+
+        using var current = TerminalSession.Use(session);
+        started?.Invoke(session);
+
+        // Innermost: clicks become keys before shortcuts and line editing see them
+        if (_mouse)
+            input = new MouseDecoder(input, renderer);
+
+        // Lines are then read key by key so shortcuts and clicks work in menus and text fields; the keys are echoed
+        if (_shortcuts.Count > 0)
+            input = new ShortcutInput(input, _shortcuts.ToArray(), echo);
+        else if (_mouse)
+            input = new LineEditingInput(input, echo);
+
+        // Outermost, so a refreshing screen notices the time passing before any other input reads a key
+        var refreshing = new RefreshingInput(input);
+        var theme = _services.GetRequiredService<Theme>();
+        var logger = _services.GetRequiredService<ILogger<MvcApplication>>();
+        MvcApplicationLog.Starting(logger, state.Current, Environment.EnvironmentName);
+
+        HotReloadHandler.Updated += OnHotReload;
+        // A remote terminal is put back by its own session, not by the server's Ctrl+C or exit
+        var local = terminal is null;
+        using var screen = _fullScreen ? TerminalModeSession.FullScreen(renderer, local) : null;
+        using var mouse = _mouse ? TerminalModeSession.Mouse(renderer, local) : null;
+        try
+        {
+            await RunLoopAsync(pipeline, assembly, state, renderer, refreshing, theme, logger, cancellationToken).ConfigureAwait(false);
             MvcApplicationLog.Stopped(logger);
         }
-        catch (Exception e) when (e is not OperationCanceledException)
+        catch (Exception e) when (e is not OperationCanceledException && !LostTerminal(e, terminal))
         {
             // Logged where it happened, then rethrown unchanged for the caller (and the terminal) to see
-            MvcApplicationLog.UnhandledException(logger, e, _currentRoute);
+            MvcApplicationLog.UnhandledException(logger, e, state.Current);
             throw;
         }
         finally
@@ -367,25 +601,47 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         }
     }
 
+    /// <summary>Whether <paramref name="e"/> is the I/O error of a remote terminal whose client has gone, not an error to log.</summary>
+    private static bool LostTerminal(Exception e, RemoteTerminal? terminal) =>
+        terminal is { Disconnected.IsCancellationRequested: true } && e is IOException or ObjectDisposedException;
+
     /// <summary>Marks the router for rediscovery; called on a hot reload thread.</summary>
     private void OnHotReload() => Interlocked.Exchange(ref _reloadRequested, 1);
 
     /// <summary>Discovers controllers and views into a fresh router, so stale cached actions are dropped.</summary>
     private void Discover(Assembly assembly)
     {
-        var router = new Router();
-        router.DiscoverAll(assembly);
-        _router = router;
-        DiscoveryCount++;
+        lock (_discoveryLock)
+        {
+            // The generated route tables describe the assemblies as built; after a hot reload they may be out of date
+            var useRouteTables = DiscoveryCount == 0;
+            var router = new Router();
+            router.DiscoverAll(assembly, useRouteTables);
+            foreach (var module in _modules.Where(m => m != assembly))
+                router.DiscoverAll(module, useRouteTables);
+            _router = router;
+            DiscoveryCount++;
+        }
+    }
+
+    /// <summary>Discovers controllers and views unless that has been done already.</summary>
+    private void EnsureDiscovered(Assembly assembly)
+    {
+        lock (_discoveryLock)
+        {
+            if (DiscoveryCount == 0)
+                Discover(assembly);
+        }
     }
 
     /// <summary>
     /// Runs navigation cycles until a view quits: the pipeline, then rendering the view or following the redirect.
     /// </summary>
-    private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, IMarkupRenderer renderer, ITextInput input,
+    private async Task RunLoopAsync(ActionDelegate pipeline, Assembly assembly, NavigationState state, IMarkupRenderer renderer, RefreshingInput input,
         Theme theme, ILogger logger, CancellationToken cancellationToken)
     {
         var consecutiveRedirects = 0;
+        var refreshing = false;
 
         while (true)
         {
@@ -395,11 +651,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             if (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
                 Discover(assembly);
 
-            MvcApplicationLog.Running(logger, _currentRoute);
+            MvcApplicationLog.Running(logger, state.Current);
 
             // One scope per navigation cycle: the action and the view it renders share scoped services
             await using var scope = _services.CreateAsyncScope();
-            var context = new ActionContext(_currentRoute, scope.ServiceProvider, cancellationToken);
+            var context = new ActionContext(state.Current, scope.ServiceProvider, cancellationToken);
 
             try
             {
@@ -410,26 +666,40 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                 {
                     case ViewResult viewResult:
                         consecutiveRedirects = 0;
-                        RecordScreen(context);
+                        RecordScreen(state, context);
 
                         NavigationResult navigation;
                         try
                         {
-                            navigation = RenderView(viewResult, renderer, input, theme, context);
+                            navigation = RenderView(viewResult, state, renderer, input, theme, context, clear: refreshing);
+                            refreshing = false;
                         }
                         catch (ShortcutPressedException shortcut)
                         {
                             navigation = shortcut.Navigation;
+                            refreshing = false;
+                        }
+                        catch (ViewRefreshException)
+                        {
+                            // Nothing typed in time: run the same route again for fresh data, on a cleared screen
+                            refreshing = true;
+                            state.Current = context.Route;
+                            break;
+                        }
+                        finally
+                        {
+                            input.Disarm();
                         }
 
                         if (navigation.Exit)
                             return;
 
-                        _currentRoute = navigation.IsBack
-                            ? PreviousScreen()
+                        state.Current = navigation.IsBack
+                            ? PreviousScreen(state)
                             : new RouteContext
                             {
-                                Controller = navigation.Controller ?? context.Route.Controller,
+                                // Inside an area, a controller named without one is looked for in the area first
+                                Controller = navigation.Controller is { } named ? _router.Qualify(named, context.Route.Controller) : context.Route.Controller,
                                 Action = navigation.Action ?? context.Route.Action,
                                 FormData = navigation.FormData,
                                 RouteValues = navigation.RouteValues
@@ -445,9 +715,9 @@ public class MvcApplication : IDisposable, IAsyncDisposable
                                 "This usually means an action redirects to itself.");
                         }
 
-                        _currentRoute = new RouteContext
+                        state.Current = new RouteContext
                         {
-                            Controller = redirect.ControllerName,
+                            Controller = _router.Qualify(redirect.ControllerName, context.Route.Controller),
                             Action = redirect.ActionName,
                             RouteValues = redirect.RouteValues
                         };
@@ -508,13 +778,18 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         var modelState = new ModelStateDictionary();
         var args = ModelBinder.BindParameters(actionMethod, route.FormData, route.RouteValues, modelState);
         if (route.FormData is not null)
-            ModelValidator.Validate(actionMethod, args, modelState);
+            ModelValidator.Validate(actionMethod, args, modelState, _localization.LocalizeValidation ? ValidationLocalizer : null);
 
         SupplyCancellationTokens(actionMethod, args, context.Cancellation);
         controller.ModelState = modelState;
+        controller.ValidationLocalizer = _localization.LocalizeValidation ? ValidationLocalizer : null;
         context.ModelState = modelState;
 
-        context.Result = await ActionInvoker.InvokeAsync(actionMethod, controller, args).ConfigureAwait(false);
+        // A generated route table calls the action directly; otherwise it is called by reflection
+        var invoker = _router.InvokerFor(actionMethod);
+        context.Result = invoker is not null
+            ? await invoker(controller, args).ConfigureAwait(false)
+            : await ActionInvoker.InvokeAsync(actionMethod, controller, args).ConfigureAwait(false);
     }
 
     /// <summary>Passes the run's token to every <see cref="CancellationToken"/> parameter of the action.</summary>
@@ -535,31 +810,33 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// Adds the screen about to be shown to the history. Showing the same screen again (a form after validation failed,
     /// or the screen reached with Back) replaces the last entry instead.
     /// </summary>
-    private void RecordScreen(ActionContext context)
+    private static void RecordScreen(NavigationState state, ActionContext context)
     {
         // The controller's route has the action's declared name, whatever casing navigation used
         var route = context.Controller?.RouteContext ?? context.Route;
         var screen = new RouteContext { Controller = route.Controller, Action = route.Action, RouteValues = route.RouteValues };
 
-        if (_history.Count > 0 && SameScreen(_history[^1], screen))
-            _history[^1] = screen;
+        var history = state.History;
+        if (history.Count > 0 && SameScreen(history[^1], screen))
+            history[^1] = screen;
         else
-            _history.Add(screen);
+            history.Add(screen);
 
-        if (_history.Count > MaxHistory)
-            _history.RemoveAt(0);
+        if (history.Count > MaxHistory)
+            history.RemoveAt(0);
     }
 
     /// <summary>
     /// Leaves the current screen for the one before it, which stays in the history as the current screen. On the first
     /// screen, the current screen is shown again.
     /// </summary>
-    private RouteContext PreviousScreen()
+    private static RouteContext PreviousScreen(NavigationState state)
     {
-        if (_history.Count > 1)
-            _history.RemoveAt(_history.Count - 1);
+        var history = state.History;
+        if (history.Count > 1)
+            history.RemoveAt(history.Count - 1);
 
-        var previous = _history[^1];
+        var previous = history[^1];
         return new RouteContext { Controller = previous.Controller, Action = previous.Action, RouteValues = previous.RouteValues };
     }
 
@@ -570,8 +847,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <summary>
     /// Resolves and renders the view for <paramref name="viewResult"/>.
     /// </summary>
-    private NavigationResult RenderView(ViewResult viewResult, IMarkupRenderer renderer, ITextInput input, Theme theme,
-        ActionContext context)
+    private NavigationResult RenderView(ViewResult viewResult, NavigationState state, IMarkupRenderer renderer, RefreshingInput input, Theme theme,
+        ActionContext context, bool clear)
     {
         var view = context.Own(_router.ResolveView(viewResult.ControllerName, viewResult.ViewName, context.Services));
         view.ViewData = viewResult.ViewData;
@@ -579,13 +856,15 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         view.Renderer = renderer;
         view.Input = input;
         view.Theme = theme;
-        view.NavigationHistory = _history.ToArray();
+        view.NavigationHistory = state.History.ToArray();
         view.ShortcutHints = _shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Description))
             .Select(s => new ShortcutHint(s.Gesture.ToString(), s.Description!)).ToArray();
 
-        if (_clearScreenBetweenViews)
+        // A refresh always clears, or the screen would be drawn again below itself
+        if (_clearScreenBetweenViews || clear)
             renderer.Clear();
 
+        input.Arm(viewResult.ResolveRefresh(view.DeclaredRefreshInterval));
         return view.RenderInternal(viewResult.Model)
                ?? throw new InvalidOperationException(
                    $"View '{view.GetType().Name}' returned null. Views must return a NavigationResult.");

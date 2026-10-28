@@ -124,6 +124,28 @@ internal sealed class MarkupSchema
         ];
 
         var number = new DecimalAttributeType();
+        var amount = new DecimalAttributeType(asDouble: true);
+
+        var progressStyle = new ChoiceAttributeType(new Dictionary<string, string>
+        {
+            ["block"] = Rendering + "ProgressStyle.Block",
+            ["line"] = Rendering + "ProgressStyle.Line",
+            ["ascii"] = Rendering + "ProgressStyle.Ascii"
+        });
+
+        var barStyle = new ChoiceAttributeType(new Dictionary<string, string>
+        {
+            ["block"] = Rendering + "BarChartStyle.Block",
+            ["shade"] = Rendering + "BarChartStyle.Shade",
+            ["ascii"] = Rendering + "BarChartStyle.Ascii"
+        });
+
+        var spinnerStyle = new ChoiceAttributeType(new Dictionary<string, string>
+        {
+            ["dots"] = Rendering + "SpinnerStyle.Dots",
+            ["line"] = Rendering + "SpinnerStyle.Line",
+            ["circle"] = Rendering + "SpinnerStyle.Circle"
+        });
         var date = new DateAttributeType();
 
         // Shared by <number> and <date>
@@ -295,6 +317,97 @@ internal sealed class MarkupSchema
                 new AttributeSchema("key-color", "KeyColour", colour),
                 new AttributeSchema("key-colour", "KeyColour", colour)
             ], initialisers: ["Items = this.ShortcutHints"]),
+
+            // ---- 1.24: live elements
+            new ElementSchema("progress", Rendering + "ProgressElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("value", "Value", amount),
+                new AttributeSchema("max", "Max", amount),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("bar-width", "BarWidth", new IntegerAttributeType(1, 1000)),
+                new AttributeSchema("percent", "ShowPercent", boolean),
+                new AttributeSchema("style", "Style", progressStyle),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("empty-color", "EmptyColour", colour),
+                new AttributeSchema("empty-colour", "EmptyColour", colour),
+                new AttributeSchema("label-color", "LabelColour", colour),
+                new AttributeSchema("label-colour", "LabelColour", colour)
+            ]),
+            new ElementSchema("spinner", Rendering + "SpinnerElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("style", "Style", spinnerStyle),
+                new AttributeSchema("frame", "Frame", new IntegerAttributeType(0, int.MaxValue)),
+                new AttributeSchema("done", "Done", boolean),
+                new AttributeSchema("done-symbol", "DoneSymbol", text),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("label-color", "LabelColour", colour),
+                new AttributeSchema("label-colour", "LabelColour", colour)
+            ]),
+
+            // ---- 1.25: charts
+            new ElementSchema("bar-chart", Rendering + "BarChartElement", ContentModel.Elements,
+            [
+                ThemeClass(),
+                new AttributeSchema("max", "Max", amount),
+                new AttributeSchema("values", "ShowValues", boolean),
+                new AttributeSchema("format", "Format", text),
+                new AttributeSchema("style", "Style", barStyle),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("label-color", "LabelColour", colour),
+                new AttributeSchema("label-colour", "LabelColour", colour)
+            ], allowedChildren: ["bar"]),
+            new ElementSchema("bar", Rendering + "BarElement", ContentModel.Void,
+            [
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("value", "Value", amount, required: true),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour)
+            ], requiredParent: "bar-chart"),
+            new ElementSchema("sparkline", Rendering + "SparklineElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("values", "Values", new NumberListAttributeType(), required: true),
+                new AttributeSchema("min", "Min", amount),
+                new AttributeSchema("max", "Max", amount),
+                new AttributeSchema("label", "Label", text),
+                new AttributeSchema("show-last", "ShowLast", boolean),
+                new AttributeSchema("format", "Format", text),
+                new AttributeSchema("color", "Colour", colour),
+                new AttributeSchema("colour", "Colour", colour),
+                new AttributeSchema("label-color", "LabelColour", colour),
+                new AttributeSchema("label-colour", "LabelColour", colour)
+            ]),
+
+            // ---- 1.27: scrolling (a pager: waits for the user, so only at the top level of a view)
+            new ElementSchema("scroll", Rendering + "ScrollElement", ContentModel.Block,
+            [
+                ThemeClass(),
+                new AttributeSchema("height", "Height", new IntegerAttributeType(1, 1000)),
+                new AttributeSchema("color", "StatusColour", colour),
+                new AttributeSchema("colour", "StatusColour", colour)
+            ], topLevelOnly: true, topLevelStatement: "this.ShowScroll({0});"),
+
+            // ---- 1.26: Markdown
+            new ElementSchema("markdown", Rendering + "MarkdownElement", ContentModel.Void,
+            [
+                ThemeClass(),
+                new AttributeSchema("text", "Text", text, required: true),
+                new AttributeSchema("links", "ShowLinkUrls", boolean),
+                new AttributeSchema("heading-color", "HeadingColour", colour),
+                new AttributeSchema("heading-colour", "HeadingColour", colour),
+                new AttributeSchema("code-color", "CodeColour", colour),
+                new AttributeSchema("code-colour", "CodeColour", colour),
+                new AttributeSchema("link-color", "LinkColour", colour),
+                new AttributeSchema("link-colour", "LinkColour", colour),
+                new AttributeSchema("quote-color", "QuoteColour", colour),
+                new AttributeSchema("quote-colour", "QuoteColour", colour)
+            ]),
 
             // ---- 1.0: layout
             new ElementSchema("columns", Rendering + "ColumnsElement", ContentModel.Elements,

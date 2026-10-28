@@ -56,6 +56,38 @@ public sealed class ConsoleTextInput : ITextInput
     /// </remarks>
     public bool CanReadKeys => !Console.IsInputRedirected && !Console.IsOutputRedirected;
 
+    /// <summary>How often <see cref="WaitForInput"/> checks for a key press.</summary>
+    private static readonly TimeSpan KeyPollInterval = TimeSpan.FromMilliseconds(15);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Checks <see cref="Console.KeyAvailable"/> until a key arrives or the time passes. Redirected input cannot be
+    /// checked without reading it, so this returns <see langword="true"/> straight away and the screen never refreshes.
+    /// </remarks>
+    public bool WaitForInput(TimeSpan timeout)
+    {
+        if (Console.IsInputRedirected)
+            return true;
+
+        var deadline = System.Diagnostics.Stopwatch.GetTimestamp() + (long)(Math.Max(timeout.TotalSeconds, 0) * System.Diagnostics.Stopwatch.Frequency);
+        try
+        {
+            while (!Console.KeyAvailable)
+            {
+                if (System.Diagnostics.Stopwatch.GetTimestamp() >= deadline)
+                    return false;
+
+                Thread.Sleep(KeyPollInterval);
+            }
+
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return true; // no console to ask: read as usual
+        }
+    }
+
     /// <inheritdoc />
     /// <remarks>Ctrl+D and Ctrl+Z end the input, as they do for a typed line.</remarks>
     public ConsoleKeyInfo? ReadKey()

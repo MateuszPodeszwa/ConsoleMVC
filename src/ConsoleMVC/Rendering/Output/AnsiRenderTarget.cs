@@ -81,6 +81,25 @@ public sealed class AnsiRenderTarget : IRenderTarget
     /// <inheritdoc />
     public void Flush() => _writer.Flush();
 
+    /// <inheritdoc />
+    public bool TrySetMouseReporting(bool on)
+    {
+        // Button presses (1000) in SGR form (1006), so columns and rows past 223 are reported correctly
+        _writer.Write(on ? "\u001b[?1000h\u001b[?1006h" : "\u001b[?1006l\u001b[?1000l");
+        _writer.Flush();
+        return true;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>Writes <c>ESC[?1049h</c> (and moves the cursor home) or <c>ESC[?1049l</c>, which terminals that know no
+    /// alternate screen ignore.</remarks>
+    public bool TrySetAlternateScreen(bool on)
+    {
+        _writer.Write(on ? "\u001b[?1049h\u001b[H" : "\u001b[?1049l");
+        _writer.Flush();
+        return true;
+    }
+
     /// <summary>
     /// Builds the semicolon-separated SGR parameters for a style, e.g. <c>"1;91"</c>. Returns an
     /// empty string for styles that need no codes.

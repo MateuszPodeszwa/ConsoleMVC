@@ -1,6 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using ConsoleMVC.Rendering;
 
 namespace ConsoleMVC.Mvc;
 
@@ -111,6 +113,8 @@ internal static class ModelBinder
     /// <param name="targetType">The destination type.</param>
     /// <param name="result">The converted value when successful.</param>
     /// <returns><see langword="true"/> when the value was converted.</returns>
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Converters for the simple types the binder accepts are part of the framework; model types are kept by the generated route table.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Converters for the simple types the binder accepts are part of the framework; model types are kept by the generated route table.")]
     internal static bool TryConvert(string value, Type targetType, out object? result)
     {
         result = null;
@@ -166,6 +170,7 @@ internal static class ModelBinder
     /// <param name="result">The converted value when successful.</param>
     /// <returns><see langword="true"/> when the value (every part, for a collection) was converted.</returns>
     /// <example><code>ModelBinder.TryConvertField("1, 3", typeof(int[]), out var ids); // new[] { 1, 3 }</code></example>
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The array and List<T> types are those of the actions' parameters, which the compiled application already contains.")]
     internal static bool TryConvertField(string value, Type targetType, out object? result)
     {
         if (!IsSimpleCollection(targetType, out var elementType))
@@ -229,7 +234,7 @@ internal static class ModelBinder
         if (!enumType.IsDefined(typeof(FlagsAttribute), inherit: false))
             return false;
 
-        var allFlags = Enum.GetValues(enumType).Cast<object>()
+        var allFlags = Enum.GetValuesAsUnderlyingType(enumType).Cast<object>()
             .Aggregate(0UL, (mask, member) => mask | Convert.ToUInt64(member, System.Globalization.CultureInfo.InvariantCulture));
         var bits = Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture);
 
@@ -286,6 +291,7 @@ internal static class ModelBinder
         return parameter.HasDefaultValue ? parameter.DefaultValue : DefaultOf(parameterType);
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Model types of actions are kept by the generated route table (DynamicDependency on their properties and constructors).")]
     private static object? BindComplexType(Type type, IReadOnlyDictionary<string, string> values, ModelStateDictionary? modelState)
     {
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -318,6 +324,8 @@ internal static class ModelBinder
     /// </summary>
     /// <returns>The model and the names of the properties its constructor already received.</returns>
     /// <exception cref="InvalidOperationException">Thrown when no suitable constructor exists.</exception>
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Model types of actions are kept by the generated route table (DynamicDependency on their properties and constructors).")]
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Model types of actions are kept by the generated route table (DynamicDependency on their properties and constructors).")]
     private static (object Instance, HashSet<string> BoundByConstructor) CreateModel(Type type, PropertyInfo[] properties,
         IReadOnlyDictionary<string, string> values, ModelStateDictionary? modelState)
     {
@@ -385,8 +393,9 @@ internal static class ModelBinder
         if (modelState is null || string.IsNullOrWhiteSpace(raw))
             return;
 
-        modelState.AddBindingError(key, $"The value '{raw}' is not valid for {displayName}.");
+        modelState.AddBindingError(key, FrameworkText.Format(FrameworkText.Current.InvalidValue, raw, displayName));
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Value types always have a parameterless constructor.")]
     private static object? DefaultOf(Type type) => type.IsValueType ? Activator.CreateInstance(type) : null;
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
 using System.Reflection;
 
@@ -23,6 +24,10 @@ internal static class ServiceInjector
     {
         ArgumentNullException.ThrowIfNull(instance);
         ArgumentNullException.ThrowIfNull(services);
+
+        // Generated views assign their @inject properties themselves
+        if (instance is ConsoleViewBase view && view.TryInjectServices(services))
+            return;
 
         var type = instance.GetType();
         foreach (var property in PropertiesByType.GetOrAdd(type, FindInjectableProperties))
@@ -61,6 +66,8 @@ internal static class ServiceInjector
     /// Returns the writable properties of <paramref name="type"/> (including inherited and private setters)
     /// marked with <see cref="InjectAttribute"/>.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Generated views fill their @inject properties themselves (InjectServices); only hand-written [Inject] properties are found by reflection.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Generated views fill their @inject properties themselves (InjectServices); only hand-written [Inject] properties are found by reflection.")]
     private static PropertyInfo[] FindInjectableProperties(Type type)
     {
         var properties = new List<PropertyInfo>();

@@ -28,6 +28,10 @@ public sealed class CheckboxElement : Element, IFormField
     private static readonly string[] Yes = ["y", "yes", "true", "1"];
     private static readonly string[] No = ["n", "no", "false", "0"];
 
+    /// <summary>Whether a typed answer is the translated letter or word for yes or no.</summary>
+    private static bool IsAnswer(string answer, string letter, string word) =>
+        string.Equals(answer, letter, StringComparison.CurrentCultureIgnoreCase) || string.Equals(answer, word, StringComparison.CurrentCultureIgnoreCase);
+
     // The state shown by Layout while keys are read
     private bool _usingKeys;
     private bool _ticked;
@@ -96,7 +100,10 @@ public sealed class CheckboxElement : Element, IFormField
     private bool? ReadTyped(IMarkupRenderer renderer, ITextInput input)
     {
         _usingKeys = false;
-        var prompt = Question() + (Checked ? " [Y/n]: " : " [y/N]: ");
+        var words = FrameworkText.Current;
+        var prompt = Question() + (Checked
+            ? $" [{words.YesLetter.ToUpperInvariant()}/{words.NoLetter}]: "
+            : $" [{words.YesLetter}/{words.NoLetter.ToUpperInvariant()}]: ");
 
         while (true)
         {
@@ -112,19 +119,19 @@ public sealed class CheckboxElement : Element, IFormField
             bool answer;
             if (text.Length == 0)
                 answer = Checked;
-            else if (Yes.Contains(text, StringComparer.OrdinalIgnoreCase))
+            else if (Yes.Contains(text, StringComparer.OrdinalIgnoreCase) || IsAnswer(text, FrameworkText.Current.YesLetter, FrameworkText.Current.YesWord))
                 answer = true;
-            else if (No.Contains(text, StringComparer.OrdinalIgnoreCase))
+            else if (No.Contains(text, StringComparer.OrdinalIgnoreCase) || IsAnswer(text, FrameworkText.Current.NoLetter, FrameworkText.Current.NoWord))
                 answer = false;
             else
             {
-                ShowError(renderer, AnswerMessage);
+                ShowError(renderer, FrameworkText.Current.CheckboxAnswer);
                 continue;
             }
 
             if (Required && !answer)
             {
-                ShowError(renderer, RequiredMessage);
+                ShowError(renderer, FrameworkText.Current.CheckboxRequired);
                 continue;
             }
 
@@ -137,6 +144,7 @@ public sealed class CheckboxElement : Element, IFormField
     {
         _usingKeys = true;
         renderer.Render(this);
+        MapClicks(renderer);
 
         while (true)
         {
@@ -169,7 +177,7 @@ public sealed class CheckboxElement : Element, IFormField
 
             if (confirm && Required && !_ticked)
             {
-                _error = RequiredMessage;
+                _error = FrameworkText.Current.CheckboxRequired;
                 confirm = false;
             }
 
@@ -179,8 +187,13 @@ public sealed class CheckboxElement : Element, IFormField
             renderer.Rewrite(this);
             if (confirm)
                 return _ticked;
+            MapClicks(renderer);
         }
     }
+
+    /// <summary>Clicking the box (its first line) ticks or clears it, as Space does.</summary>
+    private static void MapClicks(IMarkupRenderer renderer) =>
+        renderer.MapClicks([new ClickTarget(0, [ClickTarget.Key(ConsoleKey.Spacebar)])]);
 
     /// <summary>The label as a question: "Send news?"; a label already ending in punctuation is kept as it is.</summary>
     private string Question() =>

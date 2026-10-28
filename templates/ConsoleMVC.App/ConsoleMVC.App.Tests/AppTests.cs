@@ -1,3 +1,5 @@
+using System.Globalization;
+using ConsoleMVC.App;
 using ConsoleMVC.App.Controllers;
 using ConsoleMVC.App.Services;
 using ConsoleMVC.Testing;
@@ -12,10 +14,17 @@ namespace ConsoleMVC.App.Tests;
 public class AppTests
 {
     /// <summary>The application with the services Program.cs registers; replace any of them with a fake here.</summary>
-    private static MvcTestHost Host() => MvcTestHost.For<HomeController>(builder =>
+    private static MvcTestHost Host(string? culture = null) => MvcTestHost.For<HomeController>(builder =>
     {
         builder.Services.AddSingleton<IGreetingService, GreetingService>();
         builder.Services.Configure<GreetingOptions>(options => options.Salutation = "Hello");
+
+        // The localisation set up in Program.cs, in a fixed culture so the tests read the same everywhere
+        builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+        builder.Localization.Culture = CultureInfo.GetCultureInfo(culture ?? "en-GB");
+        builder.Localization.FrameworkTextResource = typeof(SharedResource);
+        builder.Localization.LocalizeValidation = true;
+        builder.Localization.ValidationResource = typeof(SharedResource);
     });
 
     [Fact]
@@ -50,5 +59,51 @@ public class AppTests
 
         Assert.Contains("This field is required.", run.Screens[1]);
         Assert.Contains("Hello, Ada!", run.LastScreen);
+    }
+
+    [Fact]
+    public void StatusPage_RefreshesUntilYouType()
+    {
+        var input = new ScriptedInput("4", "2")                 // the feature tour, then the live status
+            .Wait()                                             // a second passes with nothing typed: the page refreshes
+            .Line("b");                                         // back to the tour
+
+        var run = Host().Run(input);
+
+        Assert.Equal(["Home/Index", "Home/Features", "Home/Check", "Home/Status", "Home/Status", "Home/Features"], run.Routes);
+        Assert.Contains("Checking services ████", run.Output);
+        Assert.Contains("Services up ████████████████████ 100%", run.Output);
+        Assert.Contains("Payments", run.Screens[3]);                // the bar chart of response times
+        Assert.Contains("Session: this console", run.Screens[3]);   // not served remotely
+    }
+
+    [Fact]
+    public void AboutPage_DrawsItsMarkdown()
+    {
+        var run = Host().Run("1", "q");
+
+        Assert.Contains("Each page has its own Controller, View and Model", run.Screens[1]); // **bold** without the stars
+        Assert.Contains("• Navigation with <menu>", run.Screens[1]);
+    }
+
+    [Fact]
+    public void GreetingForm_SpeaksPolish()
+    {
+        var run = Host("pl-PL").Run("2", "", "Ada", "3", "n", "q");
+
+        Assert.Contains("Formularz powitania", run.Screens[1]);
+        Assert.Contains("Imię:", run.Screens[1]);
+        Assert.Contains("To pole jest wymagane.", run.Screens[1]);      // the framework's own message, translated
+        Assert.Contains("Wybierz opcję:", run.Screens[0]);
+    }
+
+    [Fact]
+    public void SettingsPage_IsInTheAdminArea()
+    {
+        var run = Host().Run("4", "3", "1", "q");
+
+        Assert.Equal(["Home/Index", "Home/Features", "Admin/Settings/Index", "Home/Index"], run.Routes);
+        Assert.Contains("Admin: settings", run.Screens[2]);
+        Assert.Contains("en-GB", run.Screens[2]);
     }
 }

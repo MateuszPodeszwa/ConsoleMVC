@@ -71,10 +71,12 @@ internal sealed class CvwDocument
     /// <param name="body">The parsed body nodes.</param>
     /// <param name="diagnostics">Problems found while parsing.</param>
     /// <param name="layout">The <c>@layout</c> directive, or <see langword="null"/> if absent.</param>
+    /// <param name="refresh">The first <c>@refresh</c> directive, or <see langword="null"/> if absent.</param>
     public CvwDocument(string text, DirectiveValue? model, IReadOnlyList<DirectiveValue> usings,
         IReadOnlyList<InjectDirective> injects, IReadOnlyList<Node> body, IReadOnlyList<ParseDiagnostic> diagnostics,
-        DirectiveValue? layout = null)
+        DirectiveValue? layout = null, DirectiveValue? refresh = null)
     {
+        Refresh = refresh;
         Text = text;
         Model = model;
         Layout = layout;
@@ -92,6 +94,9 @@ internal sealed class CvwDocument
 
     /// <summary>Gets the <c>@layout</c> directive (a layout name or <c>none</c>), or <see langword="null"/> when absent.</summary>
     public DirectiveValue? Layout { get; }
+
+    /// <summary>Gets the <c>@refresh</c> directive (an interval such as <c>5s</c>), or <see langword="null"/> when absent.</summary>
+    public DirectiveValue? Refresh { get; }
 
     /// <summary>Gets a value indicating whether the body contains a <c>&lt;body /&gt;</c> placeholder (a layout file).</summary>
     public bool HasBodyPlaceholder => Elements(Body).Any(e => e.Schema.Tag == Schema.MarkupSchema.BodyTag);

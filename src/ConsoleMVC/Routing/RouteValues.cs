@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 
@@ -24,7 +25,23 @@ public static class RouteValues
     /// <param name="values">The values, or <see langword="null"/> for none.</param>
     /// <returns>A new case-insensitive dictionary.</returns>
     /// <example><code>RouteValues.From(new { id = 42, when = DateOnly.FromDateTime(DateTime.Today) });</code></example>
-    public static Dictionary<string, string> From(object? values)
+[RequiresUnreferencedCode("Reads the public properties of the object's run-time type, which trimming may remove. Pass the values with their own type (an anonymous object or a class), or a dictionary.")]
+    public static Dictionary<string, string> From(object? values) => FromCore(values, values?.GetType());
+
+    /// <summary>
+    /// Converts route values to a dictionary, reading the public properties of <typeparamref name="TValues"/>. Calls with an
+    /// anonymous object or a class pick this overload, and trimming and Native AOT keep those properties.
+    /// </summary>
+    /// <typeparam name="TValues">The values' type: a dictionary, or a type whose public properties are the values.</typeparam>
+    /// <param name="values">The values, or <see langword="null"/> for none.</param>
+    /// <returns>A new case-insensitive dictionary.</returns>
+    /// <example><code>RouteValues.From(new { id = 42 }); // { "id": "42" }</code></example>
+    public static Dictionary<string, string> From<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TValues>(TValues values) =>
+        FromCore(values, typeof(TValues));
+
+    /// <summary>Copies a dictionary, or reads the public properties of <paramref name="propertySource"/> from <paramref name="values"/>.</summary>
+    private static Dictionary<string, string> FromCore(object? values,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type? propertySource)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         switch (values)
@@ -43,7 +60,7 @@ public static class RouteValues
                 break;
 
             default:
-                foreach (var property in values.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                foreach (var property in (propertySource ?? typeof(object)).GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 {
                     if (property.GetIndexParameters().Length == 0)
                         Add(result, property.Name, property.GetValue(values));
@@ -56,12 +73,13 @@ public static class RouteValues
     }
 
     /// <summary>
-    /// Splits a navigation target into its controller, action and route values: <c>Controller/Action?key=value&amp;…</c>
-    /// or <c>Action?…</c>. Keys and values are URL-decoded; a key without <c>=</c> gets an empty value.
+    /// Splits a navigation target into its controller, action and route values: <c>Area/Controller/Action?…</c> (the
+    /// controller is then <c>Area/Controller</c>), <c>Controller/Action?key=value&amp;…</c> or <c>Action?…</c>. Keys and
+    /// values are URL-decoded; a key without <c>=</c> gets an empty value.
     /// </summary>
     /// <param name="target">The target, e.g. <c>"Orders/Details?id=42"</c>.</param>
     /// <returns>The controller (<see langword="null"/> for the current one), the action, and the values (<see langword="null"/> when there are none).</returns>
-    /// <exception cref="ArgumentException">Thrown when the target is not <c>Controller/Action</c> or <c>Action</c>.</exception>
+    /// <exception cref="ArgumentException">Thrown when the target is not <c>Area/Controller/Action</c>, <c>Controller/Action</c> or <c>Action</c>.</exception>
     /// <example><code>var (controller, action, values) = RouteValues.ParseTarget("Orders/Details?id=42");</code></example>
     public static (string? Controller, string Action, Dictionary<string, string>? Values) ParseTarget(string target)
     {
@@ -70,8 +88,8 @@ public static class RouteValues
         var query = target.IndexOf('?');
         var path = (query < 0 ? target : target[..query]).Trim();
         var parts = path.Split('/');
-        if (parts.Length > 2 || parts.Any(p => p.Trim().Length == 0))
-            throw new ArgumentException($"'{target}' is not a valid navigation target. Use 'Controller/Action' or 'Action', optionally followed by '?key=value'.", nameof(target));
+        if (parts.Length > 3 || parts.Any(p => p.Trim().Length == 0))
+            throw new ArgumentException($"'{target}' is not a valid navigation target. Use 'Area/Controller/Action', 'Controller/Action' or 'Action', optionally followed by '?key=value'.", nameof(target));
 
         Dictionary<string, string>? values = null;
         if (query >= 0)
@@ -88,7 +106,12 @@ public static class RouteValues
             }
         }
 
-        return parts.Length == 2 ? (parts[0].Trim(), parts[1].Trim(), values) : (null, parts[0].Trim(), values);
+        return parts.Length switch
+        {
+            3 => (parts[0].Trim() + "/" + parts[1].Trim(), parts[2].Trim(), values),
+            2 => (parts[0].Trim(), parts[1].Trim(), values),
+            _ => (null, parts[0].Trim(), values)
+        };
     }
 
     private static void Add(Dictionary<string, string> result, string key, object? value)

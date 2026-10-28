@@ -105,6 +105,19 @@ public abstract class ConsoleViewBase
     }
 
     /// <summary>
+    /// Shows a <c>&lt;scroll&gt;</c> a page at a time and waits until the user continues. Generated code calls this for
+    /// every top-level <c>&lt;scroll&gt;</c>. It does not draw a layout's footer: the footer still comes before the first field.
+    /// </summary>
+    /// <param name="scroll">The content to show.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="scroll"/> is <see langword="null"/>.</exception>
+    /// <example><code>ShowScroll(logElement);</code></example>
+    protected internal void ShowScroll(ScrollElement scroll)
+    {
+        ArgumentNullException.ThrowIfNull(scroll);
+        scroll.Show(Renderer, Input);
+    }
+
+    /// <summary>
     /// Gets the application's keyboard shortcuts that have a description (<c>app.MapKey(ConsoleKey.F1, "Help/Index", "Help")</c>),
     /// as <c>&lt;shortcuts /&gt;</c> shows them.
     /// </summary>
@@ -124,7 +137,7 @@ public abstract class ConsoleViewBase
     /// </summary>
     /// <example><code>&lt;text&gt;@string.Join(" / ", Breadcrumbs)&lt;/text&gt;</code></example>
     public IReadOnlyList<string> Breadcrumbs =>
-        NavigationHistory.Select(r => string.Equals(r.Action, "Index", StringComparison.OrdinalIgnoreCase) ? r.Controller : r.Action).ToArray();
+        NavigationHistory.Select(r => string.Equals(r.Action, "Index", StringComparison.OrdinalIgnoreCase) ? r.ControllerName : r.Action).ToArray();
 
     /// <summary>Theme used by views created outside the application (for example in unit tests).</summary>
     private static readonly Lazy<Theme> DefaultTheme = new(Theme.CreateDefault);
@@ -173,6 +186,49 @@ public abstract class ConsoleViewBase
     {
         ArgumentNullException.ThrowIfNull(partial);
         ShareStateWith(partial);
+    }
+
+    /// <summary>
+    /// Fills the view's <c>@inject</c> properties. Generated views override this with plain assignments, so no reflection
+    /// is needed (and trimmed applications keep working); it returns <see langword="false"/> by default, and the
+    /// framework then fills <see cref="InjectAttribute"/> properties by reflection.
+    /// </summary>
+    /// <param name="services">The services of the current navigation cycle.</param>
+    /// <returns><see langword="true"/> when the properties were filled.</returns>
+    /// <example>
+    /// <code>
+    /// // @inject IClock Clock generates:
+    /// protected override bool InjectServices(IServiceProvider services)
+    /// {
+    ///     this.Clock = RequireService(services, this.Clock, "Clock");
+    ///     return true;
+    /// }
+    /// </code>
+    /// </example>
+    protected virtual bool InjectServices(IServiceProvider services) => false;
+
+    /// <summary>Calls <see cref="InjectServices"/> for the framework.</summary>
+    internal bool TryInjectServices(IServiceProvider services) => InjectServices(services);
+
+    /// <summary>
+    /// Returns the service of type <typeparamref name="T"/> for an <c>@inject</c> property, or throws a message naming the
+    /// view and the property when it is not registered.
+    /// </summary>
+    /// <typeparam name="T">The service type, the type of the property.</typeparam>
+    /// <param name="services">The services.</param>
+    /// <param name="current">The property's current value; only its type is used, so the service type is written once.</param>
+    /// <param name="property">The property's name.</param>
+    /// <returns>The service.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no such service is registered.</exception>
+    /// <example><code>this.Clock = RequireService(services, this.Clock, "Clock");</code></example>
+    protected T RequireService<T>(IServiceProvider services, T current, string property)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        return services.GetService(typeof(T)) is T service
+            ? service
+            : throw new InvalidOperationException(
+                $"'{GetType().Name}' injects '{typeof(T).Name} {property}', but no service of type '{typeof(T).FullName}' is registered. " +
+                $"Register it with builder.Services, e.g. builder.Services.AddSingleton<{typeof(T).Name}, ...>();");
     }
 
     /// <summary>

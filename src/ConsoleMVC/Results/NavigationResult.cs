@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 namespace ConsoleMVC.Mvc;
 
 /// <summary>
@@ -125,7 +126,22 @@ public class NavigationResult
     /// <param name="action">The action name.</param>
     /// <param name="routeValues">The values; see <see cref="Mvc.RouteValues.From"/>.</param>
     /// <returns>The navigation result.</returns>
-    /// <example><code>return NavigationResult.To("Orders", "Details", new { id = order.Id });</code></example>
+    /// <example><code>return NavigationResult.To("Orders", "Details", (object)values);</code></example>
+    [RequiresUnreferencedCode("Reads the public properties of the object's run-time type, which trimming may remove. Pass the values with their own type (an anonymous object or a class), or a dictionary.")]
     public static NavigationResult To(string controller, string action, object routeValues)
+        => new() { Controller = controller, Action = action, RouteValues = Mvc.RouteValues.From(routeValues) };
+
+    /// <summary>
+    /// Navigates to an action with route values from an anonymous object such as <c>new { id = 42 }</c>, a class or a
+    /// dictionary; its properties are kept when the application is trimmed or compiled with Native AOT.
+    /// </summary>
+    /// <typeparam name="TRouteValues">The values' type.</typeparam>
+    /// <param name="controller">The controller name.</param>
+    /// <param name="action">The action name.</param>
+    /// <param name="routeValues">The values.</param>
+    /// <returns>The navigation result.</returns>
+    /// <example><code>return NavigationResult.To("Orders", "Details", new { id = order.Id });</code></example>
+    public static NavigationResult To<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TRouteValues>(
+        string controller, string action, TRouteValues routeValues)
         => new() { Controller = controller, Action = action, RouteValues = Mvc.RouteValues.From(routeValues) };
 }

@@ -200,7 +200,7 @@ public sealed class DateElement : Element, IFormField
                     date = value;
                 else if (Required)
                 {
-                    FieldText.ShowError(renderer, InputElement.RequiredMessage);
+                    FieldText.ShowError(renderer, FrameworkText.Current.Required);
                     continue;
                 }
                 else
@@ -208,7 +208,7 @@ public sealed class DateElement : Element, IFormField
             }
             else if (!TryParse(text, today, out date))
             {
-                FieldText.ShowError(renderer, NotADateMessage);
+                FieldText.ShowError(renderer, FrameworkText.Current.NotADate);
                 continue;
             }
 
@@ -293,9 +293,9 @@ public sealed class DateElement : Element, IFormField
     private static string? RangeError(DateOnly date, DateOnly? min, DateOnly? max)
     {
         if (min is { } low && date < low)
-            return max is { } high ? $"Enter a date from {Format(low)} to {Format(high)}." : $"Enter a date on or after {Format(low)}.";
+            return max is { } high ? FrameworkText.Format(FrameworkText.Current.DateRange, Format(low), Format(high)) : FrameworkText.Format(FrameworkText.Current.DateOnOrAfter, Format(low));
         if (max is { } latest && date > latest)
-            return min is { } earliest ? $"Enter a date from {Format(earliest)} to {Format(latest)}." : $"Enter a date on or before {Format(latest)}.";
+            return min is { } earliest ? FrameworkText.Format(FrameworkText.Current.DateRange, Format(earliest), Format(latest)) : FrameworkText.Format(FrameworkText.Current.DateOnOrBefore, Format(latest));
         return null;
     }
 

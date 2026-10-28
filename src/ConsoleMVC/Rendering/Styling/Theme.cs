@@ -48,6 +48,22 @@ public sealed class Theme
         .Set("panel", new ThemeStyle { Border = BorderStyle.Rounded, BorderColour = Colour.Cyan, Padding = 2 });
 
     /// <summary>
+    /// Creates a theme with the built-in classes in bold, bright colours with strong contrast and no dim text, for people
+    /// who find the default colours hard to read. Turned on with <c>builder.HighContrast = true</c> or the
+    /// <c>ConsoleMVC:HighContrast</c> setting.
+    /// </summary>
+    /// <returns>A new, modifiable theme.</returns>
+    /// <example><code>builder.Theme = Theme.CreateHighContrast();</code></example>
+    public static Theme CreateHighContrast() => new Theme()
+        .Set("title", new ThemeStyle { Foreground = Colour.White, Bold = true, Underline = true })
+        .Set("muted", new ThemeStyle { Foreground = Colour.White })
+        .Set("success", new ThemeStyle { Foreground = Colour.Green, Bold = true })
+        .Set("warning", new ThemeStyle { Foreground = Colour.Yellow, Bold = true })
+        .Set("danger", new ThemeStyle { Foreground = Colour.Red, Bold = true, Underline = true })
+        .Set("info", new ThemeStyle { Foreground = Colour.Cyan, Bold = true })
+        .Set("panel", new ThemeStyle { Border = BorderStyle.Heavy, BorderColour = Colour.White, Padding = 1 });
+
+    /// <summary>
     /// Defines or replaces a class.
     /// </summary>
     /// <param name="name">The class name: letters, digits, <c>-</c> or <c>_</c>.</param>

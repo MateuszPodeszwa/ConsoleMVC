@@ -1,8 +1,9 @@
 <Project>
 
-    <!-- Auto-include .cvw view files as AdditionalFiles for the source generator -->
+    <!-- Auto-include .cvw view files (Views and Areas/{Area}/Views) as AdditionalFiles for the source generator -->
     <ItemGroup>
         <AdditionalFiles Include="Views/**/*.cvw" />
+        <AdditionalFiles Include="Areas/**/*.cvw" />
     </ItemGroup>
 
     <!-- Expose RootNamespace to the source generator so it can use the consumer's namespace -->
@@ -13,11 +14,13 @@
     <!-- dotnet watch: rebuild or hot reload when a .cvw view changes (views are AdditionalFiles, which it does not watch) -->
     <ItemGroup>
         <Watch Include="Views/**/*.cvw" />
+        <Watch Include="Areas/**/*.cvw" />
     </ItemGroup>
 
     <!-- IDE (Visual Studio / Rider) fast up-to-date check: treat .cvw edits as build inputs -->
     <ItemGroup>
         <UpToDateCheckInput Include="Views/**/*.cvw" />
+        <UpToDateCheckInput Include="Areas/**/*.cvw" />
     </ItemGroup>
 
 </Project>

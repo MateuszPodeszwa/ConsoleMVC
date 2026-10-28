@@ -77,7 +77,7 @@ public class ShortcutTests
         app.MapKey(ConsoleKey.F1, "Help/Index", "Help");
 
         Assert.Throws<ArgumentException>(() => app.MapKey(ConsoleKey.F1, "Other/Index"));
-        Assert.Throws<ArgumentException>(() => app.MapKey(ConsoleKey.F2, "Too/Many/Parts"));
+        Assert.Throws<ArgumentException>(() => app.MapKey(ConsoleKey.F2, "Too/Many/Parts/Here"));
         Assert.Single(app.Shortcuts);
     }
 

@@ -12,22 +12,32 @@ namespace ConsoleMVC.Generators.Emit;
 /// // /src/MyApp/Views/Home/IndexView.cvw with RootNamespace "MyApp":
 /// ViewInfo.TryCreate(path, "MyApp", out var info);
 /// // info.Namespace == "MyApp.Views.Home", info.ClassName == "IndexView", info.ControllerName == "Home"
+/// // /src/MyApp/Areas/Admin/Views/Users/IndexView.cvw:
+/// // info.Namespace == "MyApp.Areas.Admin.Views.Users", info.Area == "Admin", info.ControllerName == "Admin/Users"
 /// </code>
 /// </example>
 internal sealed class ViewInfo
 {
-    private ViewInfo(string filePath, string rootNamespace, string controllerName, string className)
+    private ViewInfo(string filePath, string rootNamespace, string? area, string folder, string className)
     {
         FilePath = filePath;
-        ControllerName = controllerName;
+        Area = area;
+        ControllerFolder = folder;
+        ControllerName = area is null ? folder : area + "/" + folder;
         ClassName = className;
-        Namespace = rootNamespace + ".Views." + controllerName;
+        Namespace = rootNamespace + (area is null ? "" : ".Areas." + area) + ".Views." + folder;
     }
+
+    /// <summary>Gets the area (the folder inside <c>Areas</c>), or <see langword="null"/> for a view outside one.</summary>
+    public string? Area { get; }
+
+    /// <summary>Gets the folder directly inside <c>Views</c>: the controller's name without its area.</summary>
+    public string ControllerFolder { get; }
 
     /// <summary>Gets the path of the <c>.cvw</c> file, used in <c>#line</c> directives.</summary>
     public string FilePath { get; }
 
-    /// <summary>Gets the controller name (the folder directly inside <c>Views</c>).</summary>
+    /// <summary>Gets the controller's route name: the folder inside <c>Views</c>, after the area when there is one (<c>Admin/Users</c>).</summary>
     public string ControllerName { get; }
 
     /// <summary>Gets the generated class name (the file name without extension).</summary>
@@ -40,9 +50,10 @@ internal sealed class ViewInfo
     /// Gets a value indicating whether this file is a partial view (<c>Views/Shared/{Name}.cvw</c>), compiled to a
     /// <c>ConsolePartialView&lt;TModel&gt;</c> rendered with <c>&lt;partial name="{Name}" /&gt;</c>.
     /// </summary>
-    public bool IsPartial => ControllerName == SharedFolder;
+    /// <remarks>Only the project's own <c>Views/Shared</c> holds partials and layouts; an area's views use them too.</remarks>
+    public bool IsPartial => Area is null && ControllerFolder == SharedFolder;
 
-    /// <summary>Gets the namespace of the generated class: <c>{RootNamespace}.Views.{Controller}</c>.</summary>
+    /// <summary>Gets the namespace of the generated class: <c>{RootNamespace}.Views.{Controller}</c>, or <c>{RootNamespace}.Areas.{Area}.Views.{Controller}</c>.</summary>
     public string Namespace { get; }
 
     /// <summary>Gets the fully-qualified name of the generated class.</summary>
@@ -73,7 +84,8 @@ internal sealed class ViewInfo
     }
 
     /// <summary>
-    /// Derives view information from a file path of the form <c>…/Views/{Controller}/{Name}.cvw</c>.
+    /// Derives view information from a file path of the form <c>…/Views/{Controller}/{Name}.cvw</c> or
+    /// <c>…/Areas/{Area}/Views/{Controller}/{Name}.cvw</c>.
     /// </summary>
     /// <param name="filePath">The full path of the <c>.cvw</c> file.</param>
     /// <param name="rootNamespace">The consuming project's root namespace.</param>
@@ -96,7 +108,12 @@ internal sealed class ViewInfo
         if (string.Equals(folder, SharedFolder, StringComparison.OrdinalIgnoreCase))
             folder = SharedFolder;
 
-        info = new ViewInfo(filePath, rootNamespace, folder, className);
+        // …/Areas/{Area}/Views/{Controller}/{Name}.cvw: a view of an area's controller
+        var area = parts.Length >= 5 && string.Equals(parts[parts.Length - 5], "Areas", StringComparison.OrdinalIgnoreCase)
+            ? parts[parts.Length - 4]
+            : null;
+
+        info = new ViewInfo(filePath, rootNamespace, area, folder, className);
         return true;
     }
 }

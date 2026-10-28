@@ -103,6 +103,14 @@ internal sealed class ViewEmitter
         }
 
         Line("");
+
+        // Registers the view with its assembly's route table, so the router finds it without scanning (docs/design/native-aot.md)
+        if (!_info.IsPartial && _info.ClassName.EndsWith("View", StringComparison.Ordinal) && _info.ClassName.Length > "View".Length)
+        {
+            Line(RouteTableEmitter.RegistrationFor(_info));
+            Line("");
+        }
+
         Line($"namespace {_info.Namespace}");
         Line("{");
         var isLayout = _info.IsPartial && _document.HasBodyPlaceholder;
@@ -114,12 +122,22 @@ internal sealed class ViewEmitter
         foreach (var inject in _document.Injects)
             EmitInject(inject);
 
+        if (_document.Injects.Count > 0)
+            EmitInjectServices();
+
         if (isLayout)
         {
             EmitLayoutMethods();
             Line("    }");
             Line("}");
             return _output.ToString();
+        }
+
+        if (!_info.IsPartial && _document.Refresh is not null
+            && RefreshInterval.TryParse(_document.Refresh.Value, out var refreshMilliseconds, out _))
+        {
+            Line("        protected override global::System.TimeSpan? RefreshInterval => global::System.TimeSpan.FromMilliseconds(" +
+                 refreshMilliseconds.ToString(CultureInfo.InvariantCulture) + ");");
         }
 
         // Map the method to the first line so "not all code paths return a value" points at the .cvw file
@@ -185,6 +203,20 @@ internal sealed class ViewEmitter
             .Append(inject.Type.Value).Append(' ', Math.Max(inject.Name.Span.Start - inject.Type.Span.End, 1)).Append(inject.Name.Value)
             .Append(" { get; private set; } = default!;\n");
         Hidden();
+    }
+
+    /// <summary>
+    /// Emits <c>InjectServices</c>, which fills the <c>@inject</c> properties with plain assignments, so no reflection is
+    /// needed to find them (and trimmed applications keep working).
+    /// </summary>
+    private void EmitInjectServices()
+    {
+        Line("        protected override bool InjectServices(global::System.IServiceProvider services)");
+        Line("        {");
+        foreach (var inject in _document.Injects)
+            Line($"            this.{inject.Name.Value} = RequireService(services, this.{inject.Name.Value}, \"{inject.Name.Value}\");");
+        Line("            return true;");
+        Line("        }");
     }
 
     // ------------------------------------------------------------------ nodes

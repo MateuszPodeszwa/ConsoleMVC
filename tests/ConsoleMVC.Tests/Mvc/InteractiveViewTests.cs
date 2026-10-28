@@ -103,7 +103,7 @@ public class InteractiveViewTests
 
     [Theory]
     [InlineData("")]
-    [InlineData("a/b/c")]
+    [InlineData("a/b/c/d")]
     [InlineData("/About")]
     public void RunMenu_InvalidTarget_ThrowsDescriptiveError(string target)
     {

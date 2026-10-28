@@ -2,6 +2,169 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.33.0]
+
+### Added
+
+- **Remote sessions** ([design](docs/design/remote-sessions.md), [guide](docs/guides/docs/remote-sessions.md)): one
+  process serves the application to many users, each with their own screen, input, current page and history.
+  `TerminalServer` and `TerminalServerOptions` listen over TCP with Telnet (window size and terminal type negotiated) or
+  raw bytes, optionally over TLS 1.2 or 1.3; `app.ServeAsync(options, token)`, or the `ConsoleMVC:Serve` settings
+  (`ServeProtocol`, `ServeCertificate`, `ServeCertificatePassword`, `ServeMaxSessions`, `ServeAllowUnencrypted`) make
+  `Run` and `RunAsync` serve until Ctrl+C.
+- `RemoteTerminal` and `RemoteTerminalOptions` turn any stream into a terminal (keys and escape sequences decoded,
+  output written as ANSI with CR LF), and `MvcApplication.RunSessionAsync(terminal, token)` runs a session on it, for
+  other transports such as WebSockets.
+- `ITerminalSession`, resolved from services: the session's `Id`, `IsRemote`, `RemoteEndPoint`, `TerminalType`, `Width`,
+  `Height`, per-session `Items` and `Disconnect()`.
+- Secure defaults: loopback only, a network address needs TLS (or `AllowUnencryptedNetworkAccess`), at most 16 sessions,
+  bounded input and window sizes, idle, handshake and write timeouts (`WriteTimeout`, 30 seconds), and random session
+  identifiers. Stopping the server closes connections whose sessions have not ended after 5 seconds.
+- The template's status page shows its session, and `Program.cs` explains how to serve the app.
+
+### Changed
+
+- `ILiveDisplay` draws on the terminal of the session that started the live element.
+- A run's current page and history are kept per session; local runs behave as before.
+- The alternate screen and mouse reporting are put back with every kind of terminal error, not only `IOException`.
+
+## [1.32.0]
+
+### Added
+
+- **Native AOT and trimming** ([design](docs/design/native-aot.md), [guide](docs/guides/docs/native-aot.md)): the
+  source generator writes a route table per assembly (`IRouteTable`, `ControllerRoute`, `ActionRoute`, `ViewRoute`,
+  `RouteTableAttribute`; `.cvw` views register with `GeneratedViewAttribute`) with typed controller and view factories,
+  typed action calls and `DynamicDependency` attributes for model types. `Router.Use(table)`; the router falls back to
+  scanning without a table and after a hot reload. Generated views fill `@inject` properties in `InjectServices`
+  (`ConsoleViewBase.RequireService`). The framework is analysed for trimming and AOT, and the template publishes as
+  Native AOT with no warnings (checked in CI).
+- Generic overloads `RedirectToAction<TRouteValues>`, `NavigationResult.To<TRouteValues>` and
+  `RouteValues.From<TValues>` keep route values' properties when trimming; the `object` overloads are
+  `[RequiresUnreferencedCode]`.
+- The template enables the configuration binding generator.
+
+### Changed
+
+- Controllers and views are found through the generated route table, and actions are called without reflection, which
+  also makes start-up faster.
+
+## [1.31.0]
+
+### Added
+
+- **Mouse support** ([design](docs/design/mouse.md), [guide](docs/guides/docs/controllers-and-forms.md#mouse)):
+  `builder.Mouse = true` (or the `ConsoleMVC:Mouse` setting) turns on the terminal's mouse reports. Clicking a menu
+  option, a `<select>` or vertical `<radio>` choice or a `<checkbox>` answers it, and the wheel moves like the arrow
+  keys. Elements register `ClickTarget`s with `IMarkupRenderer.MapClicks`; `KeysAt`, `SetMouseReporting` and
+  `IRenderTarget.TrySetMouseReporting` (implemented by `AnsiRenderTarget`).
+- `ScriptedInput.Click(column, row)` and `Wheel(down)` for tests.
+- The template turns the mouse on.
+
+### Changed
+
+- Line editing key by key (shared by shortcuts and the mouse) understands `ConsoleKey.Clear`, which erases the line.
+
+## [1.30.0]
+
+### Added
+
+- **Areas** ([design](docs/design/areas-and-modules.md), [guide](docs/guides/docs/areas-and-modules.md)): controllers in
+  `*.Areas.{Area}.*` namespaces or with `[Area("…")]` (`AreaAttribute`) have routes such as `Admin/Users/Index`, and
+  their views live in `Areas/{Area}/Views/{Controller}` (namespace `*.Areas.{Area}.Views.{Controller}`). Inside an area,
+  a controller named without one is the area's own when it has one. `RouteContext.Area` and `ControllerName`,
+  `Router.ControllerKey` and `Router.Qualify`. The build checks (CVW119 to CVW121) and the Create view fix know areas.
+- **Modules**: `builder.AddModule<TModule>()` (`IMvcModule.Configure`) and `builder.AddModule(assembly)` add the
+  controllers and views of other assemblies; `builder.Modules`.
+- The template's settings page is in an Admin area.
+
+### Changed
+
+- Navigation targets may have three parts (`Area/Controller/Action`); four or more are still invalid.
+- The package's build props include `Areas/**/*.cvw` as views.
+
+## [1.29.0]
+
+### Added
+
+- **Localisation** ([design](docs/design/localisation.md), [guide](docs/guides/docs/localisation.md)):
+  `IStringLocalizer<T>` is registered for views and controllers. `builder.Localization` (`MvcLocalizationOptions`)
+  sets the run's `Culture` (or the `ConsoleMVC:Culture` setting), the framework's own messages (`FrameworkText`,
+  translated with `FrameworkTextResource` or set in code) and `LocalizeValidation`: DataAnnotations `ErrorMessage`
+  and `[Display(Name)]` are translated and formatted with the attribute's own arguments.
+- The template translates the greeting form, the framework's prompts and the validation messages into Polish.
+
+### Changed
+
+- Every built-in message and prompt (menus, fields, `<scroll>`, binding errors) now comes from `FrameworkText.Current`;
+  the English defaults are unchanged.
+
+## [1.28.0]
+
+### Added
+
+- **Screen-reader mode** ([design](docs/design/accessibility.md), [guide](docs/guides/docs/accessibility.md)):
+  `builder.ScreenReader = true` or the `ConsoleMVC:ScreenReader` setting wraps the renderer in `ScreenReaderRenderer`.
+  Elements are described in plain text by `ScreenReaderText` (boxes without borders, tables as `Header: value` lines,
+  progress, spinners and charts in words), fields take typed answers, screens are separated rather than erased, and
+  full-screen mode is ignored. `MarkupRenderer.CreateForScreenReader()`, `MarkdownElement.UseBoxDrawing`.
+- **High contrast**: `Theme.CreateHighContrast()`, chosen with `builder.HighContrast = true` or the
+  `ConsoleMVC:HighContrast` setting.
+- The template's `Program.cs` explains both settings.
+
+## [1.27.0]
+
+### Added
+
+- **Full-screen mode** ([design](docs/design/full-screen.md), [guide](docs/guides/docs/configuration.md)):
+  `builder.FullScreen = true` runs the application on the terminal's alternate screen and restores the normal screen
+  when it ends, fails or is stopped with Ctrl+C. `IRenderTarget.TrySetAlternateScreen` (implemented by
+  `AnsiRenderTarget`), `IMarkupRenderer.SetFullScreen` and `IMarkupRenderer.Height`.
+- **`<scroll>`** (`ScrollElement`, `ConsoleViewBase.ShowScroll`): long content shown a page at a time, scrolled with
+  the arrow keys, J and K, Page Up and Page Down, Space, Home and End, and left with Enter, Esc or Q. Everything is drawn
+  at once when it fits or input or output is piped.
+- The template runs full screen and pages the feature tour's table.
+
+## [1.26.0]
+
+### Added
+
+- **`<markdown text="…" />`** ([design](docs/design/markdown.md), [guide](docs/guides/docs/c-view-markup.md#markdown)):
+  `MarkdownElement` draws headings, paragraphs (with hard line breaks), bulleted and numbered lists (nested), block
+  quotes, fenced code (clipped, not wrapped), rules, `**bold**`, `*italic*`, `` `code` ``, links (`ShowLinkUrls`) and
+  escapes. Output is sanitised, and parsing is bounded so unusual input cannot slow a screen down.
+- The template's about page is written in Markdown.
+
+## [1.25.0]
+
+### Added
+
+- **Charts** ([design](docs/design/charts.md), [guide](docs/guides/docs/c-view-markup.md#bar-chart-and-bar)):
+  `<bar-chart>` with `<bar label value colour />` (`BarChartElement`, `BarElement`, `BarChartStyle`: `block` with
+  eighths of a cell, `shade`, `ascii`; `max`, `format`, `values="false"`), and `<sparkline values min max show-last />`
+  (`SparklineElement`) showing the most recent values that fit.
+- `ChartValues.From` turns sequences of `int`, `long`, `float`, `double` or `decimal` into chart values;
+  `values="3, 5, 2"` literals are checked at build time.
+- The template's status page draws a sparkline of the load and a bar chart of response times.
+
+## [1.24.0]
+
+### Added
+
+- **Live regions** ([design](docs/design/live-elements.md), [guide](docs/guides/docs/live-screens.md)): `ILiveDisplay`
+  (registered as `LiveDisplay`) `Start(element, interval?)` draws an element and keeps it up to date while an action
+  works; `LiveRegion.Update(change)`, `Refresh()` and disposal draw it in place, and a timer turns spinners
+  (`IAnimatedElement`). On a pipe or a file the element is drawn once, in its final state.
+- **`<progress />`** (`ProgressElement`, `ProgressStyle`: `block`, `line`, `ascii`) and **`<spinner />`**
+  (`SpinnerElement`, `SpinnerStyle`: `dots`, `line`, `circle`; `done` shows a tick).
+- **Timed refresh**: `@refresh 5s` in a view, or `View(model).RefreshEvery(TimeSpan)` and `NoRefresh()` in the action,
+  draws the screen again with fresh data until the user starts typing. CVW010 reports an invalid interval and
+  `@refresh` in a partial or a layout.
+- `ITextInput.WaitForInput(timeout)` (implemented by `ConsoleTextInput`), and `ScriptedInput.Wait()` for testing
+  refreshing screens.
+- The template's feature tour has a live status option: a progress bar while the services are checked, then a page
+  that refreshes every second, with a test for it in `--tests`.
+
 ## [1.23.0]
 
 ### Added

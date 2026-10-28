@@ -14,6 +14,7 @@ namespace ConsoleMVC.Testing;
 ///     .Keys(ConsoleKey.DownArrow, ConsoleKey.Enter)          // a &lt;select&gt; with the arrow keys
 ///     .Key(ScriptedInput.Char('y'))                          // a &lt;checkbox&gt;
 ///     .Line("q");
+/// var dashboard = new ScriptedInput().Wait().Wait().Line("q"); // a screen that refreshes twice, then quits
 /// </code>
 /// </example>
 public sealed class ScriptedInput : ITextInput
@@ -93,6 +94,62 @@ public sealed class ScriptedInput : ITextInput
     }
 
     /// <summary>
+    /// Adds a left click at a place in the window, counted from 0 at the top left, as a terminal reports it. With
+    /// <c>builder.Mouse</c> on, clicking a menu option, a choice or a checkbox answers it.
+    /// </summary>
+    /// <param name="column">The column, from 0.</param>
+    /// <param name="row">The row, from 0 at the top of the screen.</param>
+    /// <returns>This script, for chaining.</returns>
+    /// <example><code>input.Click(2, 5); // the option on the sixth row</code></example>
+    public ScriptedInput Click(int column, int row) => Report(0, column, row);
+
+    /// <summary>Adds a turn of the mouse wheel, which scrolls like the Up or Down arrow.</summary>
+    /// <param name="down"><see langword="true"/> to scroll down.</param>
+    /// <returns>This script, for chaining.</returns>
+    /// <example><code>input.Wheel(down: true);</code></example>
+    public ScriptedInput Wheel(bool down) => Report(down ? 65 : 64, 0, 0);
+
+    /// <summary>Adds the keys of an SGR mouse report: ESC [ &lt; button ; column ; row M, then the release.</summary>
+    private ScriptedInput Report(int button, int column, int row)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(column);
+        ArgumentOutOfRangeException.ThrowIfNegative(row);
+
+        Key(KeyOf(ConsoleKey.Escape));
+        foreach (var c in $"[<{button};{column + 1};{row + 1}M")
+            Key(new ConsoleKeyInfo(c, ConsoleKey.NoName, shift: false, alt: false, control: false));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a pause in which the user types nothing, long enough for a screen with <c>@refresh</c> (or
+    /// <see cref="Mvc.ViewResult.RefreshEvery"/>) to be drawn again. The screen's <see cref="WaitForInput"/> uses it up.
+    /// </summary>
+    /// <returns>This script, for chaining.</returns>
+    /// <example><code>input.Wait().Wait().Line("q"); // two refreshes, then a menu choice</code></example>
+    public ScriptedInput Wait()
+    {
+        _steps.Enqueue(new Step(null, null));
+        return this;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Returns <see langword="false"/> and uses up the next step when it is a <see cref="Wait"/>; otherwise
+    /// <see langword="true"/>, at once.
+    /// </remarks>
+    public bool WaitForInput(TimeSpan timeout)
+    {
+        if (_steps.TryPeek(out var step) && step.IsWait)
+        {
+            _steps.Dequeue();
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Returns the key information a terminal reports for a special key.
     /// </summary>
     /// <param name="key">The key.</param>
@@ -140,6 +197,7 @@ public sealed class ScriptedInput : ITextInput
         if (!_steps.TryPeek(out var step))
             return null;
 
+        ThrowIfWait(step, "a line");
         if (step.Line is null)
             throw new InvalidOperationException(
                 $"The application read a line, but the next step of the script is the key {Describe(step.Key!.Value)}. " +
@@ -160,6 +218,7 @@ public sealed class ScriptedInput : ITextInput
         if (!_steps.TryPeek(out var step))
             return null;
 
+        ThrowIfWait(step, "a key");
         if (step.Key is null)
             throw new InvalidOperationException(
                 $"The application read a key, but the next step of the script is the line '{step.Line}'. " +
@@ -169,9 +228,20 @@ public sealed class ScriptedInput : ITextInput
         return step.Key;
     }
 
+    private static void ThrowIfWait(Step step, string what)
+    {
+        if (step.IsWait)
+            throw new InvalidOperationException(
+                $"The application read {what}, but the next step of the script is Wait(), which only a screen that " +
+                "refreshes (@refresh or RefreshEvery) uses up.");
+    }
+
     private static string Describe(ConsoleKeyInfo key) =>
         key.KeyChar is >= ' ' and not '\u007f' ? $"'{key.KeyChar}'" : key.Key.ToString();
 
-    /// <summary>One step: a line or a key.</summary>
-    private readonly record struct Step(string? Line, ConsoleKeyInfo? Key);
+    /// <summary>One step: a line, a key, or (neither) a pause for a refresh.</summary>
+    private readonly record struct Step(string? Line, ConsoleKeyInfo? Key)
+    {
+        public bool IsWait => Line is null && Key is null;
+    }
 }

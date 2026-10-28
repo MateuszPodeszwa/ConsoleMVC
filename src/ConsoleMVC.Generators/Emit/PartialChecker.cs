@@ -29,6 +29,12 @@ internal static class PartialChecker
         var diagnostics = new List<ParseDiagnostic>();
         CheckLayout(document, info, partials, diagnostics);
 
+        if (info.IsPartial && document.Refresh is not null)
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidRefresh, document.Refresh.Span,
+                (document.HasBodyPlaceholder ? "A layout" : "A partial view") + " cannot refresh: put @refresh in the view that uses it"));
+        }
+
         foreach (var element in Elements(document.Body))
         {
             if (element.Schema.Tag == MarkupSchema.MenuTag && info.IsPartial)

@@ -93,6 +93,12 @@ internal sealed class LineEditor
                 _echo.Write(_text.ToString(_cursor, _text.Length - _cursor));
                 _cursor = _text.Length;
                 return false;
+            case ConsoleKey.Clear:
+                // Erase the whole line: a mouse click replaces what was typed with its own answer
+                _echo.Write(new string('\b', _cursor) + new string(' ', _text.Length) + new string('\b', _text.Length));
+                _text.Clear();
+                _cursor = 0;
+                return false;
         }
 
         var c = key.KeyChar;

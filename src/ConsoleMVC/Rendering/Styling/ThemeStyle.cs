@@ -116,6 +116,30 @@ public sealed record ThemeStyle
             case ShortcutsElement shortcuts:
                 if (Foreground is { } shortcutsColour) shortcuts.Colour = shortcutsColour;
                 break;
+
+            case ProgressElement progress:
+                if (Foreground is { } progressColour) progress.Colour = progressColour;
+                break;
+
+            case SpinnerElement spinner:
+                if (Foreground is { } spinnerColour) spinner.Colour = spinnerColour;
+                break;
+
+            case BarChartElement chart:
+                if (Foreground is { } chartColour) chart.Colour = chartColour;
+                break;
+
+            case ScrollElement scroll:
+                if (Foreground is { } statusColour) scroll.StatusColour = statusColour;
+                break;
+
+            case MarkdownElement markdown:
+                if (Foreground is { } headingColour) markdown.HeadingColour = headingColour;
+                break;
+
+            case SparklineElement sparkline:
+                if (Foreground is { } sparklineColour) sparkline.Colour = sparklineColour;
+                break;
         }
     }
 }

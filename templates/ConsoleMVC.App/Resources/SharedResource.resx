@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <!-- English: the text views show. Framework messages without a resource stay in English. -->
+  <data name="GreetingTitle" xml:space="preserve"><value>Greeting Form</value></data>
+  <data name="GreetingIntro" xml:space="preserve"><value>Fill in the form below and answer each field.</value></data>
+  <data name="NameLabel" xml:space="preserve"><value>  Name: </value></data>
+  <data name="ColourLabel" xml:space="preserve"><value>  Favourite colour:</value></data>
+  <data name="ShoutLabel" xml:space="preserve"><value>  Shout the greeting</value></data>
+</root>

@@ -102,9 +102,23 @@ internal sealed class IntegerAttributeType : AttributeType
     }
 }
 
-/// <summary>A decimal number in the invariant culture, e.g. <c>0</c>, <c>-5</c> or <c>2.5</c>; emitted as a <c>decimal</c>.</summary>
+/// <summary>
+/// A number in the invariant culture, e.g. <c>0</c>, <c>-5</c> or <c>2.5</c>; emitted as a <c>decimal</c> (for
+/// <c>&lt;number&gt;</c>) or a <c>double</c> (for <c>&lt;progress&gt;</c>).
+/// </summary>
 internal sealed class DecimalAttributeType : AttributeType
 {
+    private readonly string _suffix;
+
+    /// <summary>
+    /// Creates a number attribute type.
+    /// </summary>
+    /// <param name="asDouble"><see langword="true"/> to emit a <c>double</c> literal instead of a <c>decimal</c>.</param>
+    public DecimalAttributeType(bool asDouble = false)
+    {
+        _suffix = asDouble ? "d" : "m";
+    }
+
     /// <inheritdoc />
     public override string Description => "a number such as 0, -5 or 2.5";
 
@@ -118,9 +132,44 @@ internal sealed class DecimalAttributeType : AttributeType
                 CultureInfo.InvariantCulture, out var value))
             return false;
 
-        code = value.ToString(CultureInfo.InvariantCulture) + "m";
+        code = value.ToString(CultureInfo.InvariantCulture) + _suffix;
         return true;
     }
+}
+
+/// <summary>
+/// The values of a chart: a literal list of numbers separated by commas or spaces (<c>3, 5, 2</c>), or an expression
+/// for a sequence of any number type, which is passed through <c>ChartValues.From</c>.
+/// </summary>
+internal sealed class NumberListAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "numbers separated by commas or spaces, e.g. '3, 5, 2', or an expression such as @Model.Values";
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        code = "";
+        error = "expected " + Description;
+        var parts = (literal ?? "").Split(new[] { ',', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+        var numbers = new List<string>(parts.Length);
+
+        foreach (var part in parts)
+        {
+            if (!double.TryParse(part, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture,
+                    out var value))
+                return false;
+
+            numbers.Add(value.ToString("R", CultureInfo.InvariantCulture) + "d");
+        }
+
+        code = "new double[] { " + string.Join(", ", numbers) + " }";
+        return true;
+    }
+
+    /// <inheritdoc />
+    public override string WrapExpression(string expressionCode) =>
+        "global::ConsoleMVC.Rendering.ChartValues.From(" + expressionCode + ")";
 }
 
 /// <summary>
@@ -333,7 +382,7 @@ internal sealed class ChoiceAttributeType : AttributeType
 internal sealed class RouteAttributeType : AttributeType
 {
     /// <inheritdoc />
-    public override string Description => "a route such as 'Home/Index', 'Index' or 'Orders/Details?id=42'";
+    public override string Description => "a route such as 'Home/Index', 'Index', 'Admin/Users/Index' or 'Orders/Details?id=42'";
 
     /// <inheritdoc />
     public override bool AllowsInterpolation => true;
@@ -347,7 +396,7 @@ internal sealed class RouteAttributeType : AttributeType
         var query = text.IndexOf('?');
         var parts = (query < 0 ? text : text.Substring(0, query)).Split('/');
 
-        if (parts.Length > 2 || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
+        if (parts.Length > 3 || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
             return false;
 
         // Route values: key=value pairs separated by '&'; every key must have a name

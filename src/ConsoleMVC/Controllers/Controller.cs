@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 namespace ConsoleMVC.Mvc;
 
 /// <summary>
@@ -111,7 +112,7 @@ public abstract class Controller
     protected bool TryValidateModel(object model)
     {
         ArgumentNullException.ThrowIfNull(model);
-        return ModelValidator.ValidateModel(model, ModelState);
+        return ModelValidator.ValidateModel(model, ModelState, ValidationLocalizer);
     }
 
     /// <summary>
@@ -143,9 +144,42 @@ public abstract class Controller
     /// <param name="action">The name of the target action method.</param>
     /// <param name="routeValues">The values bound to the action's parameters; see <see cref="Mvc.RouteValues.From"/>.</param>
     /// <returns>The redirect.</returns>
-    /// <example><code>return RedirectToAction("Details", new { id = order.Id });</code></example>
+    /// <example><code>RedirectToAction("Details", (object)values); // values known only as an object</code></example>
+    [RequiresUnreferencedCode("Reads the public properties of the object's run-time type, which trimming may remove. Pass the values with their own type (an anonymous object or a class), or a dictionary.")]
     protected RedirectToActionResult RedirectToAction(string action, object routeValues) =>
         RedirectToAction(action, null, routeValues);
+
+    /// <summary>
+    /// Creates a <see cref="RedirectToActionResult"/> to an action on this controller, passing route values from an
+    /// anonymous object such as <c>new { id = 42 }</c>, a class or a dictionary. Its properties are kept when the
+    /// application is trimmed or compiled with Native AOT.
+    /// </summary>
+    /// <typeparam name="TRouteValues">The values' type.</typeparam>
+    /// <param name="action">The name of the target action method.</param>
+    /// <param name="routeValues">The values bound to the action's parameters.</param>
+    /// <returns>The redirect.</returns>
+    /// <example><code>return RedirectToAction("Details", new { id = order.Id });</code></example>
+    protected RedirectToActionResult RedirectToAction<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TRouteValues>(
+        string action, TRouteValues routeValues) =>
+        RedirectToAction(action, null, routeValues);
+
+    /// <summary>
+    /// Creates a <see cref="RedirectToActionResult"/> to an action on another controller, passing route values from an
+    /// anonymous object, a class or a dictionary; its properties are kept when the application is trimmed.
+    /// </summary>
+    /// <typeparam name="TRouteValues">The values' type.</typeparam>
+    /// <param name="action">The name of the target action method.</param>
+    /// <param name="controller">The target controller, or <see langword="null"/> for this one.</param>
+    /// <param name="routeValues">The values bound to the action's parameters.</param>
+    /// <returns>The redirect.</returns>
+    /// <example><code>return RedirectToAction("Details", "Orders", new { id });</code></example>
+    protected RedirectToActionResult RedirectToAction<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TRouteValues>(
+        string action, string? controller, TRouteValues routeValues) => new()
+    {
+        ActionName = action,
+        ControllerName = controller ?? GetControllerName(),
+        RouteValues = Mvc.RouteValues.From(routeValues)
+    };
 
     /// <summary>
     /// Creates a <see cref="RedirectToActionResult"/> to an action on another controller, passing route values.
@@ -154,7 +188,8 @@ public abstract class Controller
     /// <param name="controller">The target controller, or <see langword="null"/> for this one.</param>
     /// <param name="routeValues">The values bound to the action's parameters; see <see cref="Mvc.RouteValues.From"/>.</param>
     /// <returns>The redirect.</returns>
-    /// <example><code>return RedirectToAction("Details", "Orders", new { id });</code></example>
+    /// <example><code>return RedirectToAction("Details", "Orders", (object)values);</code></example>
+    [RequiresUnreferencedCode("Reads the public properties of the object's run-time type, which trimming may remove. Pass the values with their own type (an anonymous object or a class), or a dictionary.")]
     protected RedirectToActionResult RedirectToAction(string action, string? controller, object routeValues)
     {
         return new RedirectToActionResult
@@ -170,11 +205,11 @@ public abstract class Controller
     /// from the concrete type name.
     /// </summary>
     /// <returns>The controller name without the <c>Controller</c> suffix.</returns>
-    private string GetControllerName()
-    {
-        var name = GetType().Name;
-        return name.EndsWith("Controller")
-            ? name[..^"Controller".Length]
-            : name;
-    }
+    private string GetControllerName() => Router.ControllerKey(GetType());
+
+    /// <summary>
+    /// Gets or sets the resources that translate validation messages, when
+    /// <see cref="MvcLocalizationOptions.LocalizeValidation"/> is on; assigned by the application before the action runs.
+    /// </summary>
+    internal Func<Type, Microsoft.Extensions.Localization.IStringLocalizer>? ValidationLocalizer { get; set; }
 }

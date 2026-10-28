@@ -11,7 +11,8 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace ConsoleMVC.Generators.Parsing;
 
 /// <summary>
-/// Parses a complete <c>.cvw</c> file: the directive preamble (<c>@model</c>, <c>@using</c>, <c>@inject</c>) followed by
+/// Parses a complete <c>.cvw</c> file: the directive preamble (<c>@model</c>, <c>@using</c>, <c>@inject</c>, <c>@layout</c>,
+/// <c>@refresh</c>) followed by
 /// the body (C# with embedded markup).
 /// </summary>
 /// <remarks>
@@ -30,6 +31,7 @@ internal static class CvwDocumentParser
     private const string UsingDirective = "@using";
     private const string InjectDirectiveName = "@inject";
     private const string LayoutDirective = "@layout";
+    private const string RefreshDirective = "@refresh";
 
     /// <summary>
     /// Names an <c>@inject</c> property may not use: the <c>Render</c> parameter and the members of
@@ -59,6 +61,7 @@ internal static class CvwDocumentParser
         var injects = new List<InjectDirective>();
         DirectiveValue? model = null;
         DirectiveValue? layout = null;
+        DirectiveValue? refresh = null;
         var position = 0;
 
         while (position < text.Length)
@@ -121,6 +124,19 @@ internal static class CvwDocumentParser
                 continue;
             }
 
+            if (IsDirective(trimmed, RefreshDirective))
+            {
+                var value = ReadArgument(text, position, line, RefreshDirective);
+                if (refresh is not null)
+                    diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidRefresh, value.Span, "The view declares @refresh more than once"));
+                else if (!RefreshInterval.TryParse(value.Value, out _, out var error))
+                    diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidRefresh, value.Span, error));
+
+                refresh ??= value;
+                position = lineEnd + 1;
+                continue;
+            }
+
             if (IsDirective(trimmed, InjectDirectiveName) || trimmed == InjectDirectiveName)
             {
                 ReadInject(text, position, line, injects, diagnostics);
@@ -135,7 +151,7 @@ internal static class CvwDocumentParser
             position = text.Length;
 
         var body = new MarkupParser(text, position, schema, diagnostics).ParseBody();
-        return new CvwDocument(text, model, usings, injects, body, diagnostics, layout);
+        return new CvwDocument(text, model, usings, injects, body, diagnostics, layout, refresh);
     }
 
     /// <summary>

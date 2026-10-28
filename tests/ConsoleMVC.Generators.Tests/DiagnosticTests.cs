@@ -202,7 +202,7 @@ public class DiagnosticTests
     }
 
     [Theory]
-    [InlineData("Home/Index/Extra")]
+    [InlineData("Area/Home/Index/Extra")]
     [InlineData("Home Index")]
     [InlineData("/Index")]
     public void InvalidRoute_CVW101(string route)

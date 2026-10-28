@@ -104,7 +104,7 @@ public class RouteValueTests
 
     [Theory]
     [InlineData("")]
-    [InlineData("a/b/c")]
+    [InlineData("a/b/c/d")]
     [InlineData("/Item")]
     public void InvalidTargets_Throw(string target)
     {

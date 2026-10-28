@@ -5,6 +5,9 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <!-- Binds options (GreetingOptions) with generated code, so the app also works trimmed or as Native AOT:
+             dotnet publish -c Release -p:PublishAot=true -->
+        <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
 <!--#if (tests) -->
         <!-- The test project lives in a subfolder; keep its files out of the application -->
         <DefaultItemExcludes>$(DefaultItemExcludes);ConsoleMVC.App.Tests/**</DefaultItemExcludes>
@@ -12,7 +15,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="ConsoleMVC.Framework" Version="1.23.0" />
+        <PackageReference Include="ConsoleMVC.Framework" Version="1.33.0" />
     </ItemGroup>
 
     <!-- builder.Configuration reads these from the application's folder -->

@@ -10,11 +10,17 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 
 - [Getting Started](getting-started.md): install the framework and create your first console MVC application.
 - [Controllers and Forms](controllers-and-forms.md): actions, navigation, posting forms and model binding.
-- [C-View Markup](c-view-markup.md): describe screens with `<box>`, `<text>`, `<table>` and `<columns>`, reuse markup with `<partial>`, style it with themes, and collect input with `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>`.
+- [C-View Markup](c-view-markup.md): describe screens with `<box>`, `<text>`, `<table>` and `<columns>`, reuse markup with `<partial>`, draw `<bar-chart>` and `<sparkline>`, show `<markdown>`, page long content with `<scroll>`, style it with themes, and collect input with `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>`.
 - [Validation](validation.md): DataAnnotations, `ModelState` and `<errors />`.
 - [Dependency Injection](dependency-injection.md): register services and receive them in controllers and views (`@inject`).
 - [Async Actions and Middleware](async-and-middleware.md): `await` in actions and run code around every action with `app.Use`.
+- [Areas and Modules](areas-and-modules.md): group screens into areas (`nav="Admin/Users/Index"`) and add feature modules from other assemblies.
+- [Live Screens](live-screens.md): `<progress>` and `<spinner>` while an action works, and views that refresh on a timer with `@refresh`.
 - [Configuration Files and Logging](hosting.md): `appsettings.json`, environment variables, options and `ILogger<T>`.
 - [Builder Options](configuration.md): the builder, themes and live reload.
 - [Testing](testing.md): run the application in tests with `ConsoleMVC.Testing`, scripted input and snapshots.
+- [Native AOT and Trimming](native-aot.md): publish a single native executable that starts in milliseconds.
+- [Remote Sessions](remote-sessions.md): serve the application to many users at once over Telnet, TLS, SSH or a web terminal.
+- [Accessibility](accessibility.md): a screen-reader mode and a high-contrast theme that users can turn on.
+- [Localisation](localisation.md): resources in views, translated framework messages and validation, and the run's culture.
 - [API Reference](../api/): auto-generated reference documentation for all public types.

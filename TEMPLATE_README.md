@@ -33,7 +33,7 @@ A ready-to-run console application structured with the MVC pattern:
 
 - **Program.cs**: entry point using the familiar `CreateBuilder()`, `Build()`, `RunAsync()` pattern, with a middleware that shows the current page in the terminal title
 - **Controllers/**: controller classes that handle actions and return results
-- **Views/**: `.cvw` views using C-View Markup (`<box>`, `<text>`, `<table>`, `<columns>`, `<input>`, `<select>`, `<checkbox>`, `<menu>`) and C#, compiled at build time; `Views/Shared` holds the layout and a partial view
+- **Views/**: `.cvw` views using C-View Markup (`<box>`, `<text>`, `<table>`, `<columns>`, `<input>`, `<select>`, `<checkbox>`, `<menu>`, `<progress>`, `<spinner>`, `<bar-chart>`, `<sparkline>`, `<markdown>`, `<scroll>`) and C#, compiled at build time; `Views/Shared` holds the layout and a partial view
 - **Models/**: ViewModel DTOs passed from controllers to views
 - **Services/**: an `IGreetingService` registered with `builder.Services` in `Program.cs`, configured by `GreetingOptions`
 - **appsettings.json**: settings read by `builder.Configuration` (environment variables and command-line arguments override them)
@@ -46,6 +46,15 @@ The template includes working examples of:
 - **Form data posting with model binding**: a greeting form with a text `<input>`, a colour `<select>` (arrow keys in a terminal) and a `<checkbox>`, posted to a controller as a `GreetFormModel` class, validated with `[Required]` and `[StringLength]` and showing errors with `<errors />`
 - **Logging**: `Program.cs` sends logs to `logs/app.log` with `builder.Logging.AddFile`, since the console shows the application
 - **Configuration**: the greeting's salutation comes from the `Greeting` section of `appsettings.json` through `IOptions<GreetingOptions>`; try `dotnet run -- --Greeting:Salutation=Hi`
+- **Areas**: the feature tour's settings page is in the Admin area, `Areas/Admin/Controllers/SettingsController.cs` and `Areas/Admin/Views/Settings/IndexView.cvw`, reached with `nav="Admin/Settings/Index"`
+- **Localisation**: the greeting form's text comes from `Resources/SharedResource.resx`, with a Polish translation (including the framework's prompts and the validation messages): try `dotnet run -- --ConsoleMVC:Culture=pl-PL`
+- **Accessibility**: run with `dotnet run -- --ConsoleMVC:ScreenReader=true` for plain text a screen reader reads well, or `--ConsoleMVC:HighContrast=true` for bold, bright colours
+- **Full screen and scrolling**: `Program.cs` sets `builder.FullScreen = true`, so the app runs on the alternate screen and your scrollback comes back afterwards; the feature tour's table is paged with `<scroll height="12">`
+- **Markdown**: the about page's text is Markdown in `HomeController`, drawn with `<markdown>`
+- **Live screens**: the feature tour's live status option checks the services with a `<progress>` bar that updates while the action works (`ILiveDisplay`), then shows a status page that refreshes every second with `@refresh 1s`, with a `<sparkline>` of the load and a `<bar-chart>` of response times
+- **Remote sessions**: `dotnet run -- --ConsoleMVC:Serve=2323`, then `telnet localhost 2323` from other terminals: every user gets their own session, and the live status page shows which one (`ITerminalSession` in `HomeController`)
+- **Native AOT**: `dotnet publish -c Release -p:PublishAot=true` makes a native executable that starts in milliseconds (the project enables the configuration binding generator for it)
+- **Mouse**: `builder.Mouse = true` in `Program.cs`: click menu options, the colour choices and the checkbox
 - **Keyboard shortcuts**: Esc goes back and Ctrl+X quits on every screen (`app.MapKey` in `Program.cs`), listed by `<shortcuts />` in the layout
 - **Dependency injection**: `GreetController` receives `IGreetingService` through its constructor and the result view reads it with `@inject`
 - **Form data posting with simple parameters**: a calculator with two `<number>` fields and a `<radio>` for the operator, posting individual values (`int a`, `int b`, `string op`) directly to action method parameters

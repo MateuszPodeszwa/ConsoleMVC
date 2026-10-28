@@ -41,4 +41,17 @@ public interface ITextInput
     /// <returns>The key, or <see langword="null"/> at the end of input. The default implementation returns <see langword="null"/>.</returns>
     /// <example><code>ConsoleKeyInfo? key = input.ReadKey();</code></example>
     ConsoleKeyInfo? ReadKey() => null;
+
+    /// <summary>
+    /// Waits until the user starts typing, or until <paramref name="timeout"/> passes, without reading anything. A screen
+    /// that refreshes on a timer (<c>@refresh</c>) asks this before it reads, and refreshes when nothing arrives in time.
+    /// </summary>
+    /// <param name="timeout">How long to wait.</param>
+    /// <returns>
+    /// <see langword="true"/> when input is waiting (or the input cannot tell, so reading should go ahead and block);
+    /// <see langword="false"/> when the time passed with nothing typed. The default implementation returns
+    /// <see langword="true"/>, so inputs that do not implement it never refresh a screen.
+    /// </returns>
+    /// <example><code>if (!input.WaitForInput(TimeSpan.FromSeconds(5))) { /* refresh the screen */ }</code></example>
+    bool WaitForInput(TimeSpan timeout) => true;
 }

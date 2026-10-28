@@ -51,4 +51,22 @@ public interface IRenderTarget
     /// </returns>
     /// <example><code>if (!target.TryEraseLines(3)) target.Clear();</code></example>
     bool TryEraseLines(int count) => false;
+
+    /// <summary>
+    /// Switches to the terminal's alternate screen (<paramref name="on"/>), where a full-screen application draws without
+    /// touching the user's scrollback, or back to the normal screen and what was on it.
+    /// </summary>
+    /// <param name="on"><see langword="true"/> to switch to the alternate screen, <see langword="false"/> to switch back.</param>
+    /// <returns>
+    /// <see langword="true"/> when the target switched; the default implementation returns <see langword="false"/> for
+    /// targets without one (plain text, files, the legacy Windows console API).
+    /// </returns>
+    /// <example><code>if (target.TrySetAlternateScreen(true)) { /* draw, then */ target.TrySetAlternateScreen(false); }</code></example>
+    bool TrySetAlternateScreen(bool on) => false;
+
+    /// <summary>Asks the terminal to report mouse clicks and the wheel as input (<paramref name="on"/>), or to stop.</summary>
+    /// <param name="on"><see langword="true"/> to report the mouse.</param>
+    /// <returns><see langword="true"/> when the target asked; the default implementation returns <see langword="false"/>.</returns>
+    /// <example><code>target.TrySetMouseReporting(true);</code></example>
+    bool TrySetMouseReporting(bool on) => false;
 }

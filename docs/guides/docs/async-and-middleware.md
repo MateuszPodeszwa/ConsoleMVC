@@ -22,6 +22,9 @@ public class OrdersController(IOrderStore store) : Controller
 - Exceptions thrown by an async action surface unchanged, just like synchronous ones.
 - Views stay synchronous: `Render` returns a `NavigationResult`.
 
+To show progress while a long action works, draw a `<progress>` bar or a `<spinner>` with `ILiveDisplay`: see
+[Live Screens](live-screens.md).
+
 Start the application with `await app.RunAsync()`. `app.Run()` still works; it waits for `RunAsync`.
 
 ```csharp

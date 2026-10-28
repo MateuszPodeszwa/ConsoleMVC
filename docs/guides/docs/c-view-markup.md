@@ -383,7 +383,7 @@ with `dotnet_diagnostic.CVW119.severity = error` in `.editorconfig`.
 Each option needs exactly one of `nav`, `quit` or `back`. Options can be generated in a loop, e.g. `<option key="@(i + 1)" nav="Users/Details">@user.Name</option>`. If the input ends (for example when piping input to the application), the menu quits instead of waiting forever.
 
 !!! note "Top level only"
-    `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
+    `<input>`, `<number>`, `<date>`, `<select>`, `<radio>`, `<checkbox>`, `<menu>`, `<scroll>` and `<partial>` run at the point they appear in the view's code, so they must be written at the top level of the view. They may be inside a C# `if` or loop there, but not inside a `<box>` or another element.
 
 ### `<breadcrumbs />`
 
@@ -415,9 +415,179 @@ place for it. See [Keyboard shortcuts](controllers-and-forms.md#keyboard-shortcu
 | `key-color` / `key-colour` | key colour (keys are bold) | terminal default |
 | `class` | theme style | none |
 
+### `<progress />`
+
+A progress bar on one line: `Import ████████░░░░░░░░  50%`. Draw it in a view to show how far something has got, or
+keep it up to date while an action works with a [live region](live-screens.md).
+
+```
+<progress label="Disk " value="@Model.Used" max="@Model.Size" bar-width="30" class="success" />
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `value` | how much is done, a number or an expression; clamped to 0 to `max` | 0 |
+| `max` | the value at which the bar is full | 100 |
+| `label` | text before the bar; shortened first when the line is narrow | none |
+| `bar-width` | width of the bar in columns | fills the line |
+| `percent` | `false` hides the percentage | shown |
+| `style` | `block` (`██░░`), `line` (`━━──`), `ascii` (`##--`) | `block` |
+| `color` / `colour` | colour of the done part | terminal default |
+| `empty-color` / `empty-colour` | colour of the part still to do | terminal default |
+| `label-color` / `label-colour` | colour of the label and the percentage | terminal default |
+| `class` | theme style (its colour colours the bar) | none |
+
+A `max` of 0 or less, or a value that is not a number, draws an empty bar.
+
+### `<spinner />`
+
+A spinner and its label: `⠋ Connecting`. It turns while it is in a [live region](live-screens.md); drawn in a view, it
+shows the frame you give it.
+
+```
+<spinner label="Waiting for the printer" />
+<spinner label="Printed" done />                         ✓ Printed
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `label` | text after the spinner | none |
+| `style` | `dots` (`⠋⠙⠹…`), `line` (a turning line in plain ASCII), `circle` (`◐◓◑◒`) | `dots` |
+| `frame` | the frame to show, any whole number (it wraps), e.g. `@DateTime.Now.Second` | 0 |
+| `done` | show the done symbol instead of a frame | off |
+| `done-symbol` | what `done` shows | `✓` |
+| `color` / `colour` | spinner colour | terminal default |
+| `label-color` / `label-colour` | label colour | terminal default |
+| `class` | theme style | none |
+
+### `<bar-chart>` and `<bar />`
+
+A horizontal bar chart: one bar per line, with its label and value. Bars are scaled to `max` (or the largest value) and
+fill the width; with the `block` style, a bar ends in eighths of a cell, so small differences still show.
+
+```
+<bar-chart format="N0" color="cyan">
+    @foreach (var day in Model.Days)
+    {
+        <bar label="@day.Name" value="@day.Sales" />
+    }
+</bar-chart>
+```
+
+```
+Mon ██████████████████████████████████▌            1,240
+Tue ████████████████████▊                            750
+Wed ██████████████████████████████████████████████ 1,810
+```
+
+| `<bar-chart>` attribute | Values | Default |
+|---|---|---|
+| `max` | the value of a full bar | the largest value |
+| `values` | `false` hides the values after the bars | shown |
+| `format` | a .NET number format such as `N0` or `0.0` | `0.##` |
+| `style` | `block` (with eighths), `shade` (`▓▓▓`), `ascii` (`###`) | `block` |
+| `color` / `colour` | bar colour | terminal default |
+| `label-color` / `label-colour` | label and value colour | terminal default |
+| `class` | theme style (its colour colours the bars) | none |
+
+| `<bar />` attribute | Values | Default |
+|---|---|---|
+| `value` | **required**: a number or an expression; below 0 draws an empty bar | |
+| `label` | text before the bar; labels take at most a third of the width | none |
+| `color` / `colour` | this bar's colour | the chart's |
+
+`<bar>` only goes inside `<bar-chart>`, and a chart holds only bars (and C# such as `@foreach` around them).
+
+### `<sparkline />`
+
+A series of values on one line, one cell each: `▁▂▄▆█▆▄▂`. When there are more values than fit, the most recent ones
+are shown.
+
+```
+<sparkline label="Queue " values="@Model.QueueHistory" show-last />     Queue ▁▂▂▃▅▇█▆▄▃▂▁ 3
+<sparkline values="3, 5, 2, 8" />                                       ▃▄▁█
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `values` | **required**: numbers separated by commas or spaces, or an expression for a sequence of `int`, `long`, `float`, `double` or `decimal` | |
+| `min` / `max` | the values of the lowest and highest level | the smallest and largest value shown |
+| `label` | text before the chart | none |
+| `show-last` | show the latest value after the chart | off |
+| `format` | a .NET number format for the latest value | `0.##` |
+| `color` / `colour` | chart colour | terminal default |
+| `label-color` / `label-colour` | label and value colour | terminal default |
+| `class` | theme style | none |
+
+Values that are not finite numbers (`double.NaN`) leave a gap.
+
+### `<markdown />`
+
+Draws Markdown for the terminal: help pages, release notes, descriptions from a database.
+
+```
+<markdown text="@Model.ReleaseNotes" />
+<markdown text="@File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "help.md"))" />
+```
+
+| Markdown | Drawn as |
+|---|---|
+| `# Heading` to `###### Heading` | bold (the first level also underlined) |
+| paragraphs | wrapped to the width; two trailing spaces or `\` at the end of a line break it |
+| `- item`, `* item`, `1. item` | `•` or the number with a hanging indent; indent by two spaces to nest |
+| `> quote` | `│ ` before each line |
+| fenced code (```` ``` ````) | the lines as written, indented, clipped rather than wrapped |
+| `---` | a rule across the width |
+| `**bold**`, `*italic*`, `` `code` `` | styled, without the markers; `\*` is a literal star |
+| `[text](https://…)`, `<https://…>` | the text, underlined, followed by the address |
+
+| Attribute | Values | Default |
+|---|---|---|
+| `text` | **required**: the Markdown, usually an expression | |
+| `links` | `false` hides link addresses | shown |
+| `heading-color` / `heading-colour` | heading colour | terminal default |
+| `code-color` / `code-colour` | code colour | yellow |
+| `link-color` / `link-colour` | link colour | terminal default |
+| `quote-color` / `quote-colour` | quote and rule colour | dark grey |
+| `class` | theme style (its colour colours the headings) | none |
+
+Everything is sanitised, so Markdown from users cannot send terminal escape sequences, and unusual input cannot slow
+the screen down. HTML, tables and images are shown as text.
+
+### `<scroll>`
+
+Shows long content a page at a time. In a terminal the user scrolls with the arrow keys (or J and K), Page Up and
+Page Down (or B and Space), Home and End, and continues with Enter, Esc or Q; the page they end on stays on the screen
+and the view goes on below it. When the content fits, or input or output is piped, everything is drawn at once.
+
+```
+<scroll height="15">
+    @foreach (var entry in Model.Log)
+    {
+        <text>@entry</text>
+    }
+</scroll>
+```
+
+```
+12:00:01 Started
+12:00:04 Connected to the database
+…
+Lines 1-15 of 240  ↑↓ PgUp PgDn Home End  Enter continues
+```
+
+| Attribute | Values | Default |
+|---|---|---|
+| `height` | lines per page, 1 to 1000 | the window height less 3 rows |
+| `color` / `colour` | colour of the status line | dark grey |
+| `class` | theme style (its colour colours the status line) | none |
+
+Like a field, `<scroll>` waits for the user, so it goes at the top level of a view or partial, not inside `<box>` or
+`<columns>`. Any elements can go inside it.
+
 ### `<errors />`
 
-Shows validation messages from the view's `ModelState` (see [Validation](https://github.com/MateuszPodeszwa/ConsoleMVC#validation)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.
+Shows validation messages from the view's `ModelState` (see [Validation](validation.md)): every error, or only one field's errors with `for`. Renders nothing when there are no errors.
 
 ```
 <errors />
@@ -432,6 +602,7 @@ Shows validation messages from the view's `ModelState` (see [Validation](https:/
 | Attribute | Values | Default |
 |---|---|---|
 | `for` | a field name (case-insensitive) | all fields |
+| `class` | theme class names, separated by spaces | none |
 | `color` / `colour` | a [colour](#colours) | `red` |
 
 ### `<partial />`
@@ -441,7 +612,7 @@ Renders a **partial view**: a reusable piece of markup in `Views/Shared/{Name}.c
 ```
 @* Views/Shared/Header.cvw *@
 @model string
-<box border="double" align="centre">@Model</box>
+<box border="double"><text align="centre">@Model</text></box>
 <br />
 ```
 
@@ -461,6 +632,11 @@ Renders a **partial view**: a reusable piece of markup in `Views/Shared/{Name}.c
 * A partial shares the view's `Form`, `ModelState`, `ViewData`, renderer and input: an `<input>` in a partial fills the view's form, and `<errors />` shows the view's errors.
 * Partials may use `@inject`, C# code and other partials (a partial cannot render itself: CVW116).
 * Like `<input>`, `<partial>` is written at the top level of the view (it may be inside a C# `if` or loop), not inside another element.
+
+### Refreshing with `@refresh`
+
+`@refresh 5s` at the top of a view draws it again every 5 seconds (the action runs again for fresh data) until the user
+starts typing. The interval takes `ms`, `s` or `m`, from `100ms` to 24 hours. See [Live Screens](live-screens.md).
 
 ### Layouts and `<body />`
 
@@ -496,7 +672,7 @@ A theme defines named styles once for the whole application; elements use them w
 | `danger` | bold red text |
 | `panel` | rounded cyan border, padding 2 |
 
-Classes are applied in order, then the element's own attributes, so `<box class="panel" padding="0">` keeps the panel's border with no padding. Unknown class names are ignored. Text properties apply to `<text>`, `<cell>` and `<option>`; the text colour also colours `<separator>` and `<errors>`; border, padding and width properties apply to `<box>` and `<table>`.
+Classes are applied in order, then the element's own attributes, so `<box class="panel" padding="0">` keeps the panel's border with no padding. Unknown class names are ignored. Text properties apply to `<text>`, `<cell>`, `<option>` and `<choice>`; the text colour also colours `<separator>` and `<errors>`; border, padding and width properties apply to `<box>` and `<table>`.
 
 Define your own classes, or replace the built-in ones, in `Program.cs`:
 
@@ -536,6 +712,7 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW007 | `@inject` without a type and a property name, or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
 | CVW008 | Two `@inject` directives declare the same property name |
 | CVW009 | A partial view file is named `Render`, the name of its own method |
+| CVW010 | `@refresh` with an interval that is not a number with `ms`, `s` or `m` from 100 ms to 24 hours, used twice, or used in a partial view or a layout |
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value |
 | CVW102 | Missing or mismatched closing tag |
@@ -545,9 +722,9 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW106 | Control flow or a code block inside `<text>` |
 | CVW107 | Attribute specified twice |
 | CVW108 | Malformed tag |
-| CVW109 | Element rule broken (an `<option>` needs exactly one of `nav` or `quit`) |
+| CVW109 | Element rule broken (an `<option>` needs exactly one of `nav`, `quit` or `back`) |
 | CVW110 | Text or an expression directly inside `<table>`, `<row>` or `<menu>` |
-| CVW111 | Required attribute missing (`<option key>`, `<input name>`, `<select name>`, `<checkbox name>`) |
+| CVW111 | Required attribute missing (`<option key>`, `name` on `<input>`, `<select>`, `<radio>`, `<checkbox>`, `<number>`, `<date>` and `<partial>`, `<bar value>`, `<sparkline values>`, `<markdown text>`) |
 | CVW112 | `@()` contains no expression |
 | CVW113 | Markup nested more than 100 levels deep |
 | CVW114 | `<partial>` names no partial view in `Views/Shared`, or its name is not written literally |

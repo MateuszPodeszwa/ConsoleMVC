@@ -135,21 +135,21 @@ public sealed class NumberElement : Element, IFormField
     public string? Validate(string text, out decimal value)
     {
         if (!decimal.TryParse(text, Styles, CultureInfo.InvariantCulture, out value))
-            return NotANumberMessage;
+            return FrameworkText.Current.NotANumber;
 
         if (Decimals == 0 && value != decimal.Truncate(value))
-            return WholeNumberMessage;
+            return FrameworkText.Current.WholeNumber;
 
         if (Decimals is > 0 and var places && value != Math.Round(value, places))
-            return $"Enter a number with at most {places} decimal place{(places == 1 ? "" : "s")}.";
+            return places == 1 ? FrameworkText.Current.DecimalPlace : FrameworkText.Format(FrameworkText.Current.DecimalPlaces, places);
 
         if (value < Min || value > Max)
         {
             return (Min, Max) switch
             {
-                ({ } min, { } max) => $"Enter a number from {Format(min)} to {Format(max)}.",
-                ({ } min, null) => $"Enter a number of at least {Format(min)}.",
-                (null, { } max) => $"Enter a number of at most {Format(max)}.",
+                ({ } min, { } max) => FrameworkText.Format(FrameworkText.Current.NumberRange, Format(min), Format(max)),
+                ({ } min, null) => FrameworkText.Format(FrameworkText.Current.NumberAtLeast, Format(min)),
+                (null, { } max) => FrameworkText.Format(FrameworkText.Current.NumberAtMost, Format(max)),
                 _ => null
             };
         }
@@ -183,7 +183,7 @@ public sealed class NumberElement : Element, IFormField
                 if (!Required)
                     return "";
 
-                FieldText.ShowError(renderer, InputElement.RequiredMessage);
+                FieldText.ShowError(renderer, FrameworkText.Current.Required);
                 continue;
             }
 
@@ -214,7 +214,7 @@ public sealed class NumberElement : Element, IFormField
                 {
                     if (!Required)
                         return Answer("");
-                    _error = InputElement.RequiredMessage;
+                    _error = FrameworkText.Current.Required;
                 }
                 else
                 {

@@ -1,25 +1,33 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.23: keyboard shortcuts on every screen (`app.MapKey(ConsoleKey.F1, "Help/Index", "Help")`) and `<shortcuts />`. 1.22 added a rolling file logger (`builder.Logging.AddFile`), 1.21 build warnings for `RedirectToAction` and `View` typos. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.33: remote sessions: `dotnet run -- --ConsoleMVC:Serve=2323` serves the application to many users at once over Telnet or TLS, each with their own screen and history. 1.32 added Native AOT and trimming, 1.31 mouse support, 1.30 areas and feature modules. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
-ConsoleMVC brings the **Controller-ViewModel** pattern to console apps, with convention-based routing, reflection-based auto-discovery, and a Razor-like view engine powered by a C# source generator. If you've built ASP.NET Core MVC apps before, you already know how to use ConsoleMVC.
+ConsoleMVC brings the **Controller-ViewModel** pattern to console apps, with convention-based routing, automatic discovery through a generated route table, and a Razor-like view engine powered by a C# source generator. If you've built ASP.NET Core MVC apps before, you already know how to use ConsoleMVC.
 
 ## Why ConsoleMVC?
 
 Console applications often end up as unstructured, hard-to-maintain code. UI frameworks like Spectre.Console help with presentation, but they don't solve the underlying architectural problem. ConsoleMVC provides:
 
 - **Separation of concerns**: Controllers handle logic, Views handle rendering, Models carry data
-- **Convention over configuration**: Controllers and Views are auto-discovered at startup via reflection
+- **Convention over configuration**: Controllers and Views are found by convention, through a route table the build generates
 - **Familiar API**: `View()`, `RedirectToAction()`, `ViewData`, the same patterns from ASP.NET Core MVC
 - **Razor-like view engine**: `.cvw` files are plain C# with an `@model` directive, compiled at build time by a source generator
 - **C-View Markup**: declarative `<box>`, `<text>`, `<separator>` and `<table>` elements with colours, borders, alignment and word wrapping, checked at compile time
 - **Partial views and layouts**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time, and a `_Layout.cvw` that frames every screen
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
+- **Full screen and scrolling**: `builder.FullScreen = true` runs on the terminal's alternate screen and restores the user's scrollback afterwards, and `<scroll>` pages long content with the arrow keys
+- **Mouse**: with `builder.Mouse = true`, clicking a menu option, a choice or a checkbox answers it and the wheel scrolls, in terminals that report the mouse
 - **Keyboard shortcuts**: `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` works on every screen, in menus and fields alike, and `<shortcuts />` lists them
+- **Markdown**: `<markdown text="@Model.Notes" />` draws headings, lists, quotes, code, `**bold**`, `*italic*` and links, wrapped to the terminal and sanitised
+- **Charts**: `<bar-chart>` with `<bar label value />` (bars ending in eighths of a cell) and `<sparkline values="@Model.History" />` for dashboards
+- **Live screens**: `<progress>` and `<spinner>` redraw in place while an async action works (`ILiveDisplay`), and `@refresh 5s` redraws a dashboard with fresh data until the user starts typing
 - **Declarative input and navigation**: `<input>`, `<number>` and `<date>` collect form values, `<select>` (with type-to-filter), `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Areas and modules**: group screens in `Areas/{Area}` (routes such as `Admin/Users/Index`, checked at build time) and add controllers, views and services from class libraries with `builder.AddModule<TModule>()`
+- **Localisation**: `@inject IStringLocalizer<SharedResource> L` in views, the framework's own messages and DataAnnotations messages translated from `.resx` resources, and the culture chosen in code or with `--ConsoleMVC:Culture=pl-PL`
+- **Accessible**: users turn on a screen-reader mode (plain text, tables read as `Header: value`, typed answers) or a high-contrast theme with `--ConsoleMVC:ScreenReader=true` or `--ConsoleMVC:HighContrast=true`, no new build needed
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation**: posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
@@ -27,6 +35,8 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Configuration and logging**: `builder.Configuration` reads `appsettings.json`, `appsettings.{Environment}.json`, environment variables and the command line; options bind with `Configure<T>`, and `ILogger<T>` works everywhere, with a built-in rolling file logger (`builder.Logging.AddFile`) instead of one writing over the screen
 - **Async actions and middleware**: actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
 - **Testing**: the `ConsoleMVC.Testing` package runs the application with scripted lines and keys, records every screen and the routes visited, and compares screens with snapshot files
+- **Native AOT**: `dotnet publish -p:PublishAot=true` makes a single native executable that starts in milliseconds; the source generator writes a route table so nothing depends on reflection
+- **Remote sessions**: one process serves the application to many users at once (`--ConsoleMVC:Serve=2323`, then `telnet localhost 2323`), each with their own screen, history and `ITerminalSession`; loopback-only and TLS-ready by default, and SSH or a web terminal through OpenSSH or ttyd
 - **Live reload**: run `dotnet watch` and edits to views and controllers appear from the next screen, without restarting
 
 ## Getting Started
@@ -34,7 +44,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 ### Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
-- JetBrains Rider is recommended, for the [ConsoleMVC CVWSupport plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport); a Visual Studio extension is planned
+- JetBrains Rider is recommended, for the [ConsoleMVC CVWSupport plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport); support for VS Code is planned in [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport)
 - With VS Code or another editor, [add basic support for `.cvw` files](#IDESupport)
 
 ### Installation
@@ -62,8 +72,11 @@ This scaffolds a ready-to-run application with the following structure:
 MyApp/
   MyApp.csproj
   Program.cs
+  SharedResource.cs             # Names Resources/SharedResource.resx (English) and .pl.resx (Polish)
+  Resources/                    # SharedResource.resx and SharedResource.pl.resx
   appsettings.json              # Settings read by builder.Configuration
   MyApp.Tests/                  # Only with --tests: xUnit tests using ConsoleMVC.Testing
+  Areas/Admin/                  # An area: Controllers/SettingsController.cs and Views/Settings/IndexView.cvw
   Controllers/
     HomeController.cs
     GreetController.cs          # Form posting with model binding
@@ -71,6 +84,7 @@ MyApp/
   Models/
     HomeViewModel.cs
     FeaturesViewModel.cs        # Rows for the <table> on the feature tour page
+    StatusViewModel.cs          # The status page, which refreshes every second
     GreetFormModel.cs           # Bound from form data (complex model)
     GreetResultModel.cs
     CalcResultModel.cs
@@ -81,8 +95,9 @@ MyApp/
   Views/
     Home/
       IndexView.cvw             # <menu> navigation
-      AboutView.cvw
-      FeaturesView.cvw          # <table> generated from the model
+      AboutView.cvw             # <markdown> from the model
+      FeaturesView.cvw          # <table> generated from the model, paged by <scroll>
+      StatusView.cvw            # @refresh 1s, <spinner>, <progress>, <sparkline> and <bar-chart>
     Greet/
       IndexView.cvw             # <input>, <select> and <checkbox>, posts the Form
       ResultView.cvw
@@ -111,7 +126,7 @@ using var app = builder.Build();
 await app.RunAsync();                                               // or app.Run()
 ```
 
-The framework scans the assembly at startup, discovers all controllers and views, and begins the main loop at the default route (`Home/Index`).
+The framework loads the route table generated for the assembly (every controller and view), and begins the main loop at the default route (`Home/Index`).
 
 ### Controllers
 
@@ -590,6 +605,86 @@ await app.RunAsync();
 
 Views render after the pipeline. See the [guide](docs/guides/docs/async-and-middleware.md) and the [design](docs/design/async-and-middleware.md).
 
+### Areas and Modules
+
+Group related screens in an area: `Areas/Admin/Controllers` (namespace `*.Areas.Admin.*`, or `[Area("Admin")]`) and `Areas/Admin/Views/{Controller}`. Area routes start with the area, `nav="Admin/Users/Index"`, and inside an area a controller named without one is the area's own. Feature modules add another assembly's controllers, views and services:
+
+```csharp
+builder.AddModule<BillingModule>();   // BillingModule : IMvcModule, in a class library
+```
+
+See the [Areas and Modules guide](docs/guides/docs/areas-and-modules.md) and the [design](docs/design/areas-and-modules.md).
+
+### Live Screens
+
+A long action can show its progress while it works. `ILiveDisplay` is registered for you; `Update` changes the element and redraws it in place:
+
+```csharp
+public class ImportController(ILiveDisplay live, IImporter importer) : Controller
+{
+    public async Task<ActionResult> Run(CancellationToken cancellationToken)
+    {
+        var progress = new ProgressElement { Label = "Import ", Max = importer.Count };
+        await using (var region = live.Start(progress))           // Import ████████░░░░░░░░  50%
+        {
+            await foreach (var _ in importer.ImportAsync(cancellationToken))
+                region.Update(() => progress.Value++);
+        }
+
+        return View();
+    }
+}
+```
+
+A view with `@refresh 5s` is drawn again every 5 seconds, running its action again for fresh data, until the user starts typing:
+
+```
+@model StatusViewModel
+@refresh 5s
+
+<spinner label="Watching the queue" frame="@DateTime.Now.Second" />
+<progress label="Disk " value="@Model.DiskUsed" max="@Model.DiskSize" />
+```
+
+| API | Purpose |
+|-----|---------|
+| `<progress value max label bar-width percent style />` | A progress bar (`ProgressElement`) |
+| `<spinner label style frame done />` | A spinner (`SpinnerElement`), turned by a live region at each tick |
+| `ILiveDisplay.Start(element, interval?)` | Draws an element and keeps it up to date until the `LiveRegion` is disposed; on a pipe or file it is drawn once, in its final state |
+| `@refresh 5s` | Redraws the view every interval (`ms`, `s` or `m`) until the user types; CVW010 for an invalid interval |
+| `View(model).RefreshEvery(TimeSpan)` / `.NoRefresh()` | The action chooses, winning over `@refresh` |
+| `ScriptedInput.Wait()` | In tests: a pause in which a refreshing screen is drawn again |
+
+Dashboards can draw their numbers as charts:
+
+```
+<bar-chart format="N0">
+    @foreach (var day in Model.Days) { <bar label="@day.Name" value="@day.Sales" /> }
+</bar-chart>
+<sparkline label="Queue " values="@Model.QueueHistory" show-last />     Queue ▁▂▂▃▅▇█▆▄▃▂▁ 3
+```
+
+See [charts](docs/guides/docs/c-view-markup.md#bar-chart-and-bar) and the [design](docs/design/charts.md).
+
+Long content is paged with `<scroll height="15">…</scroll>`: the arrow keys, Page Up, Page Down, Home and End scroll it and Enter continues; piped output gets everything at once. See [`<scroll>`](docs/guides/docs/c-view-markup.md#scroll) and the [design](docs/design/full-screen.md).
+
+Text written in Markdown (help pages, release notes) is drawn with `<markdown text="@Model.Notes" />`: headings, lists, quotes, fenced code, `**bold**`, `*italic*`, `` `code` `` and links, wrapped to the terminal. See [`<markdown />`](docs/guides/docs/c-view-markup.md#markdown) and the [design](docs/design/markdown.md).
+
+See the [Live Screens guide](docs/guides/docs/live-screens.md) and the [design](docs/design/live-elements.md).
+
+### Remote Sessions
+
+One process can serve the application to many users at once, each with their own screen, history and session values:
+
+```bash
+dotnet run -- --ConsoleMVC:Serve=2323     # or: await app.ServeAsync(new TerminalServerOptions(), token);
+telnet localhost 2323                     # from as many terminals as you like
+```
+
+Controllers and views ask for `ITerminalSession` to tell users apart (`session.Items["user"] = name`). The server listens
+on the loopback address by default and needs a TLS certificate before it listens on the network; OpenSSH or ttyd put
+SSH and a web browser in front of it. See the [Remote Sessions guide](docs/guides/docs/remote-sessions.md).
+
 ### Live Reload
 
 Run `dotnet watch` in the project folder. Edits to `.cvw` views, controllers and models are applied to the running application and show from the next screen; newly added controllers and views are discovered after each update, so they are routable without a restart. See [Live reload](docs/guides/docs/getting-started.md#live-reload).
@@ -724,6 +819,10 @@ var builder = MvcApplication.CreateBuilder(args);
 builder.DefaultController = "Dashboard";        // Default: "Home"
 builder.DefaultAction = "Overview";             // Default: "Index"
 builder.ClearScreenBetweenViews = false;        // Default: true
+builder.FullScreen = true;                      // Default: false
+builder.Mouse = true;                           // Default: false (users: --ConsoleMVC:Mouse=true)
+builder.ScreenReader = true;                    // Default: false (users: --ConsoleMVC:ScreenReader=true)
+builder.HighContrast = true;                    // Default: false (users: --ConsoleMVC:HighContrast=true)
 builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
 builder.Renderer = MarkupRenderer.CreateForConsole();   // Default: detected automatically
 builder.Input = ConsoleTextInput.Instance;              // Default: the console
@@ -732,7 +831,7 @@ builder.Services.AddSingleton<IClock, SystemClock>();   // Your services
 builder.Services.Configure<ShopOptions>(builder.Configuration.GetSection("Shop")); // Settings
 builder.Logging.AddFile("logs/app.log");                // Logs to a file, not over the screen
 using var app = builder.Build();
-app.Run();
+app.Run();                                      // Or serve many users: --ConsoleMVC:Serve=2323
 ```
 
 | Option | Purpose |
@@ -741,7 +840,12 @@ app.Run();
 | `Services` | Services for controller constructors and `@inject` (see [Dependency Injection](#dependency-injection)) |
 | `Theme` | Named styles used by `class="…"` in markup (see [Layout and Themes](#layout-and-themes)) |
 | `ClearScreenBetweenViews` | Clear the console before each view renders |
-| `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
+| `ScreenReader` | Plain text for screen readers: tables read as `Header: value`, no borders, bars or clearing ([Accessibility](docs/guides/docs/accessibility.md)) |
+| `HighContrast` | Bold, bright theme colours with no dim text (`Theme.CreateHighContrast()`) |
+| `Localization` | Culture, translated framework messages and validation messages ([Localisation](docs/guides/docs/localisation.md)) |
+| `Mouse` | Click menu options, choices and checkboxes; the wheel scrolls ([Mouse](docs/guides/docs/controllers-and-forms.md#mouse)) |
+| `FullScreen` | Run on the terminal's alternate screen; the user's scrollback is restored when the application ends |
+| `ApplicationAssembly` | The assembly whose controllers and views are used (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |
 | `Configuration` | Settings from `appsettings.json`, `appsettings.{Environment}.json`, environment variables (`Shop__Name`) and the command line (`--Shop:Name=Corner`), later ones winning; registered as `IConfiguration` (see [Configuration Files and Logging](docs/guides/docs/hosting.md)) |
 | `Environment` | `EnvironmentName` (`DOTNET_ENVIRONMENT`, default `Production`), `ContentRootPath` and `ApplicationName`; registered as `IHostEnvironment`. Choose them in code with `MvcApplication.CreateBuilder(new MvcApplicationOptions { … })` |
@@ -750,10 +854,7 @@ app.Run();
 
 ## Roadmap
 
-The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
-
-- **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
-- **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
+The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Every feature planned for the framework is now built, from full-screen mode, live elements and charts to Native AOT and remote sessions. What remains is **IDE support for markup**, developed in its own repository, [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport).
 
 Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszwa/ConsoleMVC/issues).
 
@@ -767,7 +868,7 @@ Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszw
 
 All three packages are published on [NuGet.org](https://www.nuget.org/profiles/MateuszPodeszwa). The framework package is named `ConsoleMVC.Framework` (rather than `ConsoleMVC`) because the `ConsoleMVC` identifier was already reserved on nuget.org by an unrelated package.
 
-## License
+## Licence
 
 This project is licensed under the [MIT License](LICENSE).
 
@@ -775,7 +876,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## For Maintainers
 
-This section documents how to build, pack, and publish new versions of the framework and template packages.
+This section documents how to build, pack, and publish new versions of the framework, testing and template packages.
 
 ### Repository Structure
 
@@ -791,8 +892,10 @@ ConsoleMVC/
       build/ConsoleMVC.Framework.props    #   Auto-imported by consuming projects
       PACKAGE_README.md                   #   README shown on NuGet gallery
       Application/ Controllers/ Results/  #   MVC framework (namespace ConsoleMVC.Mvc)
-      Routing/ Binding/ Views/
+      Routing/ Binding/ Views/ Areas/
       Validation/ DependencyInjection/ Middleware/
+      Localization/ Refresh/ Shortcuts/   #   Localisation, timed refresh and keyboard shortcuts
+      Remote/                             #   Remote sessions: TerminalServer, RemoteTerminal, ITerminalSession
       Hosting/                            #   Configuration, environment and logging for the builder
       Rendering/                          #   Rendering engine (namespace ConsoleMVC.Rendering, no MVC dependency)
     ConsoleMVC.Testing/                   # Test host, scripted input and snapshots (NuGet: ConsoleMVC.Testing)
@@ -815,10 +918,13 @@ ConsoleMVC/
       ConsoleMVC.App.csproj               #   sourceName replaced with user's project name
       Program.cs
       appsettings.json                    #   Settings read by builder.Configuration
+      SharedResource.cs Resources/        #   Localisation resources (English and Polish)
+      Areas/                              #   The Admin area
       Controllers/
       Models/
       Services/
       Views/                              #   including Views/Shared partials
+      ConsoleMVC.App.Tests/               #   The test project added by --tests
 ```
 
 ### Building and Testing
@@ -898,7 +1004,7 @@ When modifying the source generator (`src/ConsoleMVC.Generators`):
 - The generator targets `netstandard2.0`: avoid APIs not available in that target
 - To add a markup element, add its runtime class under `src/ConsoleMVC/Rendering/Elements` and register it in `Schema/MarkupSchema.cs`; add a rendering test in `ConsoleMVC.Generators.Tests`
 - New diagnostics need an entry in `AnalyzerReleases.Unshipped.md`
-- `Environment.NewLine` and similar banned symbols cannot be used (Roslyn analyzer restriction)
+- `Environment.NewLine` and similar banned symbols cannot be used (a Roslyn analyser restriction)
 - After changes, you must repack the `ConsoleMVC` package since the generator DLL is bundled inside it
 - Clear the local NuGet cache (`rm -rf ~/.nuget/packages/consolemvc.framework`) when testing locally to avoid stale generator DLLs
 
@@ -909,4 +1015,4 @@ Follow [SemVer](https://semver.org/):
 - **Minor** (1.x.0): New features, new base class methods, backward-compatible additions
 - **Major** (x.0.0): Breaking changes to the public API (Controller, ConsoleView, NavigationResult, etc.)
 
-Keep both packages' versions in sync: when the framework version bumps, update the template's `PackageReference` and bump the template version too.
+Keep the three packages' versions in sync: when the framework version bumps, bump `ConsoleMVC.Testing` and the template too, and update the template's `PackageReference`s.
