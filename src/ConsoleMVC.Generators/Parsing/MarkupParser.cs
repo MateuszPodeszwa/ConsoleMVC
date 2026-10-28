@@ -120,6 +120,14 @@ internal sealed class MarkupParser
                 continue;
             }
 
+            // Razor-style @if, @{ or @( where the view is already C#: C# would read a verbatim identifier or an error (CS1646)
+            if (c == '@' && RazorStyleCode() is { } razor)
+            {
+                Report(CvwDiagnostics.AtInCode, new SourceSpan(_position, razor.Written.Length), razor.Written, razor.Instead);
+                _position++; // read the rest as the C# it was meant to be, so no other errors follow
+                continue;
+            }
+
             if (c is '/' or '\'' or '"' or '@' or '$')
             {
                 var skip = CSharpLexer.Skip(_text, _position);
@@ -180,6 +188,35 @@ internal sealed class MarkupParser
 
         AddCode(nodes, codeStart, _position);
         return nodes;
+    }
+
+    /// <summary>
+    /// Recognises Razor-style code after the <c>@</c> under the cursor in C# code: <c>@{</c>, <c>@(</c>, or a control keyword
+    /// such as <c>@if</c> followed by <c>(</c> or <c>{</c>. A verbatim identifier such as <c>@class</c> is not one.
+    /// </summary>
+    /// <returns>What was written and what to write instead, or <see langword="null"/>.</returns>
+    private (string Written, string Instead)? RazorStyleCode()
+    {
+        switch (Peek(1))
+        {
+            case '{':
+                return ("@{", "the statements directly, without the braces");
+            case '(':
+                return ("@(", "the expression directly");
+        }
+
+        var keyword = PeekIdentifier(_position + 1);
+        if (!ControlKeywords.Contains(keyword))
+            return null;
+
+        var next = _position + 1 + keyword.Length;
+        while (next < _text.Length && char.IsWhiteSpace(_text[next]))
+            next++;
+
+        if (next >= _text.Length || _text[next] is not ('(' or '{'))
+            return null;
+
+        return ("@" + keyword, keyword is "do" or "try" ? $"'{keyword} {{ ... }}'" : $"'{keyword} (...) {{ ... }}'");
     }
 
     /// <summary>Markup may only begin where a C# statement may begin.</summary>

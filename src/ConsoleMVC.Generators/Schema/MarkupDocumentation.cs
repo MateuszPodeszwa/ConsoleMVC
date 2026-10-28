@@ -162,9 +162,9 @@ internal static class MarkupDocumentation
     [
         ("@Model.Name", "An expression, written into the markup as text."),
         ("@(a + b)", "An explicit expression, for anything more than a name and member accesses."),
-        ("@{ ... }", "A C# code block."),
-        ("@if (...) { ... } else { ... }", "Conditional markup."),
-        ("@foreach (var item in items) { ... }", "Repeated markup; also @for, @while, @do and @switch."),
+        ("@{ ... }", "A C# code block inside an element. Outside elements the view is already C#, so the code is written without @{ }."),
+        ("@if (...) { ... } else { ... }", "Conditional markup inside an element. Outside elements, write if (...) { ... } without @."),
+        ("@foreach (var item in items) { ... }", "Repeated markup inside an element; also @for, @while, @do and @switch. Outside elements, write foreach without @."),
         ("@* ... *@", "A comment, left out of the generated code."),
         ("@@", "A literal @."),
         ("&lt;", "A literal <; also &gt; and &amp;.")

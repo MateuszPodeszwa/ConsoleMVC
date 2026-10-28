@@ -107,6 +107,15 @@ internal static class CvwDocumentParser
                 continue;
             }
 
+            // A directive with nothing after it, which would otherwise start the body as C# (CS1001, CS0246…)
+            if (MissingValueProblem(trimmed) is { } missing)
+            {
+                var at = position + line.IndexOf('@');
+                diagnostics.Add(new ParseDiagnostic(missing.Descriptor, new SourceSpan(at, trimmed.Length), missing.Message));
+                position = lineEnd + 1;
+                continue;
+            }
+
             if (IsDirective(trimmed, ModelDirective))
             {
                 var value = ReadArgument(text, position, line, ModelDirective);
@@ -161,6 +170,20 @@ internal static class CvwDocumentParser
         var body = new MarkupParser(text, position, schema, diagnostics).ParseBody();
         return new CvwDocument(text, model, usings, injects, body, diagnostics, layout, refresh);
     }
+
+    /// <summary>
+    /// Returns the error for a directive line with no value (<c>@refresh</c> alone), or <see langword="null"/> for any other
+    /// line. A bare <c>@inject</c> is reported by <see cref="ReadInject"/>.
+    /// </summary>
+    private static (Microsoft.CodeAnalysis.DiagnosticDescriptor Descriptor, string Message)? MissingValueProblem(string trimmedLine) =>
+        trimmedLine switch
+        {
+            ModelDirective => (CvwDiagnostics.MissingDirectiveValue, "@model needs the model's type, e.g. '@model MyApp.Models.OrderModel'"),
+            UsingDirective => (CvwDiagnostics.MissingDirectiveValue, "@using needs a namespace, e.g. '@using MyApp.Models'"),
+            LayoutDirective => (CvwDiagnostics.InvalidLayout, "@layout needs a layout's name, e.g. '@layout MainLayout', or '@layout none' for no layout"),
+            RefreshDirective => (CvwDiagnostics.InvalidRefresh, "@refresh needs an interval, e.g. '@refresh 5s' or '@refresh 500ms'"),
+            _ => null
+        };
 
     /// <summary>
     /// Returns <see langword="true"/> when <paramref name="trimmedLine"/> is <paramref name="directive"/> followed by
@@ -230,6 +253,15 @@ internal static class CvwDocumentParser
         if (problem is not null)
         {
             diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidInject, name.Span, problem));
+            return;
+        }
+
+        // Everything before the name must be one type: "@inject System.String Foo Bar" is not
+        var parsedType = SyntaxFactory.ParseTypeName(type.Value);
+        if (parsedType.ContainsDiagnostics || parsedType.FullSpan.Length != type.Value.Length)
+        {
+            diagnostics.Add(new ParseDiagnostic(CvwDiagnostics.InvalidInject, type.Span,
+                $"'{type.Value}' is not a type: write @inject, the service type and one property name, e.g. '@inject IGreetingService Greetings'"));
             return;
         }
 

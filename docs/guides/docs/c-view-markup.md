@@ -37,7 +37,8 @@ Press Enter to continue...
 ## How markup and code interact
 
 * Top-level elements are rendered **immediately, in source order**. A `<box>` written before `Console.ReadLine()` appears before the prompt.
-* The view still returns a `NavigationResult` from C# code.
+* Outside elements the view is C#, written without `@`: `if (Model.IsAdmin) { <text>Admin</text> }`, `foreach (…) { … }`, `var total = 0;`. Writing `@if`, `@foreach`, `@{` or `@(` there is build error CVW122, which says to leave the `@` out.
+* The view still returns a `NavigationResult` from C# code, or ends with a `<menu>`, which returns the option chosen. A view with neither is build error CVW012; a view that returns on only some paths is reported by the compiler (CS0161) at the view.
 * Inside an element, `@` switches to C#:
 
 | Syntax | Meaning |
@@ -748,10 +749,12 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW004 | Two views generate the same class (for example `Views/Home` and `Views/home`, or an `Areas/X/Views/Home` copy); the later file is skipped |
 | CVW005 | The project's `RootNamespace` is not a valid C# namespace (set `<RootNamespace>` in the project file) |
 | CVW006 | `@model` is declared more than once; the last one is used (warning) |
-| CVW007 | `@inject` without a type and a property name, or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
+| CVW007 | `@inject` without a type and a property name, a type that is not one type (`@inject System.String Foo Bar`), or an invalid or reserved name (see [Dependency Injection](dependency-injection.md)) |
 | CVW008 | Two `@inject` directives declare the same property name |
 | CVW009 | A partial view file is named `Render`, the name of its own method |
-| CVW010 | `@refresh` with an interval that is not a number with `ms`, `s` or `m` from 100 ms to 24 hours, used twice, or used in a partial view or a layout |
+| CVW010 | `@refresh` without an interval, or with one that is not a number with `ms`, `s` or `m` from 100 ms to 24 hours, used twice, or used in a partial view or a layout |
+| CVW011 | `@model` or `@using` with nothing after it |
+| CVW012 | A view (not a partial or a layout) with neither a `<menu>` nor a `return`, so it never says where to go next; end it with `return NavigationResult...;` |
 | CVW100 | Unknown attribute |
 | CVW101 | Invalid attribute value, or literal values the element cannot use together (see [Attribute values](#attribute-values)) |
 | CVW102 | Missing or mismatched closing tag |
@@ -769,11 +772,12 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW114 | `<partial>` names no partial view in `Views/Shared`, or its name is not written literally |
 | CVW115 | A partial that declares `@model` is used without a `model` attribute |
 | CVW116 | A partial view renders itself |
-| CVW117 | `<body />` outside a layout in `Views/Shared`, used twice or inside a C# block; or a layout with `@model` or `@layout` |
+| CVW117 | `<body />` outside a layout in `Views/Shared`, used twice or inside a C# block; a layout with `@model` or `@layout`; or `@layout` with no name |
 | CVW118 | `@layout` names no layout (lists the available ones), or a partial uses `@layout` |
 | CVW119 | **Warning**: a literal `nav` target names a controller or action that does not exist (lists the ones that do) |
 | CVW120 | **Warning**: `RedirectToAction`, `NavigationResult.To` or `NavigationResult.ToAction` in C# names a controller or action that does not exist |
 | CVW121 | **Warning**: `View("Name")`, or `View()` in an action, has no view; the IDE offers **Create view Views/{Controller}/{Name}View.cvw** |
+| CVW122 | Razor-style `@if`, `@foreach`, `@{` or `@(` where the view is already C# (at the top level, or inside a C# block); write the C# without `@` |
 
 ## Resizing the terminal
 

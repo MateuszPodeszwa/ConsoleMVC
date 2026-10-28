@@ -39,15 +39,15 @@
     },
     {
       "syntax": "@{ ... }",
-      "description": "A C# code block."
+      "description": "A C# code block inside an element. Outside elements the view is already C#, so the code is written without @{ }."
     },
     {
       "syntax": "@if (...) { ... } else { ... }",
-      "description": "Conditional markup."
+      "description": "Conditional markup inside an element. Outside elements, write if (...) { ... } without @."
     },
     {
       "syntax": "@foreach (var item in items) { ... }",
-      "description": "Repeated markup; also @for, @while, @do and @switch."
+      "description": "Repeated markup inside an element; also @for, @while, @do and @switch. Outside elements, write foreach without @."
     },
     {
       "syntax": "@* ... *@",
@@ -2689,6 +2689,16 @@
       "title": "Invalid @refresh directive"
     },
     {
+      "id": "CVW011",
+      "severity": "error",
+      "title": "Directive without a value"
+    },
+    {
+      "id": "CVW012",
+      "severity": "error",
+      "title": "View returns no result"
+    },
+    {
       "id": "CVW100",
       "severity": "error",
       "title": "Unknown attribute"
@@ -2797,6 +2807,11 @@
       "id": "CVW121",
       "severity": "warning",
       "title": "View not found"
+    },
+    {
+      "id": "CVW122",
+      "severity": "error",
+      "title": "'@' before C# code"
     }
   ]
 }

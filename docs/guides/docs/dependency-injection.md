@@ -58,7 +58,7 @@ are reserved for generated code. Mistakes are build errors in the `.cvw` file:
 
 | Id | Meaning |
 |---|---|
-| CVW007 | `@inject` without a type and a property name, or an invalid or reserved name |
+| CVW007 | `@inject` without a type and a property name, a type that is not one type (`@inject System.String Foo Bar`), or an invalid or reserved name |
 | CVW008 | Two `@inject` directives declare the same property name |
 
 A misspelt type is reported by the compiler at the directive's line and column.
