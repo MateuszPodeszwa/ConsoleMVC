@@ -71,7 +71,7 @@ public sealed class CheckboxElement : Element, IFormField
         if (label.Length > 0)
             spans.AddRange([Span.Spaces(1), new Span(label, LabelStyle)]);
         if (_usingKeys)
-            spans.AddRange([Span.Spaces(2), new Span("(Space, Enter)", TextStyle.Plain.WithDecoration(TextDecoration.Dim))]);
+            spans.AddRange([Span.Spaces(2), new Span(FrameworkText.Current.CheckboxKeys, TextStyle.Plain.WithDecoration(TextDecoration.Dim))]);
 
         var lines = new List<RenderedLine> { new RenderedLine(spans).Clip(width) };
         if (_usingKeys && _error is not null)

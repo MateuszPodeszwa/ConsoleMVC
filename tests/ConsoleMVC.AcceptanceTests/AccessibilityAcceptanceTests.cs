@@ -38,4 +38,23 @@ public class AccessibilityAcceptanceTests
 
         Assert.Contains("\u001b[", output);   // the test would prove nothing if the renderer never wrote codes
     }
+
+    [Fact]
+    public void ARefreshingPage_Refreshes()
+    {
+        var run = App.Host().Run(new ScriptedInput("7").Wait().Line("q"));
+
+        Assert.Equal(["Home/Index", "Clock/Index", "Clock/Index"], run.Routes);
+    }
+
+    [Fact]
+    public void InScreenReaderMode_APageDoesNotRefresh()
+    {
+        // Wait() is only used up by a screen that refreshes: here it is not, so the run says so
+        var host = MvcTestHost.For<Controllers.HomeController>(builder => builder.ScreenReader = true);
+
+        var error = Assert.Throws<InvalidOperationException>(() => host.Run(new ScriptedInput("7").Wait().Line("q")));
+
+        Assert.Contains("Wait()", error.Message);
+    }
 }

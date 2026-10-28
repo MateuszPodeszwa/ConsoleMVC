@@ -91,7 +91,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         _applicationAssembly = builder.ApplicationAssembly;
         _services = services;
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
-        _fullScreen = builder.FullScreen;
+        _fullScreen = builder.UsesFullScreen;
         _mouse = builder.UsesMouse;
         _screenReader = builder.UsesScreenReader;
         _localization = builder.Localization.Copy();
@@ -425,12 +425,17 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the options are not secure enough (see <see cref="TerminalServerOptions.AllowUnencryptedNetworkAccess"/>).</exception>
     /// <example><code>await app.ServeAsync(new TerminalServerOptions { EndPoint = new IPEndPoint(IPAddress.Loopback, 2323) }, token);</code></example>
-    public async Task ServeAsync(TerminalServerOptions options, CancellationToken cancellationToken = default)
+    public Task ServeAsync(TerminalServerOptions options, CancellationToken cancellationToken = default) =>
+        ServeAsync(options, cancellationToken, started: null);
+
+    /// <summary>Serves, telling <paramref name="started"/> which server listens once it has started.</summary>
+    private async Task ServeAsync(TerminalServerOptions options, CancellationToken cancellationToken, Action<TerminalServer>? started)
     {
         ArgumentNullException.ThrowIfNull(options);
 
         await using var server = new TerminalServer(this, options);
         server.Start();
+        started?.Invoke(server);
         try
         {
             await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
@@ -445,7 +450,10 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         }
     }
 
-    /// <summary>Serves until the token is cancelled or the user presses Ctrl+C in the server's console.</summary>
+    /// <summary>
+    /// Serves until the token is cancelled or the user presses Ctrl+C in the server's console, saying where it listens
+    /// on the console (the log may go only to a file).
+    /// </summary>
     private async Task ServeUntilStoppedAsync(TerminalServerOptions options, CancellationToken cancellationToken)
     {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -458,7 +466,14 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         Console.CancelKeyPress += onCancel;
         try
         {
-            await ServeAsync(options, stop.Token).ConfigureAwait(false);
+            await ServeAsync(options, stop.Token, server =>
+            {
+                var client = options.Protocol == TerminalProtocol.Telnet
+                    ? options.Certificate is null ? $"telnet {server.LocalEndPoint.Address} {server.LocalEndPoint.Port}" : "a Telnet client with TLS"
+                    : options.Certificate is null ? $"nc {server.LocalEndPoint.Address} {server.LocalEndPoint.Port}" : $"openssl s_client -connect {server.LocalEndPoint}";
+                Console.WriteLine($"Serving on {server.LocalEndPoint} ({options.Protocol}, {(options.Certificate is null ? "no TLS" : "TLS")}). " +
+                                  $"Connect with {client}. Press Ctrl+C to stop.");
+            }).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
         }
         finally
@@ -574,6 +589,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             echo = terminal.Output;
             session = TerminalSession.ForRemote(terminal, new LiveDisplay(renderer));
             terminal.Start();
+            terminal.AwaitWindowSize(); // a raw terminal answers its size question before the first screen
         }
 
         using var current = TerminalSession.Use(session);
@@ -913,7 +929,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         if (_clearScreenBetweenViews || clear)
             renderer.Clear();
 
-        input.Arm(viewResult.ResolveRefresh(view.DeclaredRefreshInterval));
+        // A screen reader would read the whole page out again at every refresh: screens do not refresh for it
+        input.Arm(renderer is ScreenReaderRenderer ? null : viewResult.ResolveRefresh(view.DeclaredRefreshInterval));
         return view.RenderInternal(viewResult.Model)
                ?? throw new InvalidOperationException(
                    $"View '{view.GetType().Name}' returned null. Views must return a NavigationResult.");

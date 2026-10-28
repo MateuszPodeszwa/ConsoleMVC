@@ -9,14 +9,15 @@ culture of the run for formatting.
 builder.Localization.Culture = CultureInfo.GetCultureInfo("pl-PL");
 ```
 
-Or let users choose, with the `ConsoleMVC:Culture` setting:
+Or let users choose, with the `ConsoleMVC:Culture` setting (a culture set in code wins over it, so leave
+`Localization.Culture` unset to let users choose):
 
 ```bash
 dotnet run -- --ConsoleMVC:Culture=pl-PL
 export ConsoleMVC__Culture=pl-PL
 ```
 
-The culture is used for the whole run, for formatting (`@Model.Total` shows `1 234,50` in Polish) and for resources.
+The culture is used for the whole run, for formatting (`@Model.Total.ToString("N2")` shows `1 234,50` in Polish, and `@Model.Total` alone `1234,5`) and for resources.
 Without one, the system's culture is used. An unknown culture name stops the application with a clear message.
 
 ## Your own text
@@ -70,6 +71,9 @@ builder.Localization.FrameworkTextResource = typeof(SharedResource);
 | `UnknownChoice`, `NoMatch`, `Ambiguous` | choice field messages (`{0}`: the answer) |
 | `ChooseOne`, `ChooseSeveral` | typed choice prompts (`{0}`: the range) |
 | `ScrollStatus` | `Lines {0}-{1} of {2}  …` |
+| `CheckboxKeys`, `NumberKeys`, `DateKeys` | the keys shown beside a field in a terminal: `(Space, Enter)`, `(Up/Down, type a number, Enter)`, `(Left/Right, Up/Down, t today, Enter)` |
+| `SelectKeys`, `SelectManyKeys`, `FilterKeys`, `FilterManyKeys`, `RadioKeys` | the keys of a `<select>` (with `multiple`, `filter`, or both) and a side-by-side `<radio>`: `(Up/Down, Enter)`, … |
+| `FilterLabel`, `NoMatches`, `MoreAbove`, `MoreBelow` | `Filter: `, `(no matches)`, `({0} more above)`, `({0} more below)` |
 | `InvalidValue` | `The value '{0}' is not valid for {1}.` |
 | `FieldInvalid` | `The {0} field is invalid.` |
 

@@ -62,6 +62,31 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - Resizing the terminal during a `<scroll>` garbled the screen: the page kept the old width (the terminal wrapped it),
   the status counted the old lines, and the page left on the screen afterwards stayed at the old width. The page is now
   laid out again at the new width.
+- A `Raw` remote session drew its first screen at 80 by 24 although the client reported its size: the answer was only
+  read with the first key. The session now waits up to half a second for it before the first screen.
+- Serving (`ConsoleMVC:Serve`) said nothing on the console, so with the log in a file a server looked stuck; it now
+  says where it listens and how to connect. The refusal to listen on a network without TLS names the
+  `ConsoleMVC:ServeAllowUnencrypted` setting, and a missing `ConsoleMVC:ServeCertificate` file is reported as missing
+  rather than as "Error occurred during a cryptographic operation".
+- A missing service in a view's `@inject` was named as the runtime writes it (`IOptions`1`); it is now named as in C#
+  (`IOptions<GreetingOptions>`). The configuration guide no longer claims that `Build()` checks the services of
+  controllers and views: they are checked when their screen opens.
+- The keys shown beside a field in a terminal (`(Space, Enter)`, `(Up/Down, Enter)`, …), `Filter: `, `(no matches)`
+  and the "more above/below" lines of a `<select size>` were always in English; they are now `FrameworkText`
+  properties (`CheckboxKeys`, `SelectKeys`, `SelectManyKeys`, `FilterKeys`, `FilterManyKeys`, `RadioKeys`, `NumberKeys`,
+  `DateKeys`, `FilterLabel`, `NoMatches`, `MoreAbove`, `MoreBelow`), and the template translates them, and the number,
+  date, choice and binding messages it lacked, into Polish. Its Polish number hint said `2,5`, which is refused.
+- A whole-number `<number decimals="0">` answered with something that is not a number said "Enter a number, e.g. 42 or
+  2.5", inviting an answer it refuses; it now says "Enter a whole number."
+- In screen-reader mode a screen with `@refresh` was written out again at every refresh; screens no longer refresh in
+  that mode.
+- Snapshots failed on differences nobody can see: a space at the end of a line (the prompt `Select an option: `) or a
+  final new line added by an editor. `Snapshot.Match` now ignores spaces at the ends of lines and blank lines at the
+  end, saves snapshots with a final line ending, and quotes the differing lines in its message so leading spaces show.
+- An on/off `ConsoleMVC:` setting with a value other than `true` or `false` (`--ConsoleMVC:ScreenReader=yes`) was
+  ignored, leaving the feature off; `Build()` now stops with a message naming the setting. The new
+  `ConsoleMVC:FullScreen` setting matches `builder.FullScreen`, and the configuration guide lists every `ConsoleMVC:`
+  setting.
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).

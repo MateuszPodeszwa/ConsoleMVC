@@ -43,6 +43,28 @@ public sealed class SnapshotTests : IDisposable
         Assert.False(File.Exists(FileOf("greeting", ".received.txt")));
     }
 
+    [Theory]
+    [InlineData("Select an option: ", "Select an option:\n")]   // an editor trimmed the trailing space
+    [InlineData("Menu\nSelect an option: ", "Menu\nSelect an option: \n\n")]   // an editor added final new lines
+    [InlineData("Menu  \n\n", "Menu")]
+    public void SpacesAtLineEnds_AndBlankLinesAtTheEnd_AreIgnored(string actual, string saved)
+    {
+        File.WriteAllText(FileOf("menu"), saved);
+
+        Match(actual, "menu");
+    }
+
+    [Fact]
+    public void ADifferenceInLeadingSpaces_IsVisibleInTheMessage()
+    {
+        File.WriteAllText(FileOf("menu"), "  [1] About\n");
+
+        var error = Assert.Throws<SnapshotMismatchException>(() => Match(" [1] About\n", "menu"));
+
+        Assert.Contains("expected: \"  [1] About\"", error.Message);
+        Assert.Contains("actual:   \" [1] About\"", error.Message);
+    }
+
     [Fact]
     public void DifferentOutput_FailsWithTheFirstDifferentLine()
     {

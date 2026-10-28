@@ -142,7 +142,7 @@ public sealed class DateElement : Element, IFormField
                 spans.Add(new Span(_date.Day.ToString("00", CultureInfo.InvariantCulture), _part == DatePart.Day ? current : normal));
                 spans.Add(new Span(" " + _date.DayOfWeek.ToString()[..3], FieldText.Hint));
                 spans.Add(Span.Spaces(2));
-                spans.Add(new Span("(Left/Right, Up/Down, t today, Enter)", FieldText.Hint));
+                spans.Add(new Span(FrameworkText.Current.DateKeys, FieldText.Hint));
                 break;
             case FieldMode.Answered:
                 spans.Add(new Span(_date.ToString(ValueFormat, CultureInfo.InvariantCulture), TextStyle.Plain.WithDecoration(TextDecoration.Bold)));

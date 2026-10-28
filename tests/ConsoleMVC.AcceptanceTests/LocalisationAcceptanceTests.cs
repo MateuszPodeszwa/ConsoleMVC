@@ -36,4 +36,20 @@ public class LocalisationAcceptanceTests
         Assert.Contains("[t/N]", run.Screens[1]);
         Assert.Contains(answer, run.LastScreen);
     }
+
+    [Fact]
+    public void TheKeysShownBesideAField_AreTranslated()
+    {
+        var host = MvcTestHost.For<Controllers.HomeController>(builder =>
+            builder.Localization.Text = FrameworkText.English with { CheckboxKeys = "(Spacja, Enter)", NumberKeys = "(Góra/Dół, Enter)", FilterKeys = "(pisz, Enter)" });
+
+        // F12 means nothing to the fields; then the input ends while each one waits, so the last screen shows it waiting
+        var consent = host.Run(new ScriptedInput("5").Keys(ConsoleKey.F12));
+        var quantity = host.Run(new ScriptedInput("4").Keys(ConsoleKey.F12));
+        var colour = host.Run(new ScriptedInput("4").Keys(ConsoleKey.Enter, ConsoleKey.F12));
+
+        Assert.Contains("(Spacja, Enter)", consent.LastScreen);
+        Assert.Contains("(Góra/Dół, Enter)", quantity.LastScreen);
+        Assert.Contains("(pisz, Enter)", colour.LastScreen);
+    }
 }

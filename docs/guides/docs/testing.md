@@ -117,7 +117,7 @@ Snapshot.Match(run.LastScreen, "greeting-result");     // __snapshots__/greeting
 |---|---|
 | The file does not exist | It is created and the test passes; commit it |
 | The file does not exist and `CI` is set (build servers) | The test fails, so a snapshot is never accepted unseen |
-| The text is the same | The test passes (line endings are ignored) |
+| The text is the same | The test passes. Line endings, spaces at the ends of lines and blank lines at the end are ignored, as a terminal does not show them and editors change them |
 | The text differs | The test fails with the first different line, and the new text is saved as `greeting-result.received.txt` beside the snapshot |
 | `CONSOLEMVC_UPDATE_SNAPSHOTS=1` | Differences replace the snapshot: `CONSOLEMVC_UPDATE_SNAPSHOTS=1 dotnet test` |
 

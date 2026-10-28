@@ -231,8 +231,8 @@ public abstract class ConsoleViewBase
         return services.GetService(typeof(T)) is T service
             ? service
             : throw new InvalidOperationException(
-                $"'{GetType().Name}' injects '{typeof(T).Name} {property}', but no service of type '{typeof(T).FullName}' is registered. " +
-                $"Register it with builder.Services, e.g. builder.Services.AddSingleton<{typeof(T).Name}, ...>();");
+                $"'{GetType().Name}' injects '{TypeNames.Of(typeof(T))} {property}', but no service of type '{TypeNames.Of(typeof(T), qualified: true)}' is registered. " +
+                $"Register it with builder.Services, e.g. builder.Services.AddSingleton<{TypeNames.Of(typeof(T))}, ...>();");
     }
 
     /// <summary>

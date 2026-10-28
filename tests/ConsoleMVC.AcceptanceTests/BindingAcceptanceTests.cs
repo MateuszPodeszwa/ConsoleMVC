@@ -44,4 +44,18 @@ public class BindingAcceptanceTests
         Assert.Contains($"The value '{value}' is not valid for small.", screen);
         Assert.Contains("errors=2", screen);
     }
+
+    [Fact]
+    public void AWholeNumberField_AsksForAWholeNumber_WhenTheAnswerIsNotANumber()
+    {
+        // The quantity field has decimals="0": "e.g. 42 or 2.5" would invite an answer it refuses
+        var input = new ConsoleMVC.Testing.ScriptedInput("4")
+            .Key(ConsoleMVC.Testing.ScriptedInput.Char('-')).Keys(ConsoleKey.Enter)
+            .Keys(ConsoleKey.F12);   // means nothing to the field: the input then ends with the error on the screen
+
+        var run = App.Host().Run(input);
+
+        Assert.Contains("Enter a whole number.", run.LastScreen);
+        Assert.DoesNotContain("2.5", run.LastScreen);
+    }
 }

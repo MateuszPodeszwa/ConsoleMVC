@@ -20,7 +20,35 @@
   <data name="NoWord" xml:space="preserve"><value>nie</value></data>
   <data name="ChooseOne" xml:space="preserve"><value>Wybierz {0}</value></data>
   <data name="ChooseSeveral" xml:space="preserve"><value>Wybierz jedną lub więcej z {0}, np. {1}</value></data>
-  <data name="NotANumber" xml:space="preserve"><value>Podaj liczbę, np. 42 lub 2,5.</value></data>
+  <data name="NotANumber" xml:space="preserve"><value>Podaj liczbę, np. 42 lub 2.5 (z kropką).</value></data>
+  <data name="CheckboxRequired" xml:space="preserve"><value>To pole musi być zaznaczone.</value></data>
+  <data name="WholeNumber" xml:space="preserve"><value>Podaj liczbę całkowitą.</value></data>
+  <data name="DecimalPlace" xml:space="preserve"><value>Podaj liczbę z co najwyżej 1 miejscem po przecinku.</value></data>
+  <data name="DecimalPlaces" xml:space="preserve"><value>Podaj liczbę z co najwyżej {0} miejscami po przecinku.</value></data>
+  <data name="NumberRange" xml:space="preserve"><value>Podaj liczbę od {0} do {1}.</value></data>
+  <data name="NumberAtLeast" xml:space="preserve"><value>Podaj liczbę nie mniejszą niż {0}.</value></data>
+  <data name="NumberAtMost" xml:space="preserve"><value>Podaj liczbę nie większą niż {0}.</value></data>
+  <data name="NotADate" xml:space="preserve"><value>Podaj datę jako rrrr-mm-dd (np. 2026-10-27), today, tomorrow albo +7.</value></data>
+  <data name="DateRange" xml:space="preserve"><value>Podaj datę od {0} do {1}.</value></data>
+  <data name="DateOnOrAfter" xml:space="preserve"><value>Podaj datę {0} lub późniejszą.</value></data>
+  <data name="DateOnOrBefore" xml:space="preserve"><value>Podaj datę {0} lub wcześniejszą.</value></data>
+  <data name="UnknownChoice" xml:space="preserve"><value>'{0}' nie jest jedną z możliwości.</value></data>
+  <data name="NoMatch" xml:space="preserve"><value>Żadna możliwość nie pasuje do '{0}'.</value></data>
+  <data name="Ambiguous" xml:space="preserve"><value>'{0}' pasuje do: {1}; wpisz więcej nazwy.</value></data>
+  <data name="InvalidValue" xml:space="preserve"><value>Wartość '{0}' jest nieprawidłowa dla pola {1}.</value></data>
+  <data name="FieldInvalid" xml:space="preserve"><value>Pole {0} jest nieprawidłowe.</value></data>
+  <data name="CheckboxKeys" xml:space="preserve"><value>(Spacja, Enter)</value></data>
+  <data name="SelectKeys" xml:space="preserve"><value>(Góra/Dół, Enter)</value></data>
+  <data name="SelectManyKeys" xml:space="preserve"><value>(Góra/Dół, Spacja, Enter)</value></data>
+  <data name="FilterKeys" xml:space="preserve"><value>(pisz, aby zawęzić, Góra/Dół, Enter)</value></data>
+  <data name="FilterManyKeys" xml:space="preserve"><value>(pisz, aby zawęzić, Góra/Dół, Spacja, Enter)</value></data>
+  <data name="RadioKeys" xml:space="preserve"><value>(Lewo/Prawo, Enter)</value></data>
+  <data name="FilterLabel" xml:space="preserve"><value>Filtr: </value></data>
+  <data name="NoMatches" xml:space="preserve"><value>(brak wyników)</value></data>
+  <data name="MoreAbove" xml:space="preserve"><value>(jeszcze {0} wyżej)</value></data>
+  <data name="MoreBelow" xml:space="preserve"><value>(jeszcze {0} niżej)</value></data>
+  <data name="NumberKeys" xml:space="preserve"><value>(Góra/Dół, wpisz liczbę, Enter)</value></data>
+  <data name="DateKeys" xml:space="preserve"><value>(Lewo/Prawo, Góra/Dół, t dziś, Enter)</value></data>
   <data name="ScrollStatus" xml:space="preserve"><value>Wiersze {0}-{1} z {2}  ↑↓ PgUp PgDn Home End  Enter, aby kontynuować</value></data>
   <data name="Please keep your name under 30 characters." xml:space="preserve"><value>Imię może mieć najwyżej {1} znaków.</value></data>
   <data name="That colour name is too long (20 characters at most)." xml:space="preserve"><value>Nazwa koloru jest za długa (najwyżej {1} znaków).</value></data>

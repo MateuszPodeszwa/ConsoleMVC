@@ -57,6 +57,54 @@ public sealed record FrameworkText
     /// <summary>The word for no, accepted as a <c>&lt;checkbox&gt;</c> answer (as are <c>n</c>, <c>no</c>, <c>false</c> and <c>0</c>).</summary>
     public string NoWord { get; init; } = "no";
 
+    /// <summary>The keys a <c>&lt;checkbox&gt;</c> answered in a terminal uses, shown beside it.</summary>
+    /// <example><code>FrameworkText.English with { CheckboxKeys = "(Spacja, Enter)" }</code></example>
+    public string CheckboxKeys { get; init; } = "(Space, Enter)";
+
+    /// <summary>The keys of a <c>&lt;select&gt;</c> in a terminal.</summary>
+    /// <example><code>FrameworkText.English with { SelectKeys = "(Góra/Dół, Enter)" }</code></example>
+    public string SelectKeys { get; init; } = "(Up/Down, Enter)";
+
+    /// <summary>The keys of a <c>&lt;select multiple&gt;</c> in a terminal.</summary>
+    /// <example><code>FrameworkText.English with { SelectManyKeys = "(Góra/Dół, Spacja, Enter)" }</code></example>
+    public string SelectManyKeys { get; init; } = "(Up/Down, Space, Enter)";
+
+    /// <summary>The keys of a <c>&lt;select filter&gt;</c> in a terminal.</summary>
+    /// <example><code>FrameworkText.English with { FilterKeys = "(pisz, aby zawęzić, Góra/Dół, Enter)" }</code></example>
+    public string FilterKeys { get; init; } = "(type to filter, Up/Down, Enter)";
+
+    /// <summary>The keys of a <c>&lt;select multiple filter&gt;</c> in a terminal.</summary>
+    /// <example><code>FrameworkText.English with { FilterManyKeys = "(pisz, aby zawęzić, Góra/Dół, Spacja, Enter)" }</code></example>
+    public string FilterManyKeys { get; init; } = "(type to filter, Up/Down, Space, Enter)";
+
+    /// <summary>The keys of a <c>&lt;radio&gt;</c> laid out side by side in a terminal.</summary>
+    /// <example><code>FrameworkText.English with { RadioKeys = "(Lewo/Prawo, Enter)" }</code></example>
+    public string RadioKeys { get; init; } = "(Left/Right, Enter)";
+
+    /// <summary>The label before the filter being typed into a <c>&lt;select filter&gt;</c>.</summary>
+    /// <example><code>FrameworkText.English with { FilterLabel = "Filtr: " }</code></example>
+    public string FilterLabel { get; init; } = "Filter: ";
+
+    /// <summary>Shown when a <c>&lt;select filter&gt;</c>'s filter matches no choice.</summary>
+    /// <example><code>FrameworkText.English with { NoMatches = "(brak wyników)" }</code></example>
+    public string NoMatches { get; init; } = "(no matches)";
+
+    /// <summary>Above a scrolled <c>&lt;select size&gt;</c>: <c>{0}</c> is how many choices are hidden above.</summary>
+    /// <example><code>FrameworkText.English with { MoreAbove = "(jeszcze {0} wyżej)" }</code></example>
+    public string MoreAbove { get; init; } = "({0} more above)";
+
+    /// <summary>Below a scrolled <c>&lt;select size&gt;</c>: <c>{0}</c> is how many choices are hidden below.</summary>
+    /// <example><code>FrameworkText.English with { MoreBelow = "(jeszcze {0} niżej)" }</code></example>
+    public string MoreBelow { get; init; } = "({0} more below)";
+
+    /// <summary>The keys of a <c>&lt;number&gt;</c> in a terminal.</summary>
+    /// <example><code>FrameworkText.English with { NumberKeys = "(Góra/Dół, wpisz liczbę, Enter)" }</code></example>
+    public string NumberKeys { get; init; } = "(Up/Down, type a number, Enter)";
+
+    /// <summary>The keys of a <c>&lt;date&gt;</c> in a terminal; <c>t</c> jumps to today in any language.</summary>
+    /// <example><code>FrameworkText.English with { DateKeys = "(Lewo/Prawo, Góra/Dół, t dziś, Enter)" }</code></example>
+    public string DateKeys { get; init; } = "(Left/Right, Up/Down, t today, Enter)";
+
     /// <summary>Shown when a <c>&lt;number&gt;</c> answer is not a number.</summary>
     public string NotANumber { get; init; } = NumberElement.NotANumberMessage;
 

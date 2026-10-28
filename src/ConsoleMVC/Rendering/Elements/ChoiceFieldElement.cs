@@ -479,9 +479,15 @@ public abstract class ChoiceFieldElement : Element, IFormField
             return (Marker: marker, Choice: _choices[i], Bold: i == _cursor, Index: i);
         }).ToList();
 
-        var keys = Horizontal ? "Left/Right" : "Up/Down";
-        var typing = AllowsFilter ? "type to filter, " : "";
-        var hint = AllowsSeveral ? $"({typing}{keys}, Space, Enter)" : $"({typing}{keys}, Enter)";
+        var words = FrameworkText.Current;
+        var hint = (Horizontal, AllowsFilter, AllowsSeveral) switch
+        {
+            (true, _, _) => words.RadioKeys,
+            (false, true, true) => words.FilterManyKeys,
+            (false, true, false) => words.FilterKeys,
+            (false, false, true) => words.SelectManyKeys,
+            _ => words.SelectKeys
+        };
         _choiceOfLine.Clear();
         var lines = ChoiceLines(width, items.Select(i => (i.Marker, i.Choice, i.Bold)).ToList(), hint, markerStyle,
             indent: LabelIndent + 1, choiceIndices: items.Select(i => i.Index).ToList()).ToList();
@@ -489,17 +495,17 @@ public abstract class ChoiceFieldElement : Element, IFormField
         var dim = TextStyle.Plain.WithDecoration(TextDecoration.Dim);
         var heading = Horizontal ? 0 : HeadingLines(width, hint).Count;
         if (first > 0)
-            lines.Insert(heading, new RenderedLine([Span.Spaces(LabelIndent + 3), new Span($"({first} more above)", dim)]).Clip(width));
+            lines.Insert(heading, new RenderedLine([Span.Spaces(LabelIndent + 3), new Span(FrameworkText.Format(words.MoreAbove, first), dim)]).Clip(width));
         if (first + count < visible.Count)
-            lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span($"({visible.Count - first - count} more below)", dim)]).Clip(width));
+            lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span(FrameworkText.Format(words.MoreBelow, visible.Count - first - count), dim)]).Clip(width));
 
         if (AllowsFilter && _filter.Length > 0)
         {
             var filter = TextSanitiser.Sanitise(_filter);
             lines.Insert(Math.Min(heading, lines.Count), new RenderedLine(
-                [Span.Spaces(LabelIndent + 1), new Span("Filter: ", dim), new Span(filter, TextStyle.Plain.WithDecoration(TextDecoration.Bold))]).Clip(width));
+                [Span.Spaces(LabelIndent + 1), new Span(words.FilterLabel, dim), new Span(filter, TextStyle.Plain.WithDecoration(TextDecoration.Bold))]).Clip(width));
             if (visible.Count == 0)
-                lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span("(no matches)", dim)]).Clip(width));
+                lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span(words.NoMatches, dim)]).Clip(width));
         }
 
         if (_error is not null)

@@ -122,8 +122,17 @@ public static partial class Snapshot
         throw new SnapshotMismatchException(Describe(expected, text, snapshotPath, receivedPath), expected, text, snapshotPath, receivedPath);
     }
 
-    /// <summary>Line endings as <c>\n</c>, so snapshots saved on Windows match on other systems.</summary>
-    private static string Normalise(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
+    /// <summary>
+    /// The text as it is compared and saved: line endings as <c>\n</c> (so snapshots saved on Windows match elsewhere),
+    /// no spaces at the ends of lines and no blank lines at the end, which a terminal does not show and editors add or
+    /// remove, and one final line ending.
+    /// </summary>
+    private static string Normalise(string text)
+    {
+        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n').Select(line => line.TrimEnd(' ', '\t'));
+        var joined = string.Join("\n", lines).TrimEnd('\n');
+        return joined.Length == 0 ? "" : joined + "\n";
+    }
 
     private static void Write(string path, string text)
     {
@@ -134,14 +143,15 @@ public static partial class Snapshot
     /// <summary>Names the first line that differs, with both versions of it.</summary>
     private static string Describe(string expected, string actual, string snapshotPath, string receivedPath)
     {
-        var expectedLines = expected.Split('\n');
-        var actualLines = actual.Split('\n');
+        var expectedLines = expected.TrimEnd('\n').Split('\n');
+        var actualLines = actual.TrimEnd('\n').Split('\n');
         var line = 0;
         while (line < expectedLines.Length && line < actualLines.Length && expectedLines[line] == actualLines[line])
             line++;
 
-        var was = line < expectedLines.Length ? expectedLines[line] : "(end of snapshot)";
-        var now = line < actualLines.Length ? actualLines[line] : "(end of output)";
+        // Quoted, so leading spaces can be seen
+        var was = line < expectedLines.Length ? $"\"{expectedLines[line]}\"" : "(end of snapshot)";
+        var now = line < actualLines.Length ? $"\"{actualLines[line]}\"" : "(end of output)";
 
         return $"The output differs from the snapshot '{snapshotPath}' at line {line + 1}:\n" +
                $"  expected: {was}\n" +

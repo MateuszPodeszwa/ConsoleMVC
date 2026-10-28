@@ -34,9 +34,9 @@ internal static class ServiceInjector
         {
             var service = services.GetService(property.PropertyType)
                           ?? throw new InvalidOperationException(
-                              $"'{type.Name}' injects '{property.PropertyType.Name} {property.Name}', but no service of type " +
-                              $"'{property.PropertyType.FullName}' is registered. Register it with builder.Services, " +
-                              $"e.g. builder.Services.AddSingleton<{property.PropertyType.Name}, ...>();");
+                              $"'{type.Name}' injects '{TypeNames.Of(property.PropertyType)} {property.Name}', but no service of type " +
+                              $"'{TypeNames.Of(property.PropertyType, qualified: true)}' is registered. Register it with builder.Services, " +
+                              $"e.g. builder.Services.AddSingleton<{TypeNames.Of(property.PropertyType)}, ...>();");
 
             property.SetValue(instance, service);
         }

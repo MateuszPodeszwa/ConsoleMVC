@@ -97,7 +97,7 @@ public sealed class NumberElement : Element, IFormField
             case FieldMode.Keys:
                 spans.Add(new Span(_buffer.Length > 0 ? _buffer : " ", TextStyle.Plain.WithForeground(HighlightColour).WithDecoration(TextDecoration.Bold | TextDecoration.Underline)));
                 spans.Add(Span.Spaces(2));
-                spans.Add(new Span("(Up/Down, type a number, Enter)", FieldText.Hint));
+                spans.Add(new Span(FrameworkText.Current.NumberKeys, FieldText.Hint));
                 break;
             case FieldMode.Answered:
                 spans.Add(new Span(_buffer, TextStyle.Plain.WithDecoration(TextDecoration.Bold)));
@@ -134,8 +134,9 @@ public sealed class NumberElement : Element, IFormField
     /// <example><code>var error = field.Validate("200", out _); // "Enter a number from 0 to 130."</code></example>
     public string? Validate(string text, out decimal value)
     {
+        // A whole-number field asks for a whole number, not for "42 or 2.5"
         if (!decimal.TryParse(text, Styles, CultureInfo.InvariantCulture, out value))
-            return FrameworkText.Current.NotANumber;
+            return Decimals == 0 ? FrameworkText.Current.WholeNumber : FrameworkText.Current.NotANumber;
 
         if (Decimals == 0 && value != decimal.Truncate(value))
             return FrameworkText.Current.WholeNumber;

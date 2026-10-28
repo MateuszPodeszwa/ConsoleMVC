@@ -1,0 +1,7 @@
+@model object
+@refresh 1s
+
+<text>Tick @Model</text>
+<menu>
+    <option key="q" quit>Quit</option>
+</menu>

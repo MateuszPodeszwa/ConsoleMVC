@@ -27,6 +27,10 @@ internal sealed class RemoteTextInput : ITextInput
     });
 
     private readonly TerminalKeyDecoder _decoder;
+    private readonly Action<int, int> _windowSize;
+
+    // Characters read while looking for a window size report that turned out to be something else, read again first
+    private readonly Queue<char> _readAgain = new();
     private readonly TextWriter _echo;
     private readonly Action _interrupted;
     private volatile bool _ended;
@@ -39,7 +43,50 @@ internal sealed class RemoteTextInput : ITextInput
     {
         _echo = echo;
         _interrupted = interrupted;
+        _windowSize = windowSize;
         _decoder = new TerminalKeyDecoder(TryRead, windowSize);
+    }
+
+    /// <summary>
+    /// Waits up to <paramref name="timeout"/> for the terminal's answer to a window size question (<c>ESC [ 8 ; rows ;
+    /// columns t</c>) and applies it, so the first screen is laid out at the client's size. Anything else that arrives
+    /// first is kept and read as usual.
+    /// </summary>
+    /// <param name="timeout">How long to wait; terminals that do not answer cost this once, at the start.</param>
+    /// <returns><see langword="true"/> when the size was reported in time.</returns>
+    /// <example><code>input.AwaitWindowSize(TimeSpan.FromMilliseconds(500));</code></example>
+    public bool AwaitWindowSize(TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        var seen = new System.Text.StringBuilder();
+        try
+        {
+            while (true)
+            {
+                var left = deadline - DateTime.UtcNow;
+                if (left <= TimeSpan.Zero || !Wait(left) || !_chars.Reader.TryRead(out var character))
+                    return false;
+
+                seen.Append(character);
+                var text = seen.ToString();
+                if (System.Text.RegularExpressions.Regex.Match(text, @"^\u001b\[8;(\d{1,5});(\d{1,5})t$") is { Success: true } report)
+                {
+                    seen.Clear();
+                    _windowSize(int.Parse(report.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture),
+                        int.Parse(report.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
+                    return true;
+                }
+
+                // Still a possible start of the report: keep reading; otherwise it was something else
+                if (!System.Text.RegularExpressions.Regex.IsMatch(text, @"^\u001b(\[(8(;(\d{1,5}(;(\d{1,5})?)?)?)?)?)?$"))
+                    return false;
+            }
+        }
+        finally
+        {
+            foreach (var character in seen.ToString())
+                _readAgain.Enqueue(character);
+        }
     }
 
     /// <summary>Gets where the connection's characters are written; completed when the connection ends.</summary>
@@ -51,7 +98,7 @@ internal sealed class RemoteTextInput : ITextInput
     /// <inheritdoc />
     public bool WaitForInput(TimeSpan timeout)
     {
-        if (_ended || _decoder.HasPending || _chars.Reader.Count > 0)
+        if (_ended || _decoder.HasPending || _readAgain.Count > 0 || _chars.Reader.Count > 0)
             return true;
 
         // True also when the input ended, so the read goes ahead and returns the end
@@ -117,6 +164,9 @@ internal sealed class RemoteTextInput : ITextInput
     /// <summary>The decoder's source: a character from the channel, waiting at most <paramref name="timeout"/>.</summary>
     private bool TryRead(TimeSpan? timeout, out char character)
     {
+        if (_readAgain.TryDequeue(out character))
+            return true;
+
         while (true)
         {
             if (_chars.Reader.TryRead(out character))

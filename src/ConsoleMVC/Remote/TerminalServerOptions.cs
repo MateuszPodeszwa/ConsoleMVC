@@ -194,6 +194,9 @@ public sealed class TerminalServerOptions
 
         if (configuration[CertificateSetting] is { Length: > 0 } path)
         {
+            if (!File.Exists(path))
+                throw new InvalidOperationException($"The {CertificateSetting} setting: there is no certificate file '{Path.GetFullPath(path)}'.");
+
             try
             {
                 options.Certificate = X509CertificateLoader.LoadPkcs12FromFile(path, configuration[CertificatePasswordSetting]);
@@ -234,7 +237,8 @@ public sealed class TerminalServerOptions
             throw new InvalidOperationException(
                 $"Listening on {EndPoint} would send everything typed, passwords included, across the network in clear text. " +
                 "Set TerminalServerOptions.Certificate (or the ConsoleMVC:ServeCertificate setting) to use TLS, listen on the " +
-                "loopback address behind SSH or a proxy, or set AllowUnencryptedNetworkAccess on a network you trust.");
+                $"loopback address behind SSH or a proxy, or set AllowUnencryptedNetworkAccess (the {AllowUnencryptedSetting} " +
+                "setting) on a network you trust.");
         }
     }
 }
