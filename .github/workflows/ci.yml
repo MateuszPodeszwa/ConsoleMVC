@@ -76,3 +76,30 @@ jobs:
           if grep -E "warning IL|error" publish.log; then echo "Native AOT publishing reported warnings"; exit 1; fi
           printf '4\n3\nq\n' | "$RUNNER_TEMP/aot/Shop" --ConsoleMVC:ScreenReader=true | tee run.log
           grep -q "Admin: settings" run.log
+
+      - name: Serve the native template to a remote session
+        run: |
+          cd "$RUNNER_TEMP/generated/Shop"
+          "$RUNNER_TEMP/aot/Shop" --ConsoleMVC:Serve=127.0.0.1:2323 &
+          server=$!
+          python3 - <<'PY'
+          import socket, time
+          for _ in range(50):
+              try:
+                  connection = socket.create_connection(("127.0.0.1", 2323))
+                  break
+              except OSError:
+                  time.sleep(0.2)
+          connection.settimeout(10)
+          seen = b""
+          while b"Welcome to ConsoleMVC" not in seen:
+              data = connection.recv(65536)
+              if not data:
+                  raise SystemExit("The session closed before the home page arrived")
+              seen += data
+          connection.sendall(b"q\r")
+          while connection.recv(65536):
+              pass
+          print("The remote session showed the home page and quit")
+          PY
+          kill "$server"

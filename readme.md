@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.32: Native AOT and trimming (`dotnet publish -p:PublishAot=true`), with a generated route table instead of reflection: the template starts in about 18 ms. 1.31 added mouse support, 1.30 areas and feature modules, 1.29 localisation. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.33: remote sessions: `dotnet run -- --ConsoleMVC:Serve=2323` serves the application to many users at once over Telnet or TLS, each with their own screen and history. 1.32 added Native AOT and trimming, 1.31 mouse support, 1.30 areas and feature modules. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -36,6 +36,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Async actions and middleware**: actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
 - **Testing**: the `ConsoleMVC.Testing` package runs the application with scripted lines and keys, records every screen and the routes visited, and compares screens with snapshot files
 - **Native AOT**: `dotnet publish -p:PublishAot=true` makes a single native executable that starts in milliseconds; the source generator writes a route table so nothing depends on reflection
+- **Remote sessions**: one process serves the application to many users at once (`--ConsoleMVC:Serve=2323`, then `telnet localhost 2323`), each with their own screen, history and `ITerminalSession`; loopback-only and TLS-ready by default, and SSH or a web terminal through OpenSSH or ttyd
 - **Live reload**: run `dotnet watch` and edits to views and controllers appear from the next screen, without restarting
 
 ## Getting Started
@@ -670,6 +671,19 @@ Text written in Markdown (help pages, release notes) is drawn with `<markdown te
 
 See the [Live Screens guide](docs/guides/docs/live-screens.md) and the [design](docs/design/live-elements.md).
 
+### Remote Sessions
+
+One process can serve the application to many users at once, each with their own screen, history and session values:
+
+```bash
+dotnet run -- --ConsoleMVC:Serve=2323     # or: await app.ServeAsync(new TerminalServerOptions(), token);
+telnet localhost 2323                     # from as many terminals as you like
+```
+
+Controllers and views ask for `ITerminalSession` to tell users apart (`session.Items["user"] = name`). The server listens
+on the loopback address by default and needs a TLS certificate before it listens on the network; OpenSSH or ttyd put
+SSH and a web browser in front of it. See the [Remote Sessions guide](docs/guides/docs/remote-sessions.md).
+
 ### Live Reload
 
 Run `dotnet watch` in the project folder. Edits to `.cvw` views, controllers and models are applied to the running application and show from the next screen; newly added controllers and views are discovered after each update, so they are routable without a restart. See [Live reload](docs/guides/docs/getting-started.md#live-reload).
@@ -816,7 +830,7 @@ builder.Services.AddSingleton<IClock, SystemClock>();   // Your services
 builder.Services.Configure<ShopOptions>(builder.Configuration.GetSection("Shop")); // Settings
 builder.Logging.AddFile("logs/app.log");                // Logs to a file, not over the screen
 using var app = builder.Build();
-app.Run();
+app.Run();                                      // Or serve many users: --ConsoleMVC:Serve=2323
 ```
 
 | Option | Purpose |
@@ -839,10 +853,7 @@ app.Run();
 
 ## Roadmap
 
-The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
-
-- **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
-- **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
+The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Every feature planned for the framework is now built, from full-screen mode, live elements and charts to Native AOT and remote sessions. What remains is **IDE support for markup**, developed in its own repository, [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport).
 
 Ideas and feedback are welcome in the [issues](https://github.com/MateuszPodeszwa/ConsoleMVC/issues).
 

@@ -5,6 +5,7 @@
 <box title="Status" class="panel" padding="1">
     <spinner label="Refreshing every second until you type" frame="@Model.Time.Second" class="success" />
     <text>Time: @Model.Time.ToString("HH:mm:ss")</text>
+    <text>Session: @Model.Session</text>
     <progress label="Services up " value="@Model.Healthy" max="@Model.Total" bar-width="20" class="success" />
     <sparkline label="Load        " values="@Model.Load" min="0" max="100" show-last class="info" />
 </box>

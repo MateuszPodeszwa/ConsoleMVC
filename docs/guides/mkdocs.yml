@@ -45,6 +45,7 @@ nav:
   - Builder Options: configuration.md
   - Testing: testing.md
   - Native AOT and Trimming: native-aot.md
+  - Remote Sessions: remote-sessions.md
   - Accessibility: accessibility.md
   - Localisation: localisation.md
   - API Reference: ../api/

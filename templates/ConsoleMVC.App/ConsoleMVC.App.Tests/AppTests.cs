@@ -74,6 +74,7 @@ public class AppTests
         Assert.Contains("Checking services ████", run.Output);
         Assert.Contains("Services up ████████████████████ 100%", run.Output);
         Assert.Contains("Payments", run.Screens[3]);                // the bar chart of response times
+        Assert.Contains("Session: this console", run.Screens[3]);   // not served remotely
     }
 
     [Fact]

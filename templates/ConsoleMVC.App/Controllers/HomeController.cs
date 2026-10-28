@@ -8,7 +8,8 @@ namespace ConsoleMVC.App.Controllers;
 /// The default controller for the application, handling the home page and about page actions.
 /// </summary>
 /// <param name="live">Draws the progress bar while <see cref="Check"/> works; registered by the framework.</param>
-public class HomeController(ILiveDisplay live) : Controller
+/// <param name="session">The terminal this user is on: the console, or a remote session when the app is served.</param>
+public class HomeController(ILiveDisplay live, ITerminalSession session) : Controller
 {
     /// <summary>The number of services the status page checks.</summary>
     private const int ServiceCount = 5;
@@ -117,6 +118,7 @@ public class HomeController(ILiveDisplay live) : Controller
         var model = new StatusViewModel
         {
             Time = now,
+            Session = session.IsRemote ? $"remote {session.Id} from {session.RemoteEndPoint}" : "this console",
             Healthy = ServiceCount,
             Total = ServiceCount,
             Load = Enumerable.Range(0, 30).Select(i => (int)(50 + 40 * Math.Sin((now.Second + i) / 4.0))).ToList(),

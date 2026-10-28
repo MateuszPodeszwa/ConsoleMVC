@@ -20,6 +20,7 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 - [Builder Options](configuration.md): the builder, themes and live reload.
 - [Testing](testing.md): run the application in tests with `ConsoleMVC.Testing`, scripted input and snapshots.
 - [Native AOT and Trimming](native-aot.md): publish a single native executable that starts in milliseconds.
+- [Remote Sessions](remote-sessions.md): serve the application to many users at once over Telnet, TLS, SSH or a web terminal.
 - [Accessibility](accessibility.md): a screen-reader mode and a high-contrast theme that users can turn on.
 - [Localisation](localisation.md): resources in views, translated framework messages and validation, and the run's culture.
 - [API Reference](../api/): auto-generated reference documentation for all public types.

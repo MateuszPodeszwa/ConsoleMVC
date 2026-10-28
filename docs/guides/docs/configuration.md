@@ -44,6 +44,14 @@ await app.RunAsync();
 `Build()` validates the service registrations, so a missing dependency fails at start-up rather than on the screen
 that needs it.
 
+## Running and serving
+
+| Call | What it does |
+|---|---|
+| `app.Run()` / `await app.RunAsync(token)` | Runs on this console until a view quits; serves instead when the `ConsoleMVC:Serve` setting is set |
+| `await app.ServeAsync(new TerminalServerOptions(), token)` | Serves the application to many users at once over Telnet or TLS ([Remote Sessions](remote-sessions.md)) |
+| `await app.RunSessionAsync(terminal, token)` | Runs one session on a `RemoteTerminal` over any stream |
+
 ## Testing
 
 The `ConsoleMVC.Testing` package runs the application with scripted lines and keys, records each screen and compares

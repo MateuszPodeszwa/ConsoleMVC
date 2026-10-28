@@ -356,7 +356,9 @@ public class MvcApplicationBuilder
         }
 
         services.AddSingleton(HighContrast || IsOn(HighContrastSetting) ? Theme.CreateHighContrast() : Theme ?? Theme.Empty);
-        services.TryAddSingleton<ILiveDisplay>(provider => new LiveDisplay(provider.GetRequiredService<IMarkupRenderer>()));
+        // Live elements draw on the terminal of the session that started them
+        services.TryAddSingleton<ILiveDisplay>(provider => new SessionLiveDisplay(new LiveDisplay(provider.GetRequiredService<IMarkupRenderer>())));
+        services.TryAddTransient<ITerminalSession>(_ => TerminalSession.Current ?? TerminalSession.Local);
 
         // Also when Services was cleared: these calls only add what is missing
         services.TryAddSingleton<IConfiguration>(Configuration);

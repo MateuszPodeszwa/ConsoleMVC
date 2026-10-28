@@ -2,6 +2,30 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.33.0]
+
+### Added
+
+- **Remote sessions** ([design](docs/design/remote-sessions.md), [guide](docs/guides/docs/remote-sessions.md)): one
+  process serves the application to many users, each with their own screen, input, current page and history.
+  `TerminalServer` and `TerminalServerOptions` listen over TCP with Telnet (window size and terminal type negotiated) or
+  raw bytes, optionally over TLS 1.2 or 1.3; `app.ServeAsync(options, token)`, or the `ConsoleMVC:Serve` settings
+  (`ServeProtocol`, `ServeCertificate`, `ServeCertificatePassword`, `ServeMaxSessions`, `ServeAllowUnencrypted`) make
+  `Run` and `RunAsync` serve until Ctrl+C.
+- `RemoteTerminal` and `RemoteTerminalOptions` turn any stream into a terminal (keys and escape sequences decoded,
+  output written as ANSI with CR LF), and `MvcApplication.RunSessionAsync(terminal, token)` runs a session on it, for
+  other transports such as WebSockets.
+- `ITerminalSession`, resolved from services: the session's `Id`, `IsRemote`, `RemoteEndPoint`, `TerminalType`, `Width`,
+  `Height`, per-session `Items` and `Disconnect()`.
+- Secure defaults: loopback only, a network address needs TLS (or `AllowUnencryptedNetworkAccess`), at most 16 sessions,
+  bounded input and window sizes, idle and handshake timeouts, and random session identifiers.
+- The template's status page shows its session, and `Program.cs` explains how to serve the app.
+
+### Changed
+
+- `ILiveDisplay` draws on the terminal of the session that started the live element.
+- A run's current page and history are kept per session; local runs behave as before.
+
 ## [1.32.0]
 
 ### Added

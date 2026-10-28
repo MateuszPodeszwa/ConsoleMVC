@@ -26,6 +26,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 - [Charts](docs/design/charts.md): `<bar-chart>` and `<sparkline>` for dashboards
 - [Live screens](docs/design/live-elements.md): `<progress>` and `<spinner>` that update while an async action works, and views that refresh on a timer with `@refresh 5s`
 - [Native AOT and trimming](docs/guides/docs/native-aot.md): a generated route table instead of reflection; the template starts in about 18 ms as a native executable
+- [Remote sessions](docs/guides/docs/remote-sessions.md): `--ConsoleMVC:Serve=2323` serves the application over Telnet (optionally TLS) to many users at once, each with their own session; SSH and web terminals through OpenSSH and ttyd
 - [Mouse support](docs/design/mouse.md): click menu options, choices and checkboxes, and scroll with the wheel
 - [Keyboard shortcuts](docs/design/shortcuts.md): `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` on every screen, listed by `<shortcuts />`
 - [Navigation history](docs/design/navigation-history.md): Back options and `<breadcrumbs />`; [route values](docs/design/route-values.md) such as `nav="Orders/Details?id=@order.Id"`
@@ -45,17 +46,11 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 ## Roadmap (Rough Order)
 
-### Near-term
+Every item planned for the framework itself is now built. What remains lives outside this repository:
 
+- [ ] **IDE support for markup**: syntax highlighting, completion and a live preview for C-View Markup in Rider and VS Code. This is developed in its own repository, [ConsoleMVC-CVWSupport](https://github.com/MateuszPodeszwa/ConsoleMVC-CVWSupport) (the Rider plugin currently treats markup as plain text)
 
-### Medium-term
-
-
-
-### Long-term
-
-- [ ] **IDE support for markup**: syntax highlighting, completion and a live preview for C-View Markup in Rider and VS Code (the Rider plugin currently treats markup as plain text)
-- [ ] **Remote sessions**: serve a ConsoleMVC application over SSH or a web terminal, one session per user
+New ideas are welcome: open an issue with what you would like next.
 
 ---
 

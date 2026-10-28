@@ -11,6 +11,11 @@ public class StatusViewModel
     public DateTime Time { get; set; }
 
     /// <summary>
+    /// Gets or sets which terminal the page is shown on: this console, or a remote session (dotnet run -- --ConsoleMVC:Serve=2323).
+    /// </summary>
+    public string Session { get; set; } = "";
+
+    /// <summary>
     /// Gets or sets how many of the services are up.
     /// </summary>
     public int Healthy { get; set; }

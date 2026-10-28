@@ -31,6 +31,10 @@ builder.Localization.ValidationResource = typeof(SharedResource);
 // Accessibility: users choose without a new build, e.g. dotnet run -- --ConsoleMVC:ScreenReader=true
 // (plain text for screen readers) or --ConsoleMVC:HighContrast=true (bold, bright colours)
 
+// Remote sessions: serve the app to several users at once, each with their own screen and history, from this process.
+// Try: dotnet run -- --ConsoleMVC:Serve=2323   then, in other terminals: telnet localhost 2323
+// (loopback only unless you add a TLS certificate: see the remote sessions guide)
+
 using var app = builder.Build();
 
 // Keyboard shortcuts that work on every screen; the layout lists them with <shortcuts />
@@ -40,7 +44,9 @@ app.MapKey(KeyGesture.Parse("Ctrl+X"), NavigationResult.Quit(), "Quit");
 // Middleware runs around every action: here it shows the current page in the terminal's title bar
 app.Use(async (context, next) =>
 {
-    if (!Console.IsOutputRedirected)
+    // Only on this console: a remote session's title bar is the user's own terminal
+    var session = context.Services.GetRequiredService<ITerminalSession>();
+    if (!session.IsRemote && !Console.IsOutputRedirected)
         Console.Title = $"ConsoleMVC — {context.Route}";
 
     await next(context);
