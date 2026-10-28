@@ -1,0 +1,6 @@
+<text>Admin home</text>
+<menu>
+    <option key="a" nav="Home/Index">This area's Home</option>
+    <option key="h" nav="/Home/Index">The application's Home</option>
+    <option key="q" quit>Quit</option>
+</menu>

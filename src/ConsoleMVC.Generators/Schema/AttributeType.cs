@@ -535,7 +535,7 @@ internal sealed class ChoiceAttributeType : AttributeType
 internal sealed class RouteAttributeType : AttributeType
 {
     /// <inheritdoc />
-    public override string Description => "a route such as 'Home/Index', 'Index', 'Admin/Users/Index' or 'Orders/Details?id=42'";
+    public override string Description => "a route such as 'Home/Index', 'Index', 'Admin/Users/Index', 'Orders/Details?id=42' or '/Home/Index' (the application's, from an area)";
 
     /// <inheritdoc />
     public override string Kind => "route";
@@ -550,9 +550,13 @@ internal sealed class RouteAttributeType : AttributeType
         error = "expected " + Description;
         var text = (literal ?? "").Trim();
         var query = text.IndexOf('?');
-        var parts = (query < 0 ? text : text.Substring(0, query)).Split('/');
+        var path = query < 0 ? text : text.Substring(0, query);
 
-        if (parts.Length > 3 || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
+        // A leading '/' names the application's controller from inside an area: '/Home/Index' (never an action alone)
+        var root = path.StartsWith("/", StringComparison.Ordinal);
+        var parts = (root ? path.Substring(1) : path).Split('/');
+
+        if (parts.Length > 3 || (root && parts.Length < 2) || parts.Any(p => !Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsValidIdentifier(p)))
             return false;
 
         // Route values: key=value pairs separated by '&'; every key must have a name
@@ -562,7 +566,7 @@ internal sealed class RouteAttributeType : AttributeType
             return false;
         }
 
-        code = CSharpLiteral.String(string.Join("/", parts) + (query < 0 ? "" : text.Substring(query)));
+        code = CSharpLiteral.String((root ? "/" : "") + string.Join("/", parts) + (query < 0 ? "" : text.Substring(query)));
         return true;
     }
 

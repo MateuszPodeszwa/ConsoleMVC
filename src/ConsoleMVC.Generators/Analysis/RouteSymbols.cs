@@ -69,6 +69,10 @@ internal static class RouteSymbols
     /// </summary>
     public static string Qualify(string controller, string? current, System.Func<string, bool> exists)
     {
+        // '/Home': the application's controller, never the area's
+        if (controller.StartsWith("/", System.StringComparison.Ordinal))
+            return controller.Substring(1);
+
         var slash = current?.LastIndexOf('/') ?? -1;
         if (controller.Contains("/") || slash <= 0)
             return controller;

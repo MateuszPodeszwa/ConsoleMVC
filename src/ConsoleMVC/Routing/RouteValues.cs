@@ -87,9 +87,12 @@ public static class RouteValues
 
         var query = target.IndexOf('?');
         var path = (query < 0 ? target : target[..query]).Trim();
-        var parts = path.Split('/');
-        if (parts.Length > 3 || parts.Any(p => p.Trim().Length == 0))
-            throw new ArgumentException($"'{target}' is not a valid navigation target. Use 'Area/Controller/Action', 'Controller/Action' or 'Action', optionally followed by '?key=value'.", nameof(target));
+
+        // A leading '/' names the application's controller from inside an area: '/Home/Index'
+        var root = path.StartsWith('/');
+        var parts = (root ? path[1..] : path).Split('/');
+        if (parts.Length > 3 || (root && parts.Length < 2) || parts.Any(p => p.Trim().Length == 0))
+            throw new ArgumentException($"'{target}' is not a valid navigation target. Use 'Area/Controller/Action', 'Controller/Action' or 'Action', optionally followed by '?key=value'; '/Controller/Action' names the application's controller from inside an area.", nameof(target));
 
         Dictionary<string, string>? values = null;
         if (query >= 0)
@@ -106,10 +109,11 @@ public static class RouteValues
             }
         }
 
+        var prefix = root ? "/" : "";
         return parts.Length switch
         {
-            3 => (parts[0].Trim() + "/" + parts[1].Trim(), parts[2].Trim(), values),
-            2 => (parts[0].Trim(), parts[1].Trim(), values),
+            3 => (prefix + parts[0].Trim() + "/" + parts[1].Trim(), parts[2].Trim(), values),
+            2 => (prefix + parts[0].Trim(), parts[1].Trim(), values),
             _ => (null, parts[0].Trim(), values)
         };
     }

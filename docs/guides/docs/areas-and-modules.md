@@ -43,7 +43,9 @@ return NavigationResult.To("Admin/Users/Details?id=4");
 
 Inside an area, a controller named without an area means the area's own controller when it has one, and the
 application's otherwise. So from a screen in the Admin area, `nav="Home/Index"` goes to `Admin/Home` if the area has a
-Home controller, and to the application's `Home` if not. Two areas can each have a `HomeController`.
+Home controller, and to the application's `Home` if not. Two areas can each have a `HomeController`. To reach the
+application's controller from an area that has one of the same name, start the route with `/`: `nav="/Home/Index"`,
+`RedirectToAction("Index", "/Home")` or `NavigationResult.To("/Home/Index")`.
 
 `RouteContext.Area` is the area of a route (`null` outside one), and `RouteContext.ControllerName` is the controller
 without it. Breadcrumbs show the controller's name without the area.

@@ -824,7 +824,7 @@
           "description": "Where the option goes: Controller/Action or Action, optionally with ?key=value route values.",
           "required": false,
           "kind": "route",
-          "accepts": "a route such as 'Home/Index', 'Index', 'Admin/Users/Index' or 'Orders/Details?id=42'",
+          "accepts": "a route such as 'Home/Index', 'Index', 'Admin/Users/Index', 'Orders/Details?id=42' or '/Home/Index' (the application's, from an area)",
           "flag": false,
           "interpolation": true,
           "expression": true

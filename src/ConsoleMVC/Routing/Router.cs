@@ -393,7 +393,8 @@ public class Router
 
     /// <summary>
     /// Returns the controller a navigation means: <paramref name="controller"/> as it is when it names an area or the
-    /// current screen is outside one; otherwise the same name in the current screen's area, when that area has it.
+    /// current screen is outside one; otherwise the same name in the current screen's area, when that area has it. A name
+    /// starting with <c>/</c> (<c>/Home</c>) is the application's controller, never the area's.
     /// </summary>
     /// <param name="controller">The controller named by the navigation, e.g. <c>Portal</c>.</param>
     /// <param name="current">The controller of the current screen, e.g. <c>Admin/Users</c>.</param>
@@ -402,6 +403,10 @@ public class Router
     public string Qualify(string controller, string? current)
     {
         ArgumentNullException.ThrowIfNull(controller);
+
+        // '/Home': the application's controller, never the area's
+        if (controller.StartsWith('/'))
+            return controller[1..];
 
         var slash = current?.LastIndexOf('/') ?? -1;
         if (controller.Contains('/') || slash <= 0)

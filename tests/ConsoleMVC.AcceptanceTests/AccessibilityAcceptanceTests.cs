@@ -24,7 +24,7 @@ public class AccessibilityAcceptanceTests
     [Fact]
     public void WithItsOwnAnsiRenderer_ScreenReaderModeWritesNoEscapeCodes()
     {
-        var output = RunOnAnsiTerminal(screenReader: true, "9", "q");   // an invalid choice shows a red error too
+        var output = RunOnAnsiTerminal(screenReader: true, "x", "q");   // an invalid choice shows a red error too
 
         Assert.Contains("Styled warning", output);
         Assert.Contains("Invalid choice", output);
