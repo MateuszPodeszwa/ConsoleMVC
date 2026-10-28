@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.18: the `ConsoleMVC.Testing` package runs your application in tests with scripted input and snapshot files. 1.17 made a `nav` typo a build warning (CVW119), 1.16 added `appsettings.json`, options and `ILogger<T>`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.22: `builder.Logging.AddFile("logs/app.log")`, a built-in rolling file logger. 1.21 made `RedirectToAction("Detials")` and `View("Nme")` build warnings with a fix that creates a missing view, 1.20 added `<number>`, `<date>` and `<select filter>`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -18,12 +18,12 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Partial views and layouts**: reusable markup in `Views/Shared`, rendered with `<partial name="…" model="@…" />` and type-checked at build time, and a `_Layout.cvw` that frames every screen
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
-- **Declarative input and navigation**: `<input>` collects form values, `<select>`, `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
+- **Declarative input and navigation**: `<input>`, `<number>` and `<date>` collect form values, `<select>` (with type-to-filter), `<radio>` and `<checkbox>` offer choices answered with the arrow keys, and `<menu>` reads the user's choice and navigates, with no `Console.ReadLine()` or `switch` boilerplate
 - **Safe by default**: model data is sanitised before it reaches the terminal, so it cannot inject escape sequences
 - **Form data posting**: Views collect user input and post it to controller actions with automatic model binding, just like HTML forms in web MVC
 - **Validation**: posted forms are checked with the standard DataAnnotations attributes (`[Required]`, `[Range]`, …) before the action runs; `ModelState` and `<errors />` work as in ASP.NET Core MVC
 - **Dependency injection**: register services with `builder.Services`; controllers receive them through their constructors and views through `@inject`, with one scope per screen
-- **Configuration and logging**: `builder.Configuration` reads `appsettings.json`, `appsettings.{Environment}.json`, environment variables and the command line; options bind with `Configure<T>`, and `ILogger<T>` works everywhere, with no logger writing over the screen
+- **Configuration and logging**: `builder.Configuration` reads `appsettings.json`, `appsettings.{Environment}.json`, environment variables and the command line; options bind with `Configure<T>`, and `ILogger<T>` works everywhere, with a built-in rolling file logger (`builder.Logging.AddFile`) instead of one writing over the screen
 - **Async actions and middleware**: actions can return `Task<ActionResult>`, and `app.Use(...)` runs logging, authorisation or error handling around every action
 - **Testing**: the `ConsoleMVC.Testing` package runs the application with scripted lines and keys, records every screen and the routes visited, and compares screens with snapshot files
 - **Live reload**: run `dotnet watch` and edits to views and controllers appear from the next screen, without restarting
@@ -33,8 +33,8 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 ### Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
-- JetBrain's Rider (personally recommended for the [plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport/edit) support), VS plugin is planned
-- If using VS code or other, [add IDE support for cvw filles](#IDESupport)
+- JetBrains Rider is recommended, for the [ConsoleMVC CVWSupport plugin](https://plugins.jetbrains.com/plugin/31261-consolemvc-cvwsupport); a Visual Studio extension is planned
+- With VS Code or another editor, [add basic support for `.cvw` files](#IDESupport)
 
 ### Installation
 
@@ -53,12 +53,16 @@ cd MyApp
 dotnet run
 ```
 
+Add `--tests` for a test project too (`MyApp/MyApp.Tests`, using [ConsoleMVC.Testing](docs/guides/docs/testing.md)): `dotnet new consolemvc -n MyApp --tests`, then `dotnet test MyApp.Tests`.
+
 This scaffolds a ready-to-run application with the following structure:
 
 ```
 MyApp/
   MyApp.csproj
   Program.cs
+  appsettings.json              # Settings read by builder.Configuration
+  MyApp.Tests/                  # Only with --tests: xUnit tests using ConsoleMVC.Testing
   Controllers/
     HomeController.cs
     GreetController.cs          # Form posting with model binding
@@ -69,17 +73,24 @@ MyApp/
     GreetFormModel.cs           # Bound from form data (complex model)
     GreetResultModel.cs
     CalcResultModel.cs
+  Services/
+    IGreetingService.cs         # Registered in Program.cs, injected into GreetController and a view
+    GreetingService.cs
+    GreetingOptions.cs          # Bound from the Greeting section of appsettings.json
   Views/
     Home/
       IndexView.cvw             # <menu> navigation
       AboutView.cvw
       FeaturesView.cvw          # <table> generated from the model
     Greet/
-      IndexView.cvw             # <input> fields, posts the Form
+      IndexView.cvw             # <input>, <select> and <checkbox>, posts the Form
       ResultView.cvw
     Calc/
-      IndexView.cvw             # <input> fields, posts the Form
+      IndexView.cvw             # <number> and <radio> fields, posts the Form
       ResultView.cvw
+    Shared/
+      _Layout.cvw               # Frames every view: breadcrumbs, app name, separator
+      PageHeader.cvw            # A partial view, used with <partial>
 ```
 
 ## How It Works
@@ -94,6 +105,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 var builder = MvcApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IGreetingService, GreetingService>(); // optional: your services
+builder.Services.Configure<GreetingOptions>(builder.Configuration.GetSection("Greeting")); // optional: settings
 using var app = builder.Build();
 await app.RunAsync();                                               // or app.Run()
 ```
@@ -183,7 +195,7 @@ return input switch
 <separator class="muted" />
 ```
 
-The part before `<body />` is drawn before the view; the part after it is drawn just before the view's first `<input>` or `<menu>` (or at the end if it has neither), so a footer sits between the content and what the user answers. Views choose another layout with `@layout Name` or none with `@layout none`. See [Layouts](docs/guides/docs/c-view-markup.md#layouts-and-body) and the [design](docs/design/layout-views.md).
+The part before `<body />` is drawn before the view; the part after it is drawn just before the view first waits for the user (its first `<input>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`, or at the end if it has none), so a footer sits between the content and what the user answers. Views choose another layout with `@layout Name` or none with `@layout none`. See [Layouts](docs/guides/docs/c-view-markup.md#layouts-and-body) and the [design](docs/design/layout-views.md).
 
 #### Layout and Themes
 
@@ -263,7 +275,7 @@ The `<menu>` shows the options, re-prompts on an invalid choice and returns the 
 </table>
 ```
 
-Mistakes such as an unknown attribute or a missing closing tag are build errors pointing at the `.cvw` line, and C# errors inside views are mapped back to the `.cvw` file too. A `nav` target naming a controller or action that does not exist is a warning (CVW119) listing the ones that do. The full element and attribute reference is in the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**.
+Mistakes such as an unknown attribute or a missing closing tag are build errors pointing at the `.cvw` line, and C# errors inside views are mapped back to the `.cvw` file too. A `nav` target naming a controller or action that does not exist is a warning (CVW119) listing the ones that do; so are `RedirectToAction`, `NavigationResult.To` and `ToAction` in C# (CVW120), and `View("Name")` or `View()` without a view (CVW121, with an IDE fix that creates it). The full element and attribute reference is in the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)**.
 
 **Navigation from views** (a menu option marked `back` returns to the previous screen, and `<breadcrumbs />` shows the trail, e.g. `Home › Orders › Details`):
 
@@ -622,11 +634,11 @@ Start → Home/Index (default route)
           ↓
     Console is cleared, view renders, waits for input
           ↓
-    View returns NavigationResult.To("Home", "About")
+    View returns NavigationResult.To("Home", "About") (a <menu> option with nav="Home/About")
           ↓
     Controller.About() returns View(model)
           ↓
-    ... continues until NavigationResult.Quit()
+    ... continues until NavigationResult.Quit(); NavigationResult.Back() returns to the previous screen
 ```
 
 **Form data posting** (view collects input → controller receives it):
@@ -688,14 +700,19 @@ public ActionResult Contact()
 ```
 @model MyApp.Models.ContactViewModel
 
-Console.WriteLine($"Contact us at: {Model.Email}");
-Console.Write("Press any key to go back...");
-Console.ReadKey();
+<box title="Contact" border="rounded">
+    <text>Contact us at: @Model.Email</text>
+</box>
 
-return NavigationResult.To("Home", "Index");
+<menu>
+    <option key="b" back>Back</option>
+    <option key="q" quit>Exit</option>
+</menu>
 ```
 
-Build and run: the new page is automatically discovered and routable.
+**4. Link to it** from another view: `<option key="5" nav="Home/Contact">Contact</option>`.
+
+Build and run: the new page is discovered automatically, framed by the layout, and a typo in `nav` is reported by the build (CVW119).
 
 ## Configuration
 
@@ -712,7 +729,7 @@ builder.Input = ConsoleTextInput.Instance;              // Default: the console
 builder.Theme.Set("brand", new ThemeStyle { Bold = true }); // Default: Theme.CreateDefault()
 builder.Services.AddSingleton<IClock, SystemClock>();   // Your services
 builder.Services.Configure<ShopOptions>(builder.Configuration.GetSection("Shop")); // Settings
-builder.Logging.AddDebug();                             // Log somewhere other than the screen
+builder.Logging.AddFile("logs/app.log");                // Logs to a file, not over the screen
 using var app = builder.Build();
 app.Run();
 ```
@@ -727,14 +744,13 @@ app.Run();
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |
 | `Configuration` | Settings from `appsettings.json`, `appsettings.{Environment}.json`, environment variables (`Shop__Name`) and the command line (`--Shop:Name=Corner`), later ones winning; registered as `IConfiguration` (see [Configuration Files and Logging](docs/guides/docs/hosting.md)) |
 | `Environment` | `EnvironmentName` (`DOTNET_ENVIRONMENT`, default `Production`), `ContentRootPath` and `ApplicationName`; registered as `IHostEnvironment`. Choose them in code with `MvcApplication.CreateBuilder(new MvcApplicationOptions { … })` |
-| `Logging` | Log providers and levels (the `Logging` section of the configuration). None is added by default, because the console is the user interface; the framework logs screens and failures under `ConsoleMVC.Mvc.MvcApplication` |
+| `Logging` | Log providers and levels (the `Logging` section of the configuration). None is added by default, because the console is the user interface; `builder.Logging.AddFile("logs/app.log")` writes a rolling log file. The framework logs screens and failures under `ConsoleMVC.Mvc.MvcApplication` |
 | `Renderer` | How markup is drawn. The default detects colour support (`NO_COLOR`, `COLORTERM`, Windows VT mode), terminal width and redirected output, and redraws the current screen when the terminal is resized (`MarkupRenderer.CreateForConsole(redrawOnResize: false)` turns that off). Use `new MarkupRenderer(new PlainTextRenderTarget(writer), () => 60)` for plain text at a fixed width |
 
 ## Roadmap
 
 The full list, with the reasoning behind it, is in [Planned Features & Project Direction](plannedfeatures.md). Highlights of what comes next:
 
-- **Richer inputs** (`<number>`, `<date>`, a searchable `<select filter>`) and **more compile-time checks** for `RedirectToAction` and `View` names
 - **Full-screen mode** with resize handling and scrolling, **live elements** (`<progress>`, `<spinner>`) and **charts**
 - **IDE support for markup**, **Native AOT**, and serving applications over **SSH**
 
@@ -784,6 +800,8 @@ ConsoleMVC/
       ViewSourceGenerator.cs              #   Pipeline: .cvw → parse → diagnostics → emit ConsoleView<T>
       Parsing/ Syntax/ Schema/            #   Directive, C# and markup parsing; element/attribute schema
       Emit/ Diagnostics/                  #   C# generation with #line mapping; CVWxxx diagnostics
+      Analysis/                           #   NavigationAnalyzer: CVW120 and CVW121 for C# navigation
+    ConsoleMVC.CodeFixes/                 # IDE code fixes (create a missing view), bundled into ConsoleMVC package
   tests/
     ConsoleMVC.Tests/                     # Framework and rendering unit/integration tests
     ConsoleMVC.Generators.Tests/          # Runs the generator, compiles and executes views
@@ -817,11 +835,11 @@ dotnet test ConsoleMVC.sln
 - `src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj`: update `<Version>`
 - `ConsoleMVC.Template.csproj`: update `<Version>`
 
-If the template references a new framework version, also update the `<PackageReference>` version in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj`.
+Also update the `<PackageReference>` versions in `templates/ConsoleMVC.App/ConsoleMVC.App.csproj` (ConsoleMVC.Framework) and `templates/ConsoleMVC.App/ConsoleMVC.App.Tests/ConsoleMVC.App.Tests.csproj` (ConsoleMVC.Testing).
 
 **2. Merge to `main`.** The [Publish packages](.github/workflows/publish.yml) workflow notices that the version has no `vX.Y.Z` tag yet and:
 
-- checks that the three `<Version>` values and the template's framework reference agree;
+- checks that the three `<Version>` values and the template's package references agree;
 - builds with `-warnaserror` and runs every test;
 - packs `ConsoleMVC.Framework`, `ConsoleMVC.Testing` and `ConsoleMVC.Template`;
 - pushes them to **NuGet.org** with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key: GitHub issues a short-lived token that nuget.org exchanges for a one-hour key) and to **GitHub Packages** with the built-in `GITHUB_TOKEN`;
@@ -868,6 +886,8 @@ When modifying the template content (files in `templates/ConsoleMVC.App/`):
 
 - All namespaces in template files must use `ConsoleMVC.App`: this is the `sourceName` in `template.json` and gets replaced with the user's project name at scaffolding time
 - The `@model` directives in `.cvw` files must also use `ConsoleMVC.App.Models.ClassName`
+- The `--tests` option is a `symbols` entry in `template.json`; files under `ConsoleMVC.App.Tests/` are excluded without it, and `<!--#if (tests) -->` blocks in the project file are kept only with it
+- If a change alters the home menu, regenerate `ConsoleMVC.App.Tests/__snapshots__/home-menu.txt` (CI checks it by generating a project with `--tests`)
 - After changes, repack and republish the `ConsoleMVC.Template` package
 
 ### Updating the Source Generator

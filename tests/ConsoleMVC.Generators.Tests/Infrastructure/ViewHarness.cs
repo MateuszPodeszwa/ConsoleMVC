@@ -100,6 +100,35 @@ public static class ViewHarness
     }
 
     /// <summary>
+    /// Runs the generator over <paramref name="files"/>, then the C# navigation analyzer over the resulting compilation.
+    /// </summary>
+    /// <param name="files">The view files as (path, contents) pairs.</param>
+    /// <param name="source">C# source: controllers, models and hand-written views.</param>
+    /// <returns>The analyzer's diagnostics.</returns>
+    public static IReadOnlyList<Diagnostic> Analyze(IEnumerable<(string Path, string Text)> files, string source)
+    {
+        var compilation = CSharpCompilation.Create(
+            "TestApp_" + Guid.NewGuid().ToString("N"),
+            [CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest))],
+            References.Value,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [new ViewSourceGenerator().AsSourceGenerator()],
+            additionalTexts: [..files.Select(f => (AdditionalText)new InMemoryAdditionalText(f.Path, f.Text))],
+            parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest),
+            optionsProvider: new RootNamespaceOptionsProvider("TestApp"));
+        driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
+
+        var errors = output.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+        if (errors.Count > 0)
+            Assert.Fail("The test application does not compile:\n" + string.Join("\n", errors));
+
+        return output.WithAnalyzers([new ConsoleMVC.Generators.Analysis.NavigationAnalyzer()])
+            .GetAnalyzerDiagnosticsAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
     /// Generates, compiles and renders a view at <c>Views/Home/IndexView.cvw</c>.
     /// </summary>
     /// <param name="cvw">The contents of the <c>.cvw</c> file.</param>

@@ -14,20 +14,20 @@ But we can take this much further.
 
 ## Where ConsoleMVC Is Today
 
-The original big idea, **C-View Markup**, is real: `.cvw` views describe screens with `<box>`, `<text>`, `<table>`, `<columns>`, `<input>` and `<menu>`, compile to plain C# at build time, and are checked by the compiler. Around it, ConsoleMVC now has:
+The original big idea, **C-View Markup**, is real: `.cvw` views describe screens with `<box>`, `<text>`, `<table>`, `<columns>`, `<input>`, `<select>`, `<checkbox>` and `<menu>`, compile to plain C# at build time, and are checked by the compiler. Around it, ConsoleMVC now has:
 
 - [C-View Markup 1.0](docs/guides/docs/c-view-markup.md): text, boxes, tables, column layouts that stack on narrow terminals, themes with `class="…"`, inputs, menus and validation messages
 - [Partial views](docs/design/partial-views.md) and [layouts](docs/design/layout-views.md): reusable markup in `Views/Shared`, checked at build time
 - [Navigation history](docs/design/navigation-history.md): Back options and `<breadcrumbs />`; [route values](docs/design/route-values.md) such as `nav="Orders/Details?id=@order.Id"`
 - [Responsive screens](docs/design/responsive-redraw.md) that redraw when the terminal is resized
-- [Compile-time route checks](docs/design/route-checks.md): a `nav` typo is a build warning (CVW119)
-- [Choice inputs](docs/design/choice-inputs.md): `<select>` (also `multiple`), `<radio>` and `<checkbox>`, answered with the arrow keys in a terminal and typed otherwise
+- [Compile-time route checks](docs/design/route-checks.md): a typo in `nav`, `RedirectToAction`, `NavigationResult.To` or `View("…")` is a build warning (CVW119 to CVW121), with a fix that creates a missing view
+- [Choice inputs](docs/design/choice-inputs.md): `<select>` (also `multiple`), `<radio>` and `<checkbox>`, answered with the arrow keys in a terminal and typed otherwise; [number and date fields and filtered lists](docs/design/richer-inputs.md)
 - [Form validation](docs/design/form-validation.md) with DataAnnotations and `ModelState`
 - [Dependency injection](docs/guides/docs/dependency-injection.md) with `builder.Services` and `@inject`
-- [Configuration and logging](docs/guides/docs/hosting.md): `appsettings.json`, environment variables, the command line, options and `ILogger<T>`
+- [Configuration and logging](docs/guides/docs/hosting.md): `appsettings.json`, environment variables, the command line, options and `ILogger<T>`, with a [rolling file logger](docs/design/file-logging.md)
 - [Async actions and middleware](docs/guides/docs/async-and-middleware.md)
 - [Live reload](docs/guides/docs/getting-started.md#live-reload) with `dotnet watch`
-- [Testing](docs/guides/docs/testing.md): the `ConsoleMVC.Testing` package with a test host, scripted lines and keys, and snapshots
+- [Testing](docs/guides/docs/testing.md): the `ConsoleMVC.Testing` package with a test host, scripted lines and keys, and snapshots; `dotnet new consolemvc --tests` starts with a test project
 
 The ideas below are what comes next. They are proposals, not promises: if one matters to you, say so in an issue.
 
@@ -37,13 +37,9 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 
 ### Near-term
 
-- [ ] **Richer inputs**: `<number>` and `<date>` fields that step with the arrow keys and check ranges, and a searchable `<select filter>` for long lists
-- [ ] **Test project in the template**: `dotnet new consolemvc --tests` adds a test project with `ConsoleMVC.Testing` and a first snapshot
-- [ ] **More compile-time checks**: `RedirectToAction("Detials")` and `View("Nme")` in C# checked like `nav` targets, and a code fix that creates a missing view
 
 ### Medium-term
 
-- [ ] **File logging**: a built-in rolling file logger (`builder.Logging.AddFile("logs/app.log")`), since the console cannot show logs
 
 - [ ] **Full-screen mode**: use the alternate screen buffer, redraw when the terminal is resized, and scroll long content (`<scroll>`, a pager for long lists)
 - [ ] **Live elements**: `<progress>` and `<spinner>` that update while an async action runs, and views that refresh on a timer

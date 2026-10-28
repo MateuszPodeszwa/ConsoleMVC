@@ -11,7 +11,17 @@ cd MyApp
 dotnet run
 ```
 
-This creates a working console MVC application with a sample controller, view, and model already wired up.
+This creates a working application with a home menu, a greeting form (text input, a `<select>` and a `<checkbox>`), a
+calculator, a feature tour with tables and columns, a shared layout and partial view, a service registered for
+dependency injection, and settings in `appsettings.json`.
+
+Add `--tests` to get a test project as well, `MyApp/MyApp.Tests`, which runs the application with scripted input and
+checks a snapshot of the home menu (see [Testing](testing.md)):
+
+```bash
+dotnet new consolemvc -n MyApp --tests
+dotnet test MyApp/MyApp.Tests
+```
 
 If you prefer to add ConsoleMVC to an existing project, install the framework package directly:
 
@@ -30,14 +40,19 @@ MyApp/
 ├── Models/
 │   └── HomeViewModel.cs
 ├── Services/                 (optional: registered with builder.Services)
+│   ├── GreetingOptions.cs    (bound from appsettings.json)
 │   └── GreetingService.cs
 ├── Views/
-│   └── Home/
-│       └── IndexView.cvw
+│   ├── Home/
+│   │   └── IndexView.cvw     (the view for HomeController.Index)
+│   └── Shared/
+│       ├── _Layout.cvw       (frames every view)
+│       └── PageHeader.cvw    (a partial view, used with <partial>)
+├── appsettings.json          (read by builder.Configuration)
 └── Program.cs
 ```
 
-Controllers inherit from `Controller` and expose public methods that return `ActionResult`; parameters are bound from form data posted by views. Views are `.cvw` files that declare their model type with an `@model` directive and contain C# code, optionally mixed with [C-View Markup](c-view-markup.md) elements such as `<box>` and `<text>`, that renders output to the console. Services registered in `Program.cs` reach controllers through their constructors and views through `@inject`: see [Dependency Injection](dependency-injection.md).
+Controllers inherit from `Controller` and expose public methods that return `ActionResult`; parameters are bound from form data posted by views. Views are `.cvw` files that declare their model type with an `@model` directive and contain C# code, optionally mixed with [C-View Markup](c-view-markup.md) elements such as `<box>` and `<text>`, that renders output to the console. Services registered in `Program.cs` reach controllers through their constructors and views through `@inject`: see [Dependency Injection](dependency-injection.md). Settings come from `appsettings.json`, environment variables and the command line: see [Configuration Files and Logging](hosting.md).
 
 ## Running Your Application
 
@@ -61,3 +76,9 @@ Saving a `.cvw` view, a controller or a model applies the change to the running 
 
 !!! note
     A view that is waiting for input keeps its old version until the user answers, because the console cannot be redrawn in the middle of a prompt.
+
+## Next steps
+
+- Describe screens with [C-View Markup](c-view-markup.md): boxes, tables, columns, menus and form fields.
+- Post forms and bind them to models in [Controllers and Forms](controllers-and-forms.md), and check them with [Validation](validation.md).
+- Test the application end to end with the [Testing](testing.md) package.

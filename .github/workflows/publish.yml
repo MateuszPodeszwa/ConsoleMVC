@@ -64,6 +64,10 @@ jobs:
             echo "::error::The template does not reference ConsoleMVC.Framework $version"
             exit 1
           fi
+          if ! grep -q "Include=\"ConsoleMVC.Testing\" Version=\"$version\"" templates/ConsoleMVC.App/ConsoleMVC.App.Tests/ConsoleMVC.App.Tests.csproj; then
+            echo "::error::The template's test project does not reference ConsoleMVC.Testing $version"
+            exit 1
+          fi
           if [ -n "$RELEASE_TAG" ] && [ "${RELEASE_TAG#v}" != "$version" ]; then
             echo "::error::The release is $RELEASE_TAG, but the projects declare version $version"
             exit 1

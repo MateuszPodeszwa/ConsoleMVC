@@ -279,6 +279,8 @@ Choose 1-3 [Green]: _
 | | `color` / `colour` | label colour | terminal default |
 | | `highlight-color` / `highlight-colour` | colour of the `>` marker | cyan |
 | `<select>` | `multiple` | flag: several choices may be ticked; the answer is their values separated by commas, in the order of the choices | off |
+| | `filter` | flag: typing narrows the list in a terminal (Backspace and Esc edit the filter); a typed answer may be part of a name that matches one choice | off |
+| | `size` | how many choices a terminal shows at once; the list scrolls with the highlight and PageUp/PageDown move a page | all |
 | `<choice>` | `value` | what the form receives | the label text |
 | | style attributes | as for `<text>` | |
 
@@ -286,6 +288,40 @@ A `multiple` answer binds to `string[]`, `List<int>`, `IReadOnlyList<MyEnum>` an
 [Model binding](controllers-and-forms.md#model-binding)), so its values cannot contain commas. A field without choices
 (for example built from an empty list) throws an `InvalidOperationException` when it is shown; two choices with the
 same value are an `ArgumentException`.
+
+### `<number />` and `<date />`
+
+Ask for a number or a date, checked against a range. The answers are stored in the invariant culture (`2.5`,
+`2026-10-27`), so they bind to `int`, `decimal`, `double`, `DateOnly` and `DateTime`.
+
+```
+<number name="Qty" label="Quantity:" min="1" max="99" decimals="0" default="1" />
+<number name="Price" label="Price:" min="0" decimals="2" step="0.5" />
+<date name="Due" label="Due:" min="today" max="today+90" default="today+7" />
+```
+
+```
+Terminal:  Quantity: 1  (Up/Down, type a number, Enter)
+           Due: 2026-11-03 Tue  (Left/Right, Up/Down, t today, Enter)
+Typed:     Quantity: _      (a number with a dot for decimals; Enter a number from 1 to 99. if it is out of range)
+           Due: _           (2026-11-03, today, tomorrow, yesterday, +7 or -1)
+```
+
+| Element | Attribute | Values | Default |
+|---|---|---|---|
+| both | `name` | **required**: the key in `Form` | |
+| | `label` | the text before the value (a space is added if it has none) | none |
+| | `required` | flag: an empty answer is asked again | off |
+| | `color` / `colour`, `highlight-color` / `highlight-colour` | label colour; colour of the value being edited | terminal default; cyan |
+| `<number>` | `default` | the answer to an empty line and the starting value | none |
+| | `min`, `max` | the range, e.g. `min="0" max="130"` or `max="@Model.Limit"` | none |
+| | `step` | how much Up/Down change the value (PageUp/PageDown change it by ten steps) | 1 |
+| | `decimals` | the most decimal places; `0` for whole numbers | any |
+| `<date>` | `default`, `min`, `max` | `2026-10-27`, `today`, `today+N` or `today-N` (checked at build time) | none; the terminal starts today |
+
+In a terminal, digits replace the number (the first one replaces the starting value), Backspace edits it and Esc
+restores the default. A date's Up/Down change the part chosen with Left/Right, and the date never leaves its range.
+`DateElement.Clock` decides what *today* is, so tests can fix it.
 
 ### `<checkbox />`
 
@@ -425,7 +461,7 @@ A layout frames every screen. It is a `.cvw` file in `Views/Shared` with a `<bod
 ```
 
 * `Views/Shared/_Layout.cvw` is used by every view. A view picks another with `@layout Plain`, or none with `@layout none`.
-* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>` or `<menu>`), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
+* The part before `<body />` is drawn before the view. The part after it is drawn **just before the view first waits for the user** (its first `<input>`, `<select>`, `<radio>`, `<checkbox>` or `<menu>`), or when the view returns if it never waits. A console screen ends where it waits, so this is where a footer is seen: between the content and the menu.
 * A layout shares the view's `ViewData`, `ModelState`, `Form`, theme and services, and may use C# and `@inject`. It runs before the view's own code, so it sees `ViewData` set by the controller. It has no `@model`.
 * `<body />` appears once, at the top level of the layout, not inside an element or a C# block. Partials have no layout, and layouts cannot nest.
 
@@ -507,6 +543,8 @@ Mistakes in markup are reported as build errors located in the `.cvw` file. C# e
 | CVW117 | `<body />` outside a layout in `Views/Shared`, used twice or inside a C# block; or a layout with `@model` or `@layout` |
 | CVW118 | `@layout` names no layout (lists the available ones), or a partial uses `@layout` |
 | CVW119 | **Warning**: a literal `nav` target names a controller or action that does not exist (lists the ones that do) |
+| CVW120 | **Warning**: `RedirectToAction`, `NavigationResult.To` or `NavigationResult.ToAction` in C# names a controller or action that does not exist |
+| CVW121 | **Warning**: `View("Name")`, or `View()` in an action, has no view; the IDE offers **Create view Views/{Controller}/{Name}View.cvw** |
 
 ## Resizing the terminal
 
@@ -515,6 +553,7 @@ Elements are laid out to the terminal's width when they are drawn. When the wind
 - This works on macOS, Linux and Windows terminals, a moment after the window stops changing size.
 - A screen that also writes with `Console.WriteLine` is not redrawn, because that output cannot be laid out again; it stays as the terminal shows it.
 - Characters typed at a prompt but not yet confirmed with Enter are kept, but appear again only after Enter.
+- A `<select>`, `<radio>` or `<checkbox>` being answered with the arrow keys is redrawn with its current highlight and ticks.
 - To turn it off: `builder.Renderer = MarkupRenderer.CreateForConsole(redrawOnResize: false);`
 
 ## Rendering outside views

@@ -2,6 +2,62 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.22.0]
+
+### Added
+
+- **File logging** ([design](docs/design/file-logging.md), [guide](docs/guides/docs/hosting.md#logging)):
+  `builder.Logging.AddFile("logs/app.log")` (or `AddFile(options => …)`, or the `Logging:File` section) writes
+  entries on a background task, rolls the file over by size, keeps `RetainedFileCount` old files, indents
+  continuation lines and drops control characters so logged values cannot forge entries, and never blocks a screen.
+  `FileLoggerProvider` (alias `File`) and `FileLoggerOptions`.
+- The template's `Program.cs` logs to `logs/app.log`.
+
+## [1.21.0]
+
+### Added
+
+- **Navigation checks in C#** ([design](docs/design/route-checks.md#5-navigation-in-c-121)): `NavigationAnalyzer`
+  reports `RedirectToAction`, `NavigationResult.To` and `NavigationResult.ToAction` with a constant controller or
+  action that does not exist (CVW120), and `View("Name")` or `View()` in an action without a view (CVW121). Code in
+  `.cvw` views is checked and reported at the view's line. Both are warnings.
+- **Create view** code fix for CVW121 (`ConsoleMVC.CodeFixes`, bundled in the framework package): writes
+  `Views/{Controller}/{Name}View.cvw` with the model's type as `@model`.
+
+## [1.20.0]
+
+### Added
+
+- **Number and date fields** ([design](docs/design/richer-inputs.md), [guide](docs/guides/docs/c-view-markup.md#number-and-date)):
+  `<number>` (`min`, `max`, `step`, `decimals`, Up/Down and typed digits in a terminal) and `<date>` (`min`, `max`,
+  `default` as `2026-10-27`, `today` or `today+N`; Left/Right/Up/Down and `t` in a terminal; typed `today`,
+  `tomorrow` or `+7`). Answers are invariant (`2.5`, `2026-10-27`). `NumberElement`, `DateElement`
+  (`TryParse`, `Clock`), `NumberElement.Validate`.
+- **`<select filter>`**: typing narrows the choices in a terminal, and a typed answer may be part of one name;
+  **`<select size="N">`** scrolls a long list with "more above/below" lines and PageUp/PageDown.
+- Build-time checks of `min`, `max`, `step` and date values (CVW101).
+- The template's calculator uses `<number>` and `<radio>`.
+
+## [1.19.0]
+
+### Added
+
+- **`dotnet new consolemvc --tests`** adds `MyApp.Tests`, an xUnit project using ConsoleMVC.Testing: a snapshot of the
+  home menu (shipped, so continuous integration passes from the first commit), the greeting form driven with typed
+  lines and arrow keys, and a validation test. The application's project excludes the test folder.
+- CI generates projects from the packed template, with and without `--tests`, builds them with `-warnaserror` and
+  runs the generated tests; the publish workflow checks the test project's ConsoleMVC.Testing version.
+
+### Documentation
+
+- Brought every guide and readme up to date with 1.10 to 1.18: Getting Started shows the current template (layout,
+  partial, `appsettings.json`) and next steps; the readme's project tree, entry point, application flow and "Adding
+  New Pages" example (now markup with a Back option) match the template; the template readme lists the choice inputs
+  and configuration; CONTRIBUTING lists the testing package and the documentation rules; the layout footer is
+  described as drawn before any field, not only `<input>` and `<menu>`.
+- The API reference includes the `ConsoleMVC.Testing` namespace, and the documentation workflow builds with .NET 10.
+- The "Configuration and Testing" guide is now "Builder Options"; testing has its own guide.
+
 ## [1.18.0]
 
 ### Added

@@ -4,11 +4,19 @@ The `ConsoleMVC.Testing` package runs a whole application in a test: it types th
 records every screen as plain text, and compares screens with snapshot files kept beside your tests. It works with
 xUnit, NUnit and MSTest.
 
+New applications can start with a test project: `dotnet new consolemvc -n MyApp --tests` creates `MyApp/MyApp.Tests`
+with a snapshot of the home menu and a test of the greeting form, ready for `dotnet test MyApp/MyApp.Tests`. For an
+existing application:
+
 ```
 dotnet new xunit -n MyApp.Tests
 dotnet add MyApp.Tests reference MyApp
 dotnet add MyApp.Tests package ConsoleMVC.Testing
 ```
+
+When the test project sits inside the application's folder (as the template puts it), keep its files out of the
+application with `<DefaultItemExcludes>$(DefaultItemExcludes);MyApp.Tests/**</DefaultItemExcludes>` in the
+application's project file.
 
 ## Running the application
 

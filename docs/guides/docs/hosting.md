@@ -113,12 +113,44 @@ public class OrdersController(ILogger<OrdersController> logger) : Controller
 ```
 
 **No log provider is added by default**: the console shows your application, and a console logger would write over
-it. Add one that writes somewhere else:
+it. Write logs to a file instead, with the built-in file logger:
 
 ```csharp
-builder.Logging.AddDebug();                        // the debugger's output window (Microsoft.Extensions.Logging.Debug)
-builder.Logging.AddProvider(new MyFileLoggerProvider("app.log"));
+builder.Logging.AddFile("logs/app.log");           // relative to the application's folder
 ```
+
+```
+2026-10-27T21:04:05.123Z INFO  ConsoleMVC.Mvc.MvcApplication: Starting at Home/Index (Production)
+2026-10-27T21:04:09.871Z WARN  Shop.Controllers.OrdersController: Order 42 has no address
+```
+
+Entries are written on a background task, so logging never makes a screen wait for the disk. The file rolls over by
+size (`app.log` → `app.1.log` → `app.2.log`), continuation lines (exceptions, line breaks in a message) are indented
+so a logged value cannot forge an entry, and the file can be followed with `tail -f`. The settings can also come from
+the configuration, which `AddFile()` reads from `Logging:File`:
+
+```json
+{
+  "Logging": {
+    "File": {
+      "Path": "logs/shop.log",
+      "MaxFileSizeBytes": 1048576,
+      "RetainedFileCount": 3,
+      "LogLevel": { "Default": "Debug" }
+    }
+  }
+}
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `Path` | `logs/app.log` | The file, relative to the content root |
+| `MaxFileSizeBytes` | 10 MB | Roll over at this size; 0 never rolls over |
+| `RetainedFileCount` | 5 | Rolled-over files kept besides the current one |
+| `QueueLength` | 10 000 | Entries waiting to be written; when the disk cannot keep up, newer ones are dropped and counted |
+
+Any other provider works too, for example `builder.Logging.AddDebug()` (Microsoft.Extensions.Logging.Debug) for the
+debugger's output window.
 
 Levels follow the `Logging` section, as in ASP.NET Core:
 

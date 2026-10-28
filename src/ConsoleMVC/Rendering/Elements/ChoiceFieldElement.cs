@@ -42,6 +42,12 @@ public abstract class ChoiceFieldElement : Element, IFormField
     /// <summary>The separator between several answers in the form value.</summary>
     public const char ValueSeparator = ',';
 
+    /// <summary>The message shown when a filter matches no choice; <c>{0}</c> is the filter.</summary>
+    public const string NoMatchMessage = "No choice matches '{0}'.";
+
+    /// <summary>The message shown for a typed part of a name that matches several choices; <c>{0}</c> is the text, <c>{1}</c> the matches.</summary>
+    public const string AmbiguousMessage = "'{0}' matches {1}; type more of the name.";
+
     private readonly List<ChoiceElement> _choices = [];
 
     // The state shown by Layout: how the field is being answered, the highlight, the ticks and a message
@@ -49,6 +55,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
     private int _cursor;
     private bool[] _ticked = [];
     private string? _error;
+    private string _filter = "";
 
     /// <summary>Gets or sets the form key the answer is stored under.</summary>
     public string Name { get; set; } = "";
@@ -79,6 +86,18 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
     /// <summary>Gets whether the choices are laid out side by side (<see langword="true"/>) or one under another.</summary>
     protected abstract bool Horizontal { get; }
+
+    /// <summary>
+    /// Gets whether typing narrows the choices (arrow-key mode) and a typed part of a name chooses the one choice it
+    /// matches (typed mode). Only <see cref="SelectElement.Filter"/> allows it.
+    /// </summary>
+    protected virtual bool AllowsFilter => false;
+
+    /// <summary>
+    /// Gets how many choices are shown at once in arrow-key mode, scrolling with the highlight; 0 shows all of them.
+    /// Only <see cref="SelectElement.Size"/> sets it.
+    /// </summary>
+    protected virtual int VisibleRows => 0;
 
     /// <summary>
     /// Appends a choice.
@@ -177,9 +196,20 @@ public abstract class ChoiceFieldElement : Element, IFormField
             var chosen = new SortedSet<int>();
             string? unknown = null;
 
+            string? problem = null;
             foreach (var token in tokens.Select(t => t.Trim()).Where(t => t.Length > 0))
             {
                 var index = FindChoice(token);
+                if (index < 0 && AllowsFilter)
+                {
+                    var matches = Matching(token);
+                    if (matches.Count == 1)
+                        index = matches[0];
+                    else if (matches.Count > 1)
+                        problem = string.Format(CultureInfo.InvariantCulture, AmbiguousMessage, token,
+                            string.Join(", ", matches.Take(5).Select(i => _choices[i].LabelText)) + (matches.Count > 5 ? ", …" : ""));
+                }
+
                 if (index < 0)
                 {
                     unknown = token;
@@ -191,7 +221,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
             if (unknown is not null)
             {
-                ShowError(renderer, string.Format(CultureInfo.InvariantCulture, UnknownChoiceMessage, unknown));
+                ShowError(renderer, problem ?? string.Format(CultureInfo.InvariantCulture, UnknownChoiceMessage, unknown));
                 continue;
             }
 
@@ -215,6 +245,14 @@ public abstract class ChoiceFieldElement : Element, IFormField
         var byValue = _choices.FindIndex(c => string.Equals(c.EffectiveValue, token, StringComparison.OrdinalIgnoreCase));
         return byValue >= 0 ? byValue : _choices.FindIndex(c => string.Equals(c.LabelText, token, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>The choices whose label or value contains <paramref name="text"/>, ignoring case.</summary>
+    private List<int> Matching(string text) =>
+        text.Length == 0
+            ? Enumerable.Range(0, _choices.Count).ToList()
+            : Enumerable.Range(0, _choices.Count).Where(i =>
+                _choices[i].LabelText.Contains(text, StringComparison.OrdinalIgnoreCase)
+                || _choices[i].EffectiveValue.Contains(text, StringComparison.OrdinalIgnoreCase)).ToList();
 
     /// <summary>"Choose 1-3 [Green]: " or "Choose one or more of 1-3, e.g. 1,3: ".</summary>
     private string TypedPrompt()
@@ -245,6 +283,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
         }
 
         _error = null;
+        _filter = "";
         _mode = FieldMode.Keys;
         renderer.Render(this);
 
@@ -271,26 +310,43 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
     private KeyOutcome HandleKey(ConsoleKeyInfo key)
     {
+        var visible = Matching(_filter);
+        var position = visible.IndexOf(_cursor);
+
         switch (key.Key)
         {
-            case ConsoleKey.UpArrow or ConsoleKey.LeftArrow:
-                return Move(_cursor == 0 ? _choices.Count - 1 : _cursor - 1);
+            case ConsoleKey.UpArrow or ConsoleKey.LeftArrow when visible.Count > 0:
+                return Move(visible[position <= 0 ? visible.Count - 1 : position - 1]);
 
-            case ConsoleKey.DownArrow or ConsoleKey.RightArrow or ConsoleKey.Tab:
-                return Move(_cursor == _choices.Count - 1 ? 0 : _cursor + 1);
+            case ConsoleKey.DownArrow or ConsoleKey.RightArrow or ConsoleKey.Tab when visible.Count > 0:
+                return Move(visible[position < 0 || position == visible.Count - 1 ? 0 : position + 1]);
 
-            case ConsoleKey.Home:
-                return Move(0);
+            case ConsoleKey.Home when visible.Count > 0:
+                return Move(visible[0]);
 
-            case ConsoleKey.End:
-                return Move(_choices.Count - 1);
+            case ConsoleKey.End when visible.Count > 0:
+                return Move(visible[^1]);
+
+            case ConsoleKey.PageUp when visible.Count > 0:
+                return Move(visible[Math.Max(position - Page, 0)]);
+
+            case ConsoleKey.PageDown when visible.Count > 0:
+                return Move(visible[Math.Min(Math.Max(position, 0) + Page, visible.Count - 1)]);
 
             case ConsoleKey.Spacebar when AllowsSeveral:
+                if (position < 0)
+                    return KeyOutcome.Ignored;
                 _ticked[_cursor] = !_ticked[_cursor];
                 _error = null;
                 return KeyOutcome.Changed;
 
             case ConsoleKey.Enter:
+                if (!AllowsSeveral && position < 0)
+                {
+                    _error = string.Format(CultureInfo.InvariantCulture, NoMatchMessage, _filter);
+                    return KeyOutcome.Changed;
+                }
+
                 if (Required && SelectedIndices().Count == 0)
                 {
                     _error = InputElement.RequiredMessage;
@@ -298,12 +354,35 @@ public abstract class ChoiceFieldElement : Element, IFormField
                 }
 
                 return KeyOutcome.Confirmed;
+
+            case ConsoleKey.Backspace when AllowsFilter && _filter.Length > 0:
+                return SetFilter(_filter[..^1]);
+
+            case ConsoleKey.Escape when AllowsFilter && _filter.Length > 0:
+                return SetFilter("");
         }
+
+        if (AllowsFilter)
+            return key.KeyChar >= ' ' && !char.IsControl(key.KeyChar) ? SetFilter(_filter + key.KeyChar) : KeyOutcome.Ignored;
 
         if (key.KeyChar is >= '1' and <= '9' && key.KeyChar - '1' < _choices.Count)
             return Move(key.KeyChar - '1');
 
         return KeyOutcome.Ignored;
+    }
+
+    /// <summary>The rows PageUp and PageDown move by.</summary>
+    private int Page => VisibleRows > 0 ? VisibleRows : 10;
+
+    /// <summary>Narrows the choices; the highlight moves to the first match when the current one no longer matches.</summary>
+    private KeyOutcome SetFilter(string filter)
+    {
+        _filter = filter;
+        _error = null;
+        var visible = Matching(filter);
+        if (visible.Count > 0 && !visible.Contains(_cursor))
+            _cursor = visible[0];
+        return KeyOutcome.Changed;
     }
 
     private KeyOutcome Move(int index)
@@ -342,17 +421,46 @@ public abstract class ChoiceFieldElement : Element, IFormField
     private IReadOnlyList<RenderedLine> KeyLines(int width)
     {
         var markerStyle = TextStyle.Plain.WithForeground(HighlightColour).WithDecoration(TextDecoration.Bold);
-        var items = _choices.Select((c, i) =>
+        var visible = Matching(_filter);
+
+        // A window of VisibleRows choices that keeps the highlight in view
+        var first = 0;
+        var count = visible.Count;
+        if (VisibleRows > 0 && visible.Count > VisibleRows)
+        {
+            var position = Math.Max(visible.IndexOf(_cursor), 0);
+            first = Math.Clamp(position - VisibleRows / 2, 0, visible.Count - VisibleRows);
+            count = VisibleRows;
+        }
+
+        var items = visible.Skip(first).Take(count).Select(i =>
         {
             var marker = Horizontal
                 ? (i == _cursor ? "(*)" : "( )")
                 : (i == _cursor ? HighlightMarker : " ") + (AllowsSeveral ? (_ticked[i] ? " [x]" : " [ ]") : "");
-            return (Marker: marker, Choice: c, Bold: i == _cursor);
+            return (Marker: marker, Choice: _choices[i], Bold: i == _cursor);
         }).ToList();
 
         var keys = Horizontal ? "Left/Right" : "Up/Down";
-        var hint = AllowsSeveral ? $"({keys}, Space, Enter)" : $"({keys}, Enter)";
+        var typing = AllowsFilter ? "type to filter, " : "";
+        var hint = AllowsSeveral ? $"({typing}{keys}, Space, Enter)" : $"({typing}{keys}, Enter)";
         var lines = ChoiceLines(width, items, hint, markerStyle, indent: LabelIndent + 1).ToList();
+
+        var dim = TextStyle.Plain.WithDecoration(TextDecoration.Dim);
+        var heading = Horizontal ? 0 : HeadingLines(width, hint).Count;
+        if (first > 0)
+            lines.Insert(heading, new RenderedLine([Span.Spaces(LabelIndent + 3), new Span($"({first} more above)", dim)]).Clip(width));
+        if (first + count < visible.Count)
+            lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span($"({visible.Count - first - count} more below)", dim)]).Clip(width));
+
+        if (AllowsFilter && _filter.Length > 0)
+        {
+            var filter = TextSanitiser.Sanitise(_filter);
+            lines.Insert(Math.Min(heading, lines.Count), new RenderedLine(
+                [Span.Spaces(LabelIndent + 1), new Span("Filter: ", dim), new Span(filter, TextStyle.Plain.WithDecoration(TextDecoration.Bold))]).Clip(width));
+            if (visible.Count == 0)
+                lines.Add(new RenderedLine([Span.Spaces(LabelIndent + 3), new Span("(no matches)", dim)]).Clip(width));
+        }
 
         if (_error is not null)
         {
@@ -404,16 +512,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
             return Flow(segments, width);
         }
 
-        var lines = new List<RenderedLine>();
-        if (SafeLabel.Length > 0 || hint is not null)
-        {
-            var heading = new List<(Span[] Spans, int Gap)>();
-            if (SafeLabel.Length > 0)
-                heading.Add(([new Span(SafeLabel, LabelStyle)], 0));
-            if (hint is not null)
-                heading.Add(([new Span(hint, hintStyle)], 1));
-            lines.AddRange(Flow(heading, width));
-        }
+        var lines = HeadingLines(width, hint);
 
         foreach (var (marker, choice, bold) in items)
         {
@@ -431,6 +530,17 @@ public abstract class ChoiceFieldElement : Element, IFormField
         }
 
         return lines;
+    }
+
+    /// <summary>The label of a vertical field, followed by the keys to press when there is a hint.</summary>
+    private List<RenderedLine> HeadingLines(int width, string? hint)
+    {
+        var heading = new List<(Span[] Spans, int Gap)>();
+        if (SafeLabel.Length > 0)
+            heading.Add(([new Span(SafeLabel, LabelStyle)], 0));
+        if (hint is not null)
+            heading.Add(([new Span(hint, TextStyle.Plain.WithDecoration(TextDecoration.Dim))], 1));
+        return heading.Count == 0 ? [] : Flow(heading, width);
     }
 
     /// <summary>

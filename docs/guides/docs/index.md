@@ -15,6 +15,6 @@ ConsoleMVC also ships with a Roslyn source generator that compiles `.cvw` templa
 - [Dependency Injection](dependency-injection.md): register services and receive them in controllers and views (`@inject`).
 - [Async Actions and Middleware](async-and-middleware.md): `await` in actions and run code around every action with `app.Use`.
 - [Configuration Files and Logging](hosting.md): `appsettings.json`, environment variables, options and `ILogger<T>`.
-- [Configuration and Testing](configuration.md): builder options and themes.
+- [Builder Options](configuration.md): the builder, themes and live reload.
 - [Testing](testing.md): run the application in tests with `ConsoleMVC.Testing`, scripted input and snapshots.
 - [API Reference](../api/): auto-generated reference documentation for all public types.

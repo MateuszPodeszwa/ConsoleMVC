@@ -5,6 +5,7 @@
         {
           "files": [
             "src/ConsoleMVC/ConsoleMVC.csproj",
+            "src/ConsoleMVC.Testing/ConsoleMVC.Testing.csproj",
             "src/ConsoleMVC.Generators/ConsoleMVC.Generators.csproj"
           ],
           "src": "../../"

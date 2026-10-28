@@ -123,6 +123,22 @@ internal sealed class MarkupSchema
             new AttributeSchema("wrap", "Wrap", boolean)
         ];
 
+        var number = new DecimalAttributeType();
+        var date = new DateAttributeType();
+
+        // Shared by <number> and <date>
+        AttributeSchema[] ValueField(bool dateDefault = false) =>
+        [
+            new AttributeSchema("name", "Name", text, required: true),
+            new AttributeSchema("label", "Label", text),
+            new AttributeSchema("default", "Default", dateDefault ? date : text),
+            new AttributeSchema("required", "Required", boolean),
+            new AttributeSchema("color", "LabelColour", colour),
+            new AttributeSchema("colour", "LabelColour", colour),
+            new AttributeSchema("highlight-color", "HighlightColour", colour),
+            new AttributeSchema("highlight-colour", "HighlightColour", colour)
+        ];
+
         // Shared by <select> and <radio>
         AttributeSchema[] ChoiceField() =>
         [
@@ -217,7 +233,9 @@ internal sealed class MarkupSchema
             new ElementSchema("select", Rendering + "SelectElement", ContentModel.Elements,
             [
                 ..ChoiceField(),
-                new AttributeSchema("multiple", "Multiple", boolean)
+                new AttributeSchema("multiple", "Multiple", boolean),
+                new AttributeSchema("filter", "Filter", boolean),
+                new AttributeSchema("size", "Size", new IntegerAttributeType(0, 1000))
             ], allowedChildren: ["choice"], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
             new ElementSchema("radio", Rendering + "RadioElement", ContentModel.Elements, ChoiceField(),
                 allowedChildren: ["choice"], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
@@ -234,6 +252,21 @@ internal sealed class MarkupSchema
                 new AttributeSchema("required", "Required", boolean),
                 new AttributeSchema("color", "LabelColour", colour),
                 new AttributeSchema("colour", "LabelColour", colour)
+            ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+
+            new ElementSchema("number", Rendering + "NumberElement", ContentModel.Void,
+            [
+                ..ValueField(),
+                new AttributeSchema("min", "Min", number),
+                new AttributeSchema("max", "Max", number),
+                new AttributeSchema("step", "Step", number),
+                new AttributeSchema("decimals", "Decimals", new IntegerAttributeType(0, 28))
+            ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
+            new ElementSchema("date", Rendering + "DateElement", ContentModel.Void,
+            [
+                ..ValueField(dateDefault: true),
+                new AttributeSchema("min", "Min", date),
+                new AttributeSchema("max", "Max", date)
             ], topLevelOnly: true, topLevelStatement: "this.ReadInput({0});"),
 
             // ---- validation

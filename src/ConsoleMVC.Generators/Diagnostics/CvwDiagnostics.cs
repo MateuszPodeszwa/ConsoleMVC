@@ -184,6 +184,21 @@ internal static class CvwDiagnostics
         "{0}",
         Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
+    /// <summary>
+    /// CVW120: C# navigation (<c>RedirectToAction</c>, <c>NavigationResult.To</c>, <c>NavigationResult.ToAction</c>) names a
+    /// controller or action that does not exist. A warning, like CVW119.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnknownCodeRoute = new(
+        "CVW120", "Unknown navigation target in C#",
+        "{0}",
+        Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
+
+    /// <summary>CVW121: <c>View("Name")</c>, or <c>View()</c> in an action, has no view to render.</summary>
+    public static readonly DiagnosticDescriptor MissingView = new(
+        "CVW121", "View not found",
+        "{0}",
+        Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
+
     /// <summary>CVW108: malformed tag syntax.</summary>
     public static readonly DiagnosticDescriptor MalformedTag = new(
         "CVW108", "Malformed tag",

@@ -27,8 +27,35 @@ public sealed class SelectElement : ChoiceFieldElement
     /// <example><code>new SelectElement { Name = "Toppings", Multiple = true };</code></example>
     public bool Multiple { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether typing narrows a long list: in a terminal the typed text filters the choices (Backspace
+    /// edits it, Esc clears it); a typed answer may be part of a name when it matches only one choice.
+    /// </summary>
+    /// <example><code>new SelectElement { Name = "Country", Filter = true, Size = 8 };</code></example>
+    public bool Filter { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many choices are shown at once in a terminal; the list scrolls with the highlight and PageUp and
+    /// PageDown move a page. 0 (the default) shows every choice.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the value is negative.</exception>
+    /// <example><code>new SelectElement { Name = "Country", Size = 8 };</code></example>
+    public int Size
+    {
+        get => _size;
+        set => _size = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(value), "Size cannot be negative.");
+    }
+
+    private int _size;
+
     /// <inheritdoc />
     protected override bool AllowsSeveral => Multiple;
+
+    /// <inheritdoc />
+    protected override bool AllowsFilter => Filter;
+
+    /// <inheritdoc />
+    protected override int VisibleRows => Size;
 
     /// <inheritdoc />
     protected override bool Horizontal => false;
