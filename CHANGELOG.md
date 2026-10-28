@@ -145,6 +145,7 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
   IOptions<…>` (needs `@using Microsoft.Extensions.Options`), `@Model.Total` formatting in Polish, the sparkline
   sample's bars, the Native AOT executable size, and where relative log paths go (the application's folder, also in
   the template's readme).
+- A Markdown image (`![a chart](chart.png)`) was drawn as `!a chart (chart.png)`; it is now `[image: a chart]`.
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).

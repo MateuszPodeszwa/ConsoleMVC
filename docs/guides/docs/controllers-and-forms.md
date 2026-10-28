@@ -20,6 +20,9 @@ public class HomeController(IGreetingService greetings) : Controller
 
 - `HomeController` is reached as `Home`; action names are matched case-insensitively and must be unique (no overloads): two actions with the same name are build error CVW123.
 - Constructor parameters come from `builder.Services` (see [Dependency Injection](dependency-injection.md)).
+- Do not name a controller after the project's root namespace: in a project `Shop`, a `ShopController`'s views are in
+  the namespace `Shop.Views.Shop`, where `Shop.Models` means `Shop.Views.Shop.Models` and is not found (CS0234). Use
+  `global::Shop.Models.Cart` in such views, or another name.
 
 | Method | Result |
 |---|---|

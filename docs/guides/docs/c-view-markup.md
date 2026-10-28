@@ -97,7 +97,7 @@ A bordered panel. Its children are stacked vertically; text written directly ins
 | Attribute | Values | Default |
 |---|---|---|
 | `title` | text, may contain `@expressions` | none |
-| `width` | `auto`, a column count (`40`), a percentage (`50%`), or `*` (all the width) | `auto` (fit the content) |
+| `width` | `auto`, a column count (`40`), a percentage up to `100%` (`50%`), or `*` (all the width) | `auto` (fit the content) |
 | `border` | `single`, `double`, `rounded`, `heavy`, `ascii`, `none` | `single` |
 | `padding` | columns between border and content (0–20) | `1` |
 | `color` / `colour` | border colour | terminal default |
@@ -119,7 +119,7 @@ A horizontal rule that fills its container (or the terminal at top level).
 |---|---|---|
 | `style` | `single`, `double`, `heavy`, `dashed`, `ascii` | `single` |
 | `color` / `colour` | a [colour](#colours) | terminal default |
-| `width` | `auto` (fill), a column count, or a percentage | `auto` |
+| `width` | `auto` or `*` (fill), a column count, or a percentage | `auto` |
 | `class` | [theme](#themes-and-class) classes (the text colour is used) | none |
 
 ### `<br />`
@@ -340,7 +340,7 @@ it is checked when the field is shown.
 In a terminal, digits replace the number (the first one replaces the starting value), Backspace edits it and Esc
 restores the default (once the value is the default, Esc is left to an application shortcut such as the template's
 Esc for Back). A date's Up/Down change the part chosen with Left/Right, and the date never leaves its range.
-`DateElement.Clock` decides what *today* is, so tests can fix it.
+Each date field's `Clock` property (`new DateElement { Clock = TimeProvider.System }`) decides what *today* is, so tests can fix it.
 
 ### `<checkbox />`
 
@@ -565,6 +565,7 @@ Draws Markdown for the terminal: help pages, release notes, descriptions from a 
 | `---` | a rule across the width |
 | `**bold**`, `*italic*`, `` `code` `` | styled, without the markers; `\*` is a literal star |
 | `[text](https://…)`, `<https://…>` | the text, underlined, followed by the address |
+| `![a chart](chart.png)` | `[image: a chart]`, dimmed: a terminal cannot show the picture |
 
 | Attribute | Values | Default |
 |---|---|---|
@@ -735,7 +736,7 @@ by C# code such as `@foreach`, are checked by the element when the view runs.
 
 ### Colours
 
-The 16 console colours by name: `black`, `darkblue`, `darkgreen`, `darkcyan`, `darkred`, `darkmagenta`, `darkyellow`, `grey`, `darkgrey`, `blue`, `green`, `cyan`, `red`, `magenta`, `yellow`, `white`. Both `grey` and `gray` are accepted, and dashes are ignored (`dark-grey`). Hex values such as `#f80` and `#ff8800` use 24-bit colour where the terminal supports it and the nearest console colour otherwise.
+The 16 console colours by name: `black`, `darkblue`, `darkgreen`, `darkcyan`, `darkred`, `darkmagenta`, `darkyellow`, `grey`, `darkgrey`, `blue`, `green`, `cyan`, `red`, `magenta`, `yellow`, `white`. Both `grey` and `gray` are accepted, case, dashes, underscores and spaces are ignored (`Dark-Grey`), and `default` (or an empty value) is the terminal's own colour. Hex values such as `#f80` and `#ff8800` use 24-bit colour where the terminal supports it and the nearest console colour otherwise.
 
 Colour output is automatically disabled when output is redirected, when the `NO_COLOR` environment variable is set, or when `TERM=dumb`.
 
@@ -817,6 +818,7 @@ builder.Input = new ScriptedInput("1", "Ada", "q"); // your ITextInput implement
 Interactive elements work outside views too:
 
 ```csharp
+var renderer = MarkupRenderer.CreateForConsole();
 var name = new InputElement { Name = "Name", Label = "Name: ", Required = true };
 string? value = name.Read(renderer, ConsoleTextInput.Instance);
 
