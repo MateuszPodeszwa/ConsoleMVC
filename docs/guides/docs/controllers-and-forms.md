@@ -82,6 +82,8 @@ app.MapKey(new KeyGesture(ConsoleKey.F5), () => NavigationResult.ToAction("Index
 Pressing the key while a screen waits for the user (a menu, a text field or an arrow-key field) leaves the screen at
 once and follows the navigation. The description is optional; shortcuts with one are listed by `<shortcuts />`.
 
+- A field keeps a key it has a use for at that moment: Esc restores a changed `<number>` and clears a `<select filter>`'s
+  filter, and is the shortcut otherwise.
 - Shortcuts can use F1 to F24, Esc, Insert, or any key with Ctrl or Alt. Keys needed for typing are refused, and so are
   Ctrl+C (it interrupts), Ctrl+D and Ctrl+Z (they end the input), Ctrl+H, Ctrl+I, Ctrl+J and Ctrl+M (terminals send them
   as Backspace, Tab and Enter, so they would never reach the shortcut), and Ctrl+Q and Ctrl+S (flow control), with or
@@ -169,7 +171,7 @@ public ActionResult Review(ReviewModel review) { … }             // records: b
 | nullable types (`int?`) | An empty value binds `null` |
 | collections: `T[]`, `List<T>`, `IList<T>`, `ICollection<T>`, `IEnumerable<T>`, `IReadOnlyList<T>`, `IReadOnlyCollection<T>` of a type above | The value is split on commas (`<select multiple>` posts `red,blue`); parts are trimmed, empty parts dropped, and an empty value gives an empty collection |
 | classes and records | Simple and collection properties by name; records and other classes without a parameterless constructor through their public constructor |
-| `CancellationToken` | Never bound from the form: receives the token passed to `RunAsync` |
+| `CancellationToken` | Never bound from the form: cancelled when the token passed to `RunAsync` is, or by Ctrl+C |
 
 A missing key or an empty value leaves the default (or the parameter's default value, `int page = 1`), as in ASP.NET
 Core, where an empty value binds `null`: an optional `[EmailAddress] string? Email` left blank is valid. A value that cannot be converted

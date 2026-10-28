@@ -326,7 +326,7 @@ internal static class ModelBinder
     {
         var parameterType = parameter.ParameterType;
 
-        // Supplied by the application loop (the token passed to RunAsync), never from form data
+        // Supplied by the application loop (cancelled with the token passed to RunAsync, or by Ctrl+C), never from form data
         if (parameterType == typeof(CancellationToken))
             return CancellationToken.None;
 

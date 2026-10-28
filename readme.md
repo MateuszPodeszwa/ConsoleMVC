@@ -64,7 +64,7 @@ cd MyApp
 dotnet run
 ```
 
-Add `--tests` for a test project too (`MyApp/MyApp.Tests`, using [ConsoleMVC.Testing](docs/guides/docs/testing.md)): `dotnet new consolemvc -n MyApp --tests`, then `dotnet test MyApp.Tests`.
+Add `--tests` for a test project too (`MyApp/MyApp.Tests`, using [ConsoleMVC.Testing](docs/guides/docs/testing.md)): `dotnet new consolemvc -n MyApp --tests`, then `dotnet test MyApp/MyApp.Tests`.
 
 This scaffolds a ready-to-run application with the following structure:
 
@@ -569,7 +569,7 @@ See the [Dependency Injection guide](docs/guides/docs/dependency-injection.md) a
 
 ### Async Actions and Middleware
 
-Actions may be asynchronous, and a `CancellationToken` parameter receives the token passed to `RunAsync`:
+Actions may be asynchronous, and a `CancellationToken` parameter is cancelled when the token passed to `RunAsync` is, or when the user presses Ctrl+C:
 
 ```csharp
 public async Task<ActionResult> Index(CancellationToken cancellationToken) =>

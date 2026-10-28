@@ -290,6 +290,9 @@ public abstract class ChoiceFieldElement : Element, IFormField
         renderer.Render(this);
         renderer.MapClicks(_clickTargets);
 
+        // Esc clears a filter being typed; without one, it is left to an application shortcut
+        using var claim = FieldKeyClaim.Claim(key => key.Key == ConsoleKey.Escape && AllowsFilter && _filter.Length > 0);
+
         while (true)
         {
             var read = input.ReadKey();

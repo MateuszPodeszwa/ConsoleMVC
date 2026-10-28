@@ -140,6 +140,20 @@ public sealed class CheckboxElement : Element, IFormField
         }
     }
 
+    /// <summary>
+    /// Whether a key answers yes: the translated letter (<see cref="FrameworkText.YesLetter"/>, <c>t</c> in Polish), or
+    /// <c>y</c> unless that is the translated no.
+    /// </summary>
+    private static bool IsYesKey(char pressed) =>
+        IsLetter(FrameworkText.Current.YesLetter, pressed) || (pressed == 'y' && !IsLetter(FrameworkText.Current.NoLetter, pressed));
+
+    /// <summary>Whether a key answers no: the translated letter, or <c>n</c> unless that is the translated yes.</summary>
+    private static bool IsNoKey(char pressed) =>
+        IsLetter(FrameworkText.Current.NoLetter, pressed) || (pressed == 'n' && !IsLetter(FrameworkText.Current.YesLetter, pressed));
+
+    private static bool IsLetter(string letter, char pressed) =>
+        letter.Length == 1 && char.ToLowerInvariant(letter[0]) == pressed;
+
     private bool? ReadWithKeys(IMarkupRenderer renderer, ITextInput input)
     {
         _usingKeys = true;
@@ -153,13 +167,14 @@ public sealed class CheckboxElement : Element, IFormField
                 return null;
 
             bool confirm;
-            switch (char.ToLowerInvariant(key.KeyChar))
+            var pressed = char.ToLowerInvariant(key.KeyChar);
+            switch (pressed)
             {
-                case 'y':
+                case var _ when IsYesKey(pressed):
                     _ticked = true;
                     confirm = true;
                     break;
-                case 'n':
+                case var _ when IsNoKey(pressed):
                     _ticked = false;
                     confirm = true;
                     break;

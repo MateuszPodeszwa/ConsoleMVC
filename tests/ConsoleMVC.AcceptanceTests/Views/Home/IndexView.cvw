@@ -1,8 +1,11 @@
 <breadcrumbs />
 <text>Acceptance</text>
+<text color="red" bold>Styled warning</text>
 <menu>
     <option key="1" nav="Account/Signup">Sign up</option>
     <option key="2" nav="Numbers/Index">Numbers</option>
     <option key="3" nav="Orders/Index">Orders</option>
+    <option key="4" nav="Quantity/Index">Quantity</option>
+    <option key="5" nav="Consent/Index">Consent</option>
     <option key="q" quit>Quit</option>
 </menu>

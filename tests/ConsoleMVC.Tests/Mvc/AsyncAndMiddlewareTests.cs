@@ -74,7 +74,26 @@ public class AsyncAndMiddlewareTests
 
         await app.RunAsync(cancellation.Token);
 
-        Assert.Equal(cancellation.Token, AsyncScript.Token);
+        Assert.True(AsyncScript.Token.CanBeCanceled);
+        Assert.False(AsyncScript.Token.IsCancellationRequested);
+    }
+
+    [Fact]
+    public async Task TheActionsToken_IsCancelledWithTheCallers()
+    {
+        using var app = CreateApp("CancelDuring");
+        using var cancellation = new CancellationTokenSource();
+        AsyncScript.Caller = cancellation;
+
+        try
+        {
+            await app.RunAsync(cancellation.Token);   // the view quits, or the next cycle sees the cancellation
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        Assert.Contains("cancelled:True", AsyncScript.Log);
     }
 
     [Fact]

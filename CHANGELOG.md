@@ -26,6 +26,12 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - CVW120 also checks the route of `app.MapKey(key, "Help/Index")`. CVW119, CVW120 and CVW121 suggest the closest name
   (`Did you mean 'Details'?`) and list the others closest first, saying how many more there are.
 
+### Changed
+
+- Ctrl+C ends a local run cleanly: the screen waiting for the user is left at once (it used to end only after the next
+  key, even with a cancellation token), services are disposed, `Stopped` is logged and `Run` returns. A second Ctrl+C
+  ends the process at once. A token passed to `RunAsync` also stops a screen that is waiting for the user.
+
 ### Fixed
 
 - When the input ended (a pipe or file running out, or Ctrl+D) while a form field was waiting, the form was posted
@@ -41,6 +47,21 @@ All notable changes to ConsoleMVC are documented here. The project follows [Sema
 - CVW120 quoted `NavigationResult.To("Orders", "Detials")` as `NavigationResult.To("Detials")`.
 - The markup diagnostics' severity is documented as set with `WarningsAsErrors` or a `.globalconfig`: `.editorconfig`
   sections do not cover `.cvw` files, so `dotnet_diagnostic.CVW119.severity` there had no effect.
+- Screen-reader mode wrote colour and style codes when the application set its own renderer
+  (`builder.Renderer = MarkupRenderer.CreateForConsole()`, as the configuration guide shows); it now writes plain text
+  whatever the renderer.
+- With Esc mapped as a shortcut (the template maps it to Back), Esc in a changed `<number>` left the screen instead
+  of restoring the default. A field now keeps a key it has a use for at that moment (Esc in a changed `<number>` or a
+  `<select filter>` with a filter typed); otherwise the shortcut runs.
+- A `<checkbox>` answered key by key ignored the translated yes and no letters (`t` in Polish) and accepted only `y`
+  and `n`; it now accepts the translated letters, and `y` and `n` when they do not mean the opposite.
+- `ScriptedInput.Click` and `Wheel` with the mouse off failed with "the next step of the script is the key Escape";
+  the message now says to turn on `builder.Mouse`. The testing guide's samples compile as written (their `using`
+  directives, a mouse host for `Click`, `Router.ResolveController` on a router instance, `RemainingInput` as a count),
+  and it explains that with shortcuts or the mouse on, key steps are typed into text fields.
+- Resizing the terminal during a `<scroll>` garbled the screen: the page kept the old width (the terminal wrapped it),
+  the status counted the old lines, and the page left on the screen afterwards stayed at the old width. The page is now
+  laid out again at the new width.
 - Numbers are parsed as documented: invariant culture with decimal digits only. Whole numbers no longer accept
   hexadecimal (`0x10`, `#10`, `&H10`), `Half` no longer accepts thousands separators, and `float`, `double` and `Half`
   reject values that are not finite (`1e400`, `Infinity`, `NaN`).

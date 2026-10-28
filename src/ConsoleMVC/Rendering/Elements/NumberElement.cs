@@ -202,6 +202,10 @@ public sealed class NumberElement : Element, IFormField
         _mode = FieldMode.Keys;
         renderer.Render(this);
 
+        // Esc restores a changed value; when the value is the default, it is left to an application shortcut
+        var start = _buffer;
+        using var claim = FieldKeyClaim.Claim(key => key.Key == ConsoleKey.Escape && _buffer != start);
+
         while (true)
         {
             var read = input.ReadKey();

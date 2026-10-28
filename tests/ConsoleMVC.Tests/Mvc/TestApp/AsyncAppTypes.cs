@@ -13,6 +13,9 @@ namespace ConsoleMVC.Tests.Mvc.AsyncApp
         /// <summary>The token the last action received.</summary>
         public static CancellationToken Token { get; set; }
 
+        /// <summary>The caller's token source, which <c>CancelDuring</c> cancels while it runs.</summary>
+        public static CancellationTokenSource? Caller { get; set; }
+
         public static void Reset()
         {
             Log.Clear();
@@ -63,6 +66,13 @@ namespace ConsoleMVC.Tests.Mvc.AsyncApp.Controllers
         public Task<ActionResult> Cancellable(CancellationToken cancellationToken)
         {
             AsyncScript.Token = cancellationToken;
+            return Task.FromResult<ActionResult>(View("Index"));
+        }
+
+        public Task<ActionResult> CancelDuring(CancellationToken cancellationToken)
+        {
+            AsyncScript.Caller!.Cancel();
+            AsyncScript.Log.Add($"cancelled:{cancellationToken.IsCancellationRequested}");
             return Task.FromResult<ActionResult>(View("Index"));
         }
 

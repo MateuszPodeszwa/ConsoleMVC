@@ -350,9 +350,15 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         if (Interlocked.Exchange(ref _running, 1) == 1)
             throw new InvalidOperationException("The application is already running.");
 
+        // Ctrl+C ends the run cleanly, like a menu's quit: screens are left, services disposed and "Stopped" logged
+        using var interrupt = ConsoleInterrupt.Listen(cancellationToken);
         try
         {
-            await WithCultureAsync(() => RunOnceAsync(Pipeline(), _local, null, null, cancellationToken)).ConfigureAwait(false);
+            await WithCultureAsync(() => RunOnceAsync(Pipeline(), _local, null, null, interrupt.Token)).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (interrupt.Pressed && !cancellationToken.IsCancellationRequested)
+        {
+            // The user pressed Ctrl+C: the application ends normally
         }
         finally
         {
@@ -554,6 +560,10 @@ public class MvcApplication : IDisposable, IAsyncDisposable
             input = _services.GetRequiredService<ITextInput>();
             echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
             session = TerminalSession.ForLocalRun();
+
+            // Ctrl+C (or the caller's token) ends the run while a screen waits for the user, not after the next key
+            if (input is ConsoleTextInput)
+                input = new CancellableConsoleInput(input, cancellationToken);
         }
         else
         {
@@ -594,6 +604,11 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         {
             await RunLoopAsync(pipeline, assembly, state, renderer, refreshing, theme, logger, cancellationToken).ConfigureAwait(false);
             MvcApplicationLog.Stopped(logger);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            MvcApplicationLog.Stopped(logger);
+            throw;
         }
         catch (Exception e) when (e is not OperationCanceledException && !LostTerminal(e, terminal))
         {

@@ -35,4 +35,50 @@ public class ShortcutAcceptanceTests
 
         Assert.Equal(["Home/Index", "Orders/Index"], run.Routes);
     }
+
+    /// <summary>The host with Esc mapped to Back, as the template maps it.</summary>
+    private static MvcTestHost WithEscForBack()
+    {
+        var host = App.Host();
+        host.ConfigureApplication = app => app.MapKey(new KeyGesture(ConsoleKey.Escape), NavigationResult.Back(), "Back");
+        return host;
+    }
+
+    private static ConsoleKeyInfo Esc => new('\u001b', ConsoleKey.Escape, false, false, false);
+
+    [Fact]
+    public void EscInAChangedNumber_RestoresTheDefault_RatherThanGoingBack()
+    {
+        var input = new ScriptedInput("4")
+            .Key(ScriptedInput.Char('4')).Key(ScriptedInput.Char('5')).Key(Esc).Keys(ConsoleKey.Enter)   // 45, Esc: back to 1
+            .Keys(ConsoleKey.Enter)                                                                       // the first colour
+            .Line("q");
+
+        var run = WithEscForBack().Run(input);
+
+        Assert.Equal(["Home/Index", "Quantity/Index", "Quantity/Show"], run.Routes);
+        Assert.Contains("quantity=1 colour=Red", run.LastScreen);
+    }
+
+    [Fact]
+    public void EscInANumberAtItsDefault_IsTheShortcut()
+    {
+        var run = WithEscForBack().Run(new ScriptedInput("4").Key(Esc).Line("q"));
+
+        Assert.Equal(["Home/Index", "Quantity/Index", "Home/Index"], run.Routes);
+    }
+
+    [Fact]
+    public void EscInASelectWithAFilter_ClearsTheFilter_ThenIsTheShortcut()
+    {
+        var input = new ScriptedInput("4")
+            .Keys(ConsoleKey.Enter)                                                     // quantity 1
+            .Key(ScriptedInput.Char('b')).Key(Esc)                                      // filter "b", Esc clears it
+            .Key(Esc)                                                                   // no filter: Back
+            .Line("q");
+
+        var run = WithEscForBack().Run(input);
+
+        Assert.Equal(["Home/Index", "Quantity/Index", "Home/Index"], run.Routes);
+    }
 }

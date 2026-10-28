@@ -279,7 +279,7 @@ Choose 1-3 [Green]: _
 | | `color` / `colour` | label colour | terminal default |
 | | `highlight-color` / `highlight-colour` | colour of the `>` marker | cyan |
 | `<select>` | `multiple` | flag: several choices may be ticked; the answer is their values separated by commas, in the order of the choices | off |
-| | `filter` | flag: typing narrows the list in a terminal (Backspace and Esc edit the filter); a typed answer may be part of a name that matches one choice | off |
+| | `filter` | flag: typing narrows the list in a terminal (Backspace and Esc edit the filter; with no filter typed, Esc is left to an application shortcut); a typed answer may be part of a name that matches one choice | off |
 | | `size` | how many choices a terminal shows at once; the list scrolls with the highlight and PageUp/PageDown move a page | all |
 | `<choice>` | `value` | what the form receives | the label text |
 | | style attributes | as for `<text>` | |
@@ -320,7 +320,8 @@ Typed:     Quantity: _      (a number with a dot for decimals; Enter a number fr
 | `<date>` | `default`, `min`, `max` | `2026-10-27`, `today`, `today+N` or `today-N` (checked at build time) | none; the terminal starts today |
 
 In a terminal, digits replace the number (the first one replaces the starting value), Backspace edits it and Esc
-restores the default. A date's Up/Down change the part chosen with Left/Right, and the date never leaves its range.
+restores the default (once the value is the default, Esc is left to an application shortcut such as the template's
+Esc for Back). A date's Up/Down change the part chosen with Left/Right, and the date never leaves its range.
 `DateElement.Clock` decides what *today* is, so tests can fix it.
 
 ### `<checkbox />`
@@ -560,7 +561,8 @@ the screen down. HTML, tables and images are shown as text.
 ### `<scroll>`
 
 Shows long content a page at a time. In a terminal the user scrolls with the arrow keys (or J and K), Page Up and
-Page Down (or B and Space), Home and End, and continues with Enter, Esc or Q; the page they end on stays on the screen
+Page Down (or B and Space), Home and End, and continues with Enter, Esc or Q (when Esc is an application shortcut, such as the template's Back, the
+shortcut wins); the page they end on stays on the screen
 and the view goes on below it. When the content fits, or input or output is piped, everything is drawn at once.
 
 ```

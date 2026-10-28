@@ -1,0 +1,6 @@
+@model object
+
+<text>@Model</text>
+<menu>
+    <option key="q" quit>Quit</option>
+</menu>

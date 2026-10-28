@@ -56,57 +56,89 @@ public sealed class ScrollElement : ContainerElement
             return;
         }
 
-        var top = 0;
-        renderer.Render(new ScrollPage(lines, top, pageSize, StatusColour, withStatus: true));
+        // The page lays the content out at the width it is drawn at, so a redraw after a resize fits the new window
+        var page = new ScrollPage(this, pageSize, StatusColour);
+        renderer.Render(page);
         onPage?.Invoke();
 
         while (input.ReadKey() is { } key)
         {
-            var last = Math.Max(lines.Count - pageSize, 0);
             int? next = key.Key switch
             {
-                ConsoleKey.UpArrow or ConsoleKey.K => top - 1,
-                ConsoleKey.DownArrow or ConsoleKey.J => top + 1,
-                ConsoleKey.PageUp or ConsoleKey.B => top - pageSize,
-                ConsoleKey.PageDown or ConsoleKey.Spacebar => top + pageSize,
+                ConsoleKey.UpArrow or ConsoleKey.K => page.Top - 1,
+                ConsoleKey.DownArrow or ConsoleKey.J => page.Top + 1,
+                ConsoleKey.PageUp or ConsoleKey.B => page.Top - page.Size,
+                ConsoleKey.PageDown or ConsoleKey.Spacebar => page.Top + page.Size,
                 ConsoleKey.Home => 0,
-                ConsoleKey.End => last,
+                ConsoleKey.End => int.MaxValue,
                 ConsoleKey.Enter or ConsoleKey.Escape or ConsoleKey.Q => null,
-                _ => top
+                _ => page.Top
             };
 
             if (next is null)
                 break;
 
-            // The window may have been resized: lay the content out again at the current width
-            lines = Layout(renderer.Width);
-            pageSize = PageSize(renderer);
-            top = Math.Clamp(next.Value, 0, Math.Max(lines.Count - pageSize, 0));
-            renderer.Rewrite(new ScrollPage(lines, top, pageSize, StatusColour, withStatus: true));
+            // The window may have been resized: the page size follows its height, the lines its width
+            page.Size = PageSize(renderer);
+            page.Top = Math.Clamp(next.Value, 0, page.LastTop(renderer.Width));
+            renderer.Rewrite(page);
             onPage?.Invoke();
         }
 
-        renderer.Rewrite(new ScrollPage(lines, top, pageSize, StatusColour, withStatus: false));
+        page.WithStatus = false;
+        renderer.Rewrite(page);
     }
 
     private int PageSize(IMarkupRenderer renderer) =>
         Math.Max(Height ?? (renderer.Height == int.MaxValue ? int.MaxValue : renderer.Height - ReservedRows), 1);
 
-    /// <summary>One page of the content, with the status line under it while the user scrolls.</summary>
-    private sealed class ScrollPage(IReadOnlyList<RenderedLine> lines, int top, int size, Colour colour, bool withStatus) : Element
+    /// <summary>
+    /// One page of the content, with the status line under it while the user scrolls. It lays the content out at the
+    /// width it is drawn at (laid out once per width), so the renderer's redraw after a resize shows the page at the new
+    /// width with the counts of the new layout.
+    /// </summary>
+    private sealed class ScrollPage(ScrollElement content, int size, Colour colour) : Element
     {
+        private int _width = -1;
+        private IReadOnlyList<RenderedLine> _lines = [];
+
+        /// <summary>The first line shown, counted from 0; kept within the content at every width.</summary>
+        public int Top { get; set; }
+
+        /// <summary>The lines per page.</summary>
+        public int Size { get; set; } = size;
+
+        /// <summary>Whether the status line is shown under the page.</summary>
+        public bool WithStatus { get; set; } = true;
+
+        /// <summary>The last first line that still fills a page at <paramref name="width"/>.</summary>
+        public int LastTop(int width) => Math.Max(LinesAt(width).Count - Size, 0);
+
         public override int MeasureWidth(int maxWidth) => 0;
 
         public override IReadOnlyList<RenderedLine> Layout(int width)
         {
-            var page = lines.Skip(top).Take(size).ToList();
-            if (withStatus)
+            var lines = LinesAt(width);
+            Top = Math.Clamp(Top, 0, LastTop(width));
+            var page = lines.Skip(Top).Take(Size).ToList();
+            if (WithStatus)
             {
-                var status = FrameworkText.Format(FrameworkText.Current.ScrollStatus, top + 1, top + page.Count, lines.Count);
+                var status = FrameworkText.Format(FrameworkText.Current.ScrollStatus, Top + 1, Top + page.Count, lines.Count);
                 page.Add(new RenderedLine([new Span(TextWidth.Truncate(status, width), TextStyle.Plain.WithForeground(colour))]));
             }
 
             return page;
+        }
+
+        private IReadOnlyList<RenderedLine> LinesAt(int width)
+        {
+            if (width != _width)
+            {
+                _lines = content.LayoutChildren(width);
+                _width = width;
+            }
+
+            return _lines;
         }
     }
 }

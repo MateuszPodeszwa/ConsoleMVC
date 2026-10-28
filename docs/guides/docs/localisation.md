@@ -50,7 +50,7 @@ Controllers take `IStringLocalizer<T>` in their constructor in the same way.
 ## The framework's messages
 
 The prompts and messages the framework shows itself (`Select an option: `, `This field is required.`, the `<scroll>`
-status line, binding errors, …) are the properties of `FrameworkText`. Translate them in your resources, one resource
+status line, binding errors, …) are the properties of `FrameworkText` (namespace `ConsoleMVC.Rendering`). Translate them in your resources, one resource
 per property name:
 
 ```csharp
