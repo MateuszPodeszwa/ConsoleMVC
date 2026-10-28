@@ -73,6 +73,21 @@ internal static class CvwDiagnostics
         "{0}",
         Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
+    /// <summary>CVW011: an <c>@model</c> or <c>@using</c> directive with nothing after it.</summary>
+    public static readonly DiagnosticDescriptor MissingDirectiveValue = new(
+        "CVW011", "Directive without a value",
+        "{0}",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+    /// <summary>
+    /// CVW012: a view (not a partial view or a layout) with no <c>&lt;menu&gt;</c> and no <c>return</c>, so its
+    /// <c>Render</c> method would never return the <c>NavigationResult</c> the compiler requires (CS0161).
+    /// </summary>
+    public static readonly DiagnosticDescriptor MissingResult = new(
+        "CVW012", "View returns no result",
+        "The view never says where to go next: end it with a <menu>, or with a C# statement such as 'return NavigationResult.Back();' or 'return NavigationResult.ToAction(\"Index\");' (the view's code is the body of a method that returns a NavigationResult)",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+
     /// <summary>CVW100: unknown attribute on an element.</summary>
     public static readonly DiagnosticDescriptor UnknownAttribute = new(
         "CVW100", "Unknown attribute",
@@ -204,6 +219,15 @@ internal static class CvwDiagnostics
         "CVW121", "View not found",
         "{0}",
         Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
+
+    /// <summary>
+    /// CVW122: Razor-style <c>@if</c>, <c>@foreach</c>, <c>@{</c> or <c>@(</c> where the view is already C# (at the top level,
+    /// or inside an <c>@{ }</c> block), which C# reads as a verbatim identifier or an error.
+    /// </summary>
+    public static readonly DiagnosticDescriptor AtInCode = new(
+        "CVW122", "'@' before C# code",
+        "'{0}' is written without '@' here, where the view is already C#: write {1} ('@' switches to C# only inside an element's content, such as <box>@if (ready) {{ <text>Ready</text> }}</box>)",
+        Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
     /// <summary>CVW108: malformed tag syntax.</summary>
     public static readonly DiagnosticDescriptor MalformedTag = new(

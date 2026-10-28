@@ -163,7 +163,8 @@ from the generator's schema, and a test fails when the file and the generator di
 - `constructs`: `@expression`, `@( … )`, `@{ … }`, `@if`, `@foreach`, comments and escapes.
 - `elements`: every element with its description, its content (`void`, `inline`, `block` or `elements`), where it may
   appear (`parents`, `children`, `topLevelOnly`) and its attributes. Each attribute has a description, whether it is
-  `required`, a `flag` or allows `@expressions`, its `kind` (`text`, `integer`, `number`, `number-list`, `date`,
+  `required` or a `flag`, whether its value may be an `expression` (`false` for a partial's `name`, which must be
+  written literally) and whether it may mix text and expressions (`interpolation`), its `kind` (`text`, `integer`, `number`, `number-list`, `date`,
   `boolean`, `colour`, `length`, `choice`, `route` or `model`) and, where it makes sense, the `values` to offer and a
   `minimum` and `maximum`.
 - `diagnostics`: every `CVWxxx` diagnostic with its severity and title.

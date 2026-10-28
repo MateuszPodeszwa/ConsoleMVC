@@ -121,6 +121,7 @@ internal static class MarkupSchemaExport
             json.Property("accepts", type.Description);
             json.Property("flag", type.AllowsFlag);
             json.Property("interpolation", type.AllowsInterpolation);
+            json.Property("expression", type.AllowsExpression);
             if (type.Values.Count > 0)
                 json.StringArrayProperty("values", type.Values);
             if (type.Minimum is { } minimum)

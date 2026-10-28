@@ -47,7 +47,7 @@ offers for completion passes the generator's validation.
   constructs:  [ { syntax, description } ],                  @expr @(…) @{…} @if @foreach @*…*@ @@ &lt;
   elements:    [ { name, description, content: void|inline|block|elements, topLevelOnly,
                    parents: [..] | null, children: [..] | null,
-                   attributes: [ { name, description, required, kind, accepts, flag, interpolation,
+                   attributes: [ { name, description, required, kind, accepts, flag, interpolation, expression,
                                    values?, minimum?, maximum? } ] } ],
   diagnostics: [ { id, severity, title } ] }
 ```

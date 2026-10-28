@@ -48,13 +48,17 @@ A constructor parameter that cannot be resolved fails with an `InvalidOperationE
 `@model` and `@using` at the top of the file, in any order. Generic types are fine:
 `@inject IOptions<Dictionary<string, int>> Limits`.
 
-The name must be a valid C# identifier and cannot be one the view already has (`Model`, `ViewData`, `ModelState`,
-`Renderer`, `Input`, `Form`, `Theme`, `Services`, `Render`, `RenderInternal`, `ReadInput`, `RunMenu`, `PreparePartial`, and
-the members every object has: `Equals`, `GetHashCode`, `GetType`, `ToString`, `MemberwiseClone`). Mistakes are build errors in the `.cvw` file:
+The name must be a valid C# identifier and cannot be one the view already has: `Model` (the model parameter); the
+view's own class name (such as `IndexView`); the members of the view base classes, `ViewData`, `ModelState`,
+`Renderer`, `Input`, `Form`, `Theme`, `Services`, `ReadInput`, `ShowScroll`, `ShortcutHints`, `NavigationHistory`,
+`Breadcrumbs`, `PreparePartial`, `InjectServices`, `RequireService`, `Render`, `RenderInternal`, `RunMenu`,
+`RefreshInterval`, `UseLayout`, `RenderHeader` and `RenderFooter`; and the members every object has, `Equals`,
+`GetHashCode`, `GetType`, `ToString`, `MemberwiseClone`, `Finalize` and `ReferenceEquals`. Names starting with `__cvw_`
+are reserved for generated code. Mistakes are build errors in the `.cvw` file:
 
 | Id | Meaning |
 |---|---|
-| CVW007 | `@inject` without a type and a property name, or an invalid or reserved name |
+| CVW007 | `@inject` without a type and a property name, a type that is not one type (`@inject System.String Foo Bar`), or an invalid or reserved name |
 | CVW008 | Two `@inject` directives declare the same property name |
 
 A misspelt type is reported by the compiler at the directive's line and column.

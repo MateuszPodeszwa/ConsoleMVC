@@ -451,9 +451,16 @@ internal sealed class ViewEmitter
 
         var type = attribute.Schema.Type;
 
-        // A single expression: assign it (type-checked by the compiler)
+        // A single expression: assign it (type-checked by the compiler). The name of the conversion around it is mapped to
+        // the attribute, so an error the compiler reports at the call (an expression of the wrong type) points there
         if (attribute.Parts.Count == 1)
-            return type.WrapExpression(MapExpression(attribute.Parts[0].Text, attribute.Parts[0].Span.Start));
+        {
+            var expression = MapExpression(attribute.Parts[0].Text, attribute.Parts[0].Span.Start);
+            var wrapped = type.WrapExpression(expression);
+            var prefix = wrapped.Substring(0, wrapped.IndexOf(expression, StringComparison.Ordinal));
+            var name = prefix.LastIndexOf('.') + 1;
+            return prefix.Substring(0, name) + MapStart(attribute.Span.Start) + wrapped.Substring(name);
+        }
 
         // Text mixed with expressions (string attributes only): concatenate. In a route, values after the '?' are escaped.
         var inQuery = false;
@@ -487,6 +494,16 @@ internal sealed class ViewEmitter
 
         var offset = attribute.Parts.Count > 0 ? attribute.Parts[0].Span.Start : attribute.Span.Start;
         return MapExpression(attribute.LiteralCode, offset);
+    }
+
+    /// <summary>
+    /// Starts a new line mapped to <paramref name="offset"/> in the <c>.cvw</c> file, indented to its column, so the code
+    /// written next starts there (until the next <c>#line</c> directive).
+    /// </summary>
+    private string MapStart(int offset)
+    {
+        var (line, column) = _lines.GetPosition(offset);
+        return "\n#line " + (line + 1).ToString(CultureInfo.InvariantCulture) + " " + _quotedPath + "\n" + new string(' ', column);
     }
 
     /// <summary>Wraps an expression in <c>#line</c> directives so errors point at its position in the <c>.cvw</c> file.</summary>

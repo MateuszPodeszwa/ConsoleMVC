@@ -90,7 +90,7 @@ public class ViewSourceGenerator : IIncrementalGenerator
             .Collect()
             .Combine(context.CompilationProvider.Combine(context.AnalyzerConfigOptionsProvider)
                 .Select(static (pair, _) => ModuleRoutes(pair.Left, pair.Right.GlobalOptions)))
-            .Select(static (pair, _) => new RouteCatalogue(pair.Left!.Concat(pair.Right.Controllers), pair.Right.IsModule));
+            .Select(static (pair, _) => new RouteCatalogue(pair.Left.OfType<ControllerEntry>().Concat(pair.Right.Controllers), pair.Right.IsModule));
 
         // The route table: controllers and hand-written views from the compilation, views from the .cvw files.
         // Each entry is a string of C#, so the table is only written again when a signature or a view changes.
@@ -343,7 +343,8 @@ public class ViewSourceGenerator : IIncrementalGenerator
             return document.Diagnostics;
 
         // Route warnings come last: they never stop the view from being generated
-        return [.. document.Diagnostics, .. PartialChecker.Check(document, view, partials), .. RouteChecker.Check(document, view, routes)];
+        return [.. document.Diagnostics, .. PartialChecker.Check(document, view, partials), .. ViewChecker.Check(document, view),
+            .. RouteChecker.Check(document, view, routes)];
     }
 
     /// <summary>A name usable as a C# identifier: valid characters and not a reserved keyword such as <c>class</c>.</summary>

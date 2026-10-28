@@ -22,7 +22,8 @@ public sealed class PreviewCommandTests : IDisposable
     [Fact]
     public void AFile_IsDrawn()
     {
-        Assert.Equal(PreviewCommand.Success, Run("", WriteView("<text>Hello</text>")));
+        // A whole view: it ends by returning (one that never does is CVW012, as in the build)
+        Assert.Equal(PreviewCommand.Success, Run("", WriteView("<text>Hello</text>\nreturn NavigationResult.Quit();")));
         Assert.Equal("Hello", _output.ToString().TrimEnd());
         Assert.Equal("", _error.ToString());
     }

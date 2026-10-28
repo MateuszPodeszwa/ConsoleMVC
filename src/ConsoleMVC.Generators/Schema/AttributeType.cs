@@ -44,6 +44,13 @@ internal abstract class AttributeType
     public virtual bool AllowsInterpolation => false;
 
     /// <summary>
+    /// Gets a value indicating whether the value may be an expression (<c>width=@Model.Width</c>); <see langword="false"/>
+    /// for a value the build must know, such as a partial's name.
+    /// </summary>
+    /// <example><code>bool dynamic = new LiteralTextAttributeType().AllowsExpression; // false</code></example>
+    public virtual bool AllowsExpression => true;
+
+    /// <summary>
     /// Validates a literal value and translates it to C#.
     /// </summary>
     /// <param name="literal">The literal text (entities decoded). <see langword="null"/> for a valueless flag.</param>
@@ -84,6 +91,30 @@ internal sealed class StringAttributeType : AttributeType
     /// <inheritdoc />
     public override string WrapExpression(string expressionCode) =>
         "global::ConsoleMVC.Rendering.MarkupValue.Format(" + expressionCode + ")";
+}
+
+/// <summary>
+/// Text that must be written literally, because the build uses it, e.g. a partial's name (checked by
+/// <c>PartialChecker</c>, which reports an expression as CVW114).
+/// </summary>
+internal sealed class LiteralTextAttributeType : AttributeType
+{
+    /// <inheritdoc />
+    public override string Description => "literal text";
+
+    /// <inheritdoc />
+    public override string Kind => "text";
+
+    /// <inheritdoc />
+    public override bool AllowsExpression => false;
+
+    /// <inheritdoc />
+    public override bool TryTranslateLiteral(string? literal, out string code, out string error)
+    {
+        error = "";
+        code = CSharpLiteral.String(literal ?? "");
+        return literal is not null;
+    }
 }
 
 /// <summary>A whole number within a range, e.g. padding.</summary>
@@ -137,6 +168,7 @@ internal sealed class IntegerAttributeType : AttributeType
 internal sealed class DecimalAttributeType : AttributeType
 {
     private readonly string _suffix;
+    private readonly string _converter;
 
     /// <summary>
     /// Creates a number attribute type.
@@ -145,10 +177,20 @@ internal sealed class DecimalAttributeType : AttributeType
     public DecimalAttributeType(bool asDouble = false)
     {
         _suffix = asDouble ? "d" : "m";
+        _converter = asDouble ? "ToDouble" : "ToDecimal";
     }
 
     /// <inheritdoc />
-    public override string Description => "a number such as 0, -5 or 2.5";
+    public override string Description => "a number such as 0, -5 or 2.5, or an expression of any number type";
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Converts any number type (<c>int</c>, <c>double</c>, <c>decimal</c>, their nullable forms…) to the property's type
+    /// with <c>MarkupValue.ToDecimal</c> or <c>MarkupValue.ToDouble</c>, so <c>min="@(0.5)"</c> works on a
+    /// <c>decimal</c> property and <c>value="@Model.Total"</c> with a <c>decimal</c> total on a <c>double</c> one.
+    /// </remarks>
+    public override string WrapExpression(string expressionCode) =>
+        "global::ConsoleMVC.Rendering.MarkupValue." + _converter + "(" + expressionCode + ")";
 
     /// <inheritdoc />
     public override string Kind => "number";
@@ -207,19 +249,24 @@ internal sealed class NumberListAttributeType : AttributeType
 }
 
 /// <summary>
-/// A date for <c>&lt;date&gt;</c>: <c>yyyy-MM-dd</c>, <c>today</c>, <c>today+N</c> or <c>today-N</c>; checked at build
-/// time and emitted as a string, which the element resolves when it is shown.
+/// A date for <c>&lt;date&gt;</c>: <c>yyyy-MM-dd</c>, <c>today</c>, <c>tomorrow</c>, <c>yesterday</c>, <c>today+N</c>,
+/// <c>today-N</c>, <c>+N</c> or <c>-N</c> (up to 100000 days), the forms <c>DateElement.TryParse</c> accepts; checked at
+/// build time and emitted as a string, which the element resolves when it is shown.
 /// </summary>
 internal sealed class DateAttributeType : AttributeType
 {
+    /// <summary>The most days a relative date may be from today, as in <c>DateElement.TryParse</c>.</summary>
+    /// <example><code>var latest = "today+" + DateAttributeType.MaximumDays; // accepted; one more day is not</code></example>
+    public const int MaximumDays = 100_000;
+
     /// <inheritdoc />
-    public override string Description => "a date such as 2026-10-27, today, today+7 or today-30";
+    public override string Description => "a date such as 2026-10-27, today, tomorrow, yesterday, today+7 or today-30";
 
     /// <inheritdoc />
     public override string Kind => "date";
 
     /// <inheritdoc />
-    public override IReadOnlyList<string> Values { get; } = ["today"];
+    public override IReadOnlyList<string> Values { get; } = ["today", "tomorrow", "yesterday"];
 
     /// <inheritdoc />
     public override bool AllowsInterpolation => true;
@@ -228,17 +275,58 @@ internal sealed class DateAttributeType : AttributeType
     public override bool TryTranslateLiteral(string? literal, out string code, out string error)
     {
         code = "";
-        error = "expected " + Description;
+        error = "expected " + Description + ", at most " + MaximumDays.ToString(CultureInfo.InvariantCulture) + " days from today";
         var text = (literal ?? "").Trim().ToLowerInvariant();
 
-        var valid = text == "today"
-                    || (text.StartsWith("today", StringComparison.Ordinal) && text.Length > 6 && text[5] is '+' or '-'
-                        && int.TryParse(text.Substring(6), NumberStyles.None, CultureInfo.InvariantCulture, out _))
-                    || DateTime.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
-        if (!valid)
+        // An empty value is no value, as it is for the element's property
+        if (text.Length > 0 && !TryParse(text, out _, out _))
             return false;
 
         code = CSharpLiteral.String(text);
+        return true;
+    }
+
+    /// <summary>
+    /// Reads a literal date exactly as <c>DateElement.TryParse</c> does, without knowing what today is.
+    /// </summary>
+    /// <param name="text">The literal, e.g. <c>today+7</c> or <c>2026-10-27</c>.</param>
+    /// <param name="daysFromToday">The days from today, for a date relative to today; otherwise <see langword="null"/>.</param>
+    /// <param name="date">The date, for a fixed date; otherwise <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> when the runtime accepts the text as a date.</returns>
+    /// <example><code>DateAttributeType.TryParse("today-30", out var days, out _); // days == -30</code></example>
+    public static bool TryParse(string? text, out int? daysFromToday, out DateTime? date)
+    {
+        daysFromToday = null;
+        date = null;
+        var value = (text ?? "").Trim().ToLowerInvariant();
+
+        switch (value)
+        {
+            case "today":
+                daysFromToday = 0;
+                return true;
+            case "tomorrow":
+                daysFromToday = 1;
+                return true;
+            case "yesterday":
+                daysFromToday = -1;
+                return true;
+        }
+
+        if (value.StartsWith("today", StringComparison.Ordinal))
+            value = value.Substring("today".Length);
+
+        if (value.Length > 1 && value[0] is '+' or '-'
+            && int.TryParse(value.Substring(1), NumberStyles.None, CultureInfo.InvariantCulture, out var days) && days <= MaximumDays)
+        {
+            daysFromToday = value[0] == '+' ? days : -days;
+            return true;
+        }
+
+        if (!DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var fixedDate))
+            return false;
+
+        date = fixedDate;
         return true;
     }
 

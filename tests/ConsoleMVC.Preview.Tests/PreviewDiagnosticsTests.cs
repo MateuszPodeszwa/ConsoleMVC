@@ -181,7 +181,7 @@ public sealed class PreviewDiagnosticsTests : IDisposable
     public void BodyInsideAnIf_IsCVW117()
     {
         AssertSameAsTheBuild("CVW117", $"{RealApp.Project}/Views/Shared/_Layout.cvw",
-            Shared("_Layout", "<text>top</text>\n@if (ViewData.Count > 0)\n{\n    <body />\n}"));
+            Shared("_Layout", "<text>top</text>\nif (ViewData.Count > 0)\n{\n    <body />\n}"));
     }
 
     [Fact]

@@ -40,7 +40,12 @@ public sealed class NumberElement : Element, IFormField
     /// <summary>Gets or sets the text written before the number, e.g. <c>"Age: "</c>.</summary>
     public string? Label { get; set; }
 
-    /// <summary>Gets or sets the value used when the user enters nothing, and the starting value in arrow-key mode.</summary>
+    /// <summary>
+    /// Gets or sets the value used when the user enters nothing, and the starting value in arrow-key mode. It must be a
+    /// number the field accepts (within <see cref="Min"/> and <see cref="Max"/>, with no more than <see cref="Decimals"/>
+    /// places), or <see cref="Read"/> throws.
+    /// </summary>
+    /// <example><code>var qty = new NumberElement { Name = "Qty", Min = 1, Max = 99, Default = "1" };</code></example>
     public string? Default { get; set; }
 
     /// <summary>Gets or sets the smallest accepted value, or <see langword="null"/> for none.</summary>
@@ -112,7 +117,10 @@ public sealed class NumberElement : Element, IFormField
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when an argument is <see langword="null"/>.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when <see cref="Min"/> is greater than <see cref="Max"/>.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <see cref="Min"/> is greater than <see cref="Max"/>, or <see cref="Default"/> is not a number that
+    /// <see cref="Validate"/> accepts.
+    /// </exception>
     public string? Read(IMarkupRenderer renderer, ITextInput input)
     {
         ArgumentNullException.ThrowIfNull(renderer);
@@ -120,6 +128,10 @@ public sealed class NumberElement : Element, IFormField
 
         if (Min > Max)
             throw new InvalidOperationException($"<number> '{Name}' has min {Format(Min!.Value)} greater than max {Format(Max!.Value)}.");
+
+        // An empty answer takes the default, so a default the field refuses would ask again for ever
+        if (!string.IsNullOrWhiteSpace(Default) && Validate(Default.Trim(), out _) is { } problem)
+            throw new InvalidOperationException($"<number> '{Name}' has default '{Default.Trim()}', which it does not accept: {problem}");
 
         _error = null;
         return input.CanReadKeys && renderer.CanRewrite ? ReadWithKeys(renderer, input) : ReadTyped(renderer, input);
