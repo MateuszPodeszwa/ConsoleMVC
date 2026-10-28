@@ -40,7 +40,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 - [Live reload](docs/guides/docs/getting-started.md#live-reload) with `dotnet watch`
 - [Testing](docs/guides/docs/testing.md): the `ConsoleMVC.Testing` package with a test host, scripted lines and keys, and snapshots; `dotnet new consolemvc --tests` starts with a test project
 
-The ideas below are what comes next. They are proposals, not promises: if one matters to you, say so in an issue.
+Everything above is built and released. The roadmap below lists what is left.
 
 ---
 
