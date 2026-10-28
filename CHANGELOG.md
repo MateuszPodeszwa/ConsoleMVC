@@ -2,6 +2,22 @@
 
 All notable changes to ConsoleMVC are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.31.0]
+
+### Added
+
+- **Mouse support** ([design](docs/design/mouse.md), [guide](docs/guides/docs/controllers-and-forms.md#mouse)):
+  `builder.Mouse = true` (or the `ConsoleMVC:Mouse` setting) turns on the terminal's mouse reports. Clicking a menu
+  option, a `<select>` or vertical `<radio>` choice or a `<checkbox>` answers it, and the wheel moves like the arrow
+  keys. Elements register `ClickTarget`s with `IMarkupRenderer.MapClicks`; `KeysAt`, `SetMouseReporting` and
+  `IRenderTarget.TrySetMouseReporting` (implemented by `AnsiRenderTarget`).
+- `ScriptedInput.Click(column, row)` and `Wheel(down)` for tests.
+- The template turns the mouse on.
+
+### Changed
+
+- Line editing key by key (shared by shortcuts and the mouse) understands `ConsoleKey.Clear`, which erases the line.
+
 ## [1.30.0]
 
 ### Added

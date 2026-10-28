@@ -63,4 +63,10 @@ public interface IRenderTarget
     /// </returns>
     /// <example><code>if (target.TrySetAlternateScreen(true)) { /* draw, then */ target.TrySetAlternateScreen(false); }</code></example>
     bool TrySetAlternateScreen(bool on) => false;
+
+    /// <summary>Asks the terminal to report mouse clicks and the wheel as input (<paramref name="on"/>), or to stop.</summary>
+    /// <param name="on"><see langword="true"/> to report the mouse.</param>
+    /// <returns><see langword="true"/> when the target asked; the default implementation returns <see langword="false"/>.</returns>
+    /// <example><code>target.TrySetMouseReporting(true);</code></example>
+    bool TrySetMouseReporting(bool on) => false;
 }

@@ -18,6 +18,9 @@ builder.Logging.AddFile("logs/app.log");
 // Run on the terminal's alternate screen, like a full-screen editor: your scrollback comes back when the app ends
 builder.FullScreen = true;
 
+// Click menu options, choices and checkboxes, and scroll with the wheel, in terminals that report the mouse
+builder.Mouse = true;
+
 // Localisation: views use IStringLocalizer<SharedResource> (Resources/SharedResource*.resx), and the framework's own
 // messages and validation messages are translated too. Try: dotnet run -- --ConsoleMVC:Culture=pl-PL
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");

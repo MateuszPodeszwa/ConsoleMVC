@@ -1,6 +1,6 @@
 # ConsoleMVC
 
-> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.30: areas (`Areas/Admin`, `nav="Admin/Users/Index"`) and feature modules (`builder.AddModule<BillingModule>()`). 1.29 added localisation, 1.28 a screen-reader mode and a high-contrast theme, 1.27 full-screen mode and `<scroll>`. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
+> **C-View Markup:** describe console screens with `<box>`, `<text>`, `<table>`, `<input>`, `<select>` and `<menu>`, embed C# with Razor-style `@` expressions, and let the build compile it all to plain C#. New in 1.31: mouse support (`builder.Mouse = true`): click menu options, choices and checkboxes, and scroll with the wheel. 1.30 added areas and feature modules, 1.29 localisation, 1.28 a screen-reader mode and a high-contrast theme. All releases are in the [changelog](CHANGELOG.md). See the **[C-View Markup guide](docs/guides/docs/c-view-markup.md)** and the roadmap in **[Planned Features & Project Direction](plannedfeatures.md)**.
 
 An MVC framework for .NET console applications, inspired by ASP.NET Core MVC.
 
@@ -19,6 +19,7 @@ Console applications often end up as unstructured, hard-to-maintain code. UI fra
 - **Layout and themes**: `<columns>` that stack on narrow terminals, `min-width`/`max-width`, and named styles used with `class="…"`
 - **Responsive screens**: resize the terminal and the current screen is laid out again at the new width; tables, boxes and columns never break onto new lines
 - **Full screen and scrolling**: `builder.FullScreen = true` runs on the terminal's alternate screen and restores the user's scrollback afterwards, and `<scroll>` pages long content with the arrow keys
+- **Mouse**: with `builder.Mouse = true`, clicking a menu option, a choice or a checkbox answers it and the wheel scrolls, in terminals that report the mouse
 - **Keyboard shortcuts**: `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` works on every screen, in menus and fields alike, and `<shortcuts />` lists them
 - **Markdown**: `<markdown text="@Model.Notes" />` draws headings, lists, quotes, code, `**bold**`, `*italic*` and links, wrapped to the terminal and sanitised
 - **Charts**: `<bar-chart>` with `<bar label value />` (bars ending in eighths of a cell) and `<sparkline values="@Model.History" />` for dashboards
@@ -803,6 +804,7 @@ builder.DefaultController = "Dashboard";        // Default: "Home"
 builder.DefaultAction = "Overview";             // Default: "Index"
 builder.ClearScreenBetweenViews = false;        // Default: true
 builder.FullScreen = true;                      // Default: false
+builder.Mouse = true;                           // Default: false (users: --ConsoleMVC:Mouse=true)
 builder.ScreenReader = true;                    // Default: false (users: --ConsoleMVC:ScreenReader=true)
 builder.HighContrast = true;                    // Default: false (users: --ConsoleMVC:HighContrast=true)
 builder.ApplicationAssembly = typeof(Program).Assembly; // Default: the entry assembly
@@ -825,6 +827,7 @@ app.Run();
 | `ScreenReader` | Plain text for screen readers: tables read as `Header: value`, no borders, bars or clearing ([Accessibility](docs/guides/docs/accessibility.md)) |
 | `HighContrast` | Bold, bright theme colours with no dim text (`Theme.CreateHighContrast()`) |
 | `Localization` | Culture, translated framework messages and validation messages ([Localisation](docs/guides/docs/localisation.md)) |
+| `Mouse` | Click menu options, choices and checkboxes; the wheel scrolls ([Mouse](docs/guides/docs/controllers-and-forms.md#mouse)) |
 | `FullScreen` | Run on the terminal's alternate screen; the user's scrollback is restored when the application ends |
 | `ApplicationAssembly` | The assembly scanned for controllers and views (useful in tests or when hosting from another process) |
 | `Input` | Where `<input>`, `<select>`, `<radio>`, `<checkbox>` and `<menu>` read from. Supply your own `ITextInput` to drive the application with scripted input in tests; implement `CanReadKeys` and `ReadKey` to script arrow keys too |

@@ -74,6 +74,7 @@ public class HomeViewModel
 - **Layouts**: `Views/Shared/_Layout.cvw` frames every screen, with `<body />` where the view goes
 - **Partial views**: reusable markup in `Views/Shared/{Name}.cvw`, rendered with `<partial name="Header" model="@Model.Title" />` and checked at build time
 - **Declarative input and navigation**: `<input>` fields (required, default, masked), `<number>` and `<date>` with ranges, `<select>` (with type-to-filter) and `<radio>` lists and `<checkbox>` (answered with the arrow keys in a terminal) collect a `Form`, and `<menu>` reads the choice and navigates
+- **Mouse**: `builder.Mouse = true` makes menu options, choices and checkboxes clickable and the wheel scroll
 - **Keyboard shortcuts**: `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")`, `NavigationResult.Back()` on Esc, and `<shortcuts />` to list them
 - **Markdown**: `<markdown text="@Model.Notes" />` (`MarkdownElement`) draws headings, lists, quotes, code, emphasis and links, sanitised
 - **Charts**: `<bar-chart>` with `<bar />` children and `<sparkline values="@Model.History" />` (`BarChartElement`, `SparklineElement`)

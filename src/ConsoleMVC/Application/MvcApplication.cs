@@ -60,6 +60,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
     private int _running;
     private readonly bool _clearScreenBetweenViews;
     private readonly bool _fullScreen;
+    private readonly bool _mouse;
     private readonly MvcLocalizationOptions _localization;
     private readonly Assembly[] _modules;
     private RouteContext _currentRoute;
@@ -87,6 +88,7 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         _services = services;
         _clearScreenBetweenViews = builder.ClearScreenBetweenViews;
         _fullScreen = builder.FullScreen;
+        _mouse = builder.UsesMouse;
         _localization = builder.Localization.Copy();
         _modules = builder.Modules.ToArray();
     }
@@ -389,12 +391,17 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         Discover(assembly);
         var renderer = _services.GetRequiredService<IMarkupRenderer>();
         var input = _services.GetRequiredService<ITextInput>();
+        var echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
+
+        // Innermost: clicks become keys before shortcuts and line editing see them
+        if (_mouse)
+            input = new MouseDecoder(input, renderer);
+
+        // Lines are then read key by key so shortcuts and clicks work in menus and text fields; the keys are echoed
         if (_shortcuts.Count > 0)
-        {
-            // Lines are then read key by key so shortcuts work in menus and text fields; the keys are echoed to the console
-            var echo = input is ConsoleTextInput && !Console.IsOutputRedirected ? Console.Out : TextWriter.Null;
             input = new ShortcutInput(input, _shortcuts.ToArray(), echo);
-        }
+        else if (_mouse)
+            input = new LineEditingInput(input, echo);
 
         // Outermost, so a refreshing screen notices the time passing before any other input reads a key
         var refreshing = new RefreshingInput(input);
@@ -403,7 +410,8 @@ public class MvcApplication : IDisposable, IAsyncDisposable
         MvcApplicationLog.Starting(logger, _currentRoute, Environment.EnvironmentName);
 
         HotReloadHandler.Updated += OnHotReload;
-        using var screen = _fullScreen ? FullScreenSession.Enter(renderer) : null;
+        using var screen = _fullScreen ? TerminalModeSession.FullScreen(renderer) : null;
+        using var mouse = _mouse ? TerminalModeSession.Mouse(renderer) : null;
         try
         {
             await RunLoopAsync(pipeline, assembly, renderer, refreshing, theme, logger, cancellationToken).ConfigureAwait(false);

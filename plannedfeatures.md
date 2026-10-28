@@ -25,6 +25,7 @@ The original big idea, **C-View Markup**, is real: `.cvw` views describe screens
 - [Markdown](docs/design/markdown.md): `<markdown text="@Model.Notes" />` for help pages and release notes
 - [Charts](docs/design/charts.md): `<bar-chart>` and `<sparkline>` for dashboards
 - [Live screens](docs/design/live-elements.md): `<progress>` and `<spinner>` that update while an async action works, and views that refresh on a timer with `@refresh 5s`
+- [Mouse support](docs/design/mouse.md): click menu options, choices and checkboxes, and scroll with the wheel
 - [Keyboard shortcuts](docs/design/shortcuts.md): `app.MapKey(ConsoleKey.F1, "Help/Index", "Help")` on every screen, listed by `<shortcuts />`
 - [Navigation history](docs/design/navigation-history.md): Back options and `<breadcrumbs />`; [route values](docs/design/route-values.md) such as `nav="Orders/Details?id=@order.Id"`
 - [Responsive screens](docs/design/responsive-redraw.md) that redraw when the terminal is resized
@@ -55,7 +56,6 @@ The ideas below are what comes next. They are proposals, not promises: if one ma
 - [ ] **IDE support for markup**: syntax highlighting, completion and a live preview for C-View Markup in Rider and VS Code (the Rider plugin currently treats markup as plain text)
 - [ ] **Native AOT and trimming**: a generated route table instead of reflection, for instant start-up and single-file tools
 - [ ] **Remote sessions**: serve a ConsoleMVC application over SSH or a web terminal, one session per user
-- [ ] **Mouse support**: click menu options and buttons in terminals that report mouse events
 
 ---
 

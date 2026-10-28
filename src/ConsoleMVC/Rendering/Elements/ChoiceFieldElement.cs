@@ -288,6 +288,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
         _filter = "";
         _mode = FieldMode.Keys;
         renderer.Render(this);
+        renderer.MapClicks(_clickTargets);
 
         while (true)
         {
@@ -307,7 +308,39 @@ public abstract class ChoiceFieldElement : Element, IFormField
             }
 
             renderer.Rewrite(this);
+            renderer.MapClicks(_clickTargets);
         }
+    }
+
+    /// <summary>
+    /// The click targets of the last layout in keys mode: a choice's lines move the highlight there (Home, then Down) and
+    /// press Enter, or Space to tick it in a <c>&lt;select multiple&gt;</c>. Horizontal fields have none.
+    /// </summary>
+    private IReadOnlyList<ClickTarget> _clickTargets = [];
+
+    /// <summary>The choice each line of the last vertical layout shows, by line object.</summary>
+    private readonly Dictionary<RenderedLine, int> _choiceOfLine = new(ReferenceEqualityComparer.Instance);
+
+    private void MapChoiceLines(IReadOnlyList<RenderedLine> lines)
+    {
+        var visible = Matching(_filter);
+        var targets = new List<ClickTarget>();
+        for (var line = 0; line < lines.Count; line++)
+        {
+            if (!_choiceOfLine.TryGetValue(lines[line], out var choice))
+                continue;
+
+            var position = visible.IndexOf(choice);
+            if (position < 0)
+                continue;
+
+            var keys = new List<ConsoleKeyInfo> { ClickTarget.Key(ConsoleKey.Home) };
+            keys.AddRange(Enumerable.Repeat(ClickTarget.Key(ConsoleKey.DownArrow), position));
+            keys.Add(ClickTarget.Key(AllowsSeveral ? ConsoleKey.Spacebar : ConsoleKey.Enter));
+            targets.Add(new ClickTarget(line, keys));
+        }
+
+        _clickTargets = targets;
     }
 
     private KeyOutcome HandleKey(ConsoleKeyInfo key)
@@ -440,13 +473,15 @@ public abstract class ChoiceFieldElement : Element, IFormField
             var marker = Horizontal
                 ? (i == _cursor ? "(*)" : "( )")
                 : (i == _cursor ? HighlightMarker : " ") + (AllowsSeveral ? (_ticked[i] ? " [x]" : " [ ]") : "");
-            return (Marker: marker, Choice: _choices[i], Bold: i == _cursor);
+            return (Marker: marker, Choice: _choices[i], Bold: i == _cursor, Index: i);
         }).ToList();
 
         var keys = Horizontal ? "Left/Right" : "Up/Down";
         var typing = AllowsFilter ? "type to filter, " : "";
         var hint = AllowsSeveral ? $"({typing}{keys}, Space, Enter)" : $"({typing}{keys}, Enter)";
-        var lines = ChoiceLines(width, items, hint, markerStyle, indent: LabelIndent + 1).ToList();
+        _choiceOfLine.Clear();
+        var lines = ChoiceLines(width, items.Select(i => (i.Marker, i.Choice, i.Bold)).ToList(), hint, markerStyle,
+            indent: LabelIndent + 1, choiceIndices: items.Select(i => i.Index).ToList()).ToList();
 
         var dim = TextStyle.Plain.WithDecoration(TextDecoration.Dim);
         var heading = Horizontal ? 0 : HeadingLines(width, hint).Count;
@@ -471,6 +506,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
                 .Select(row => new RenderedLine([Span.Spaces(LabelIndent), new Span(row, error)]).Clip(width)));
         }
 
+        MapChoiceLines(lines);
         return lines;
     }
 
@@ -490,7 +526,7 @@ public abstract class ChoiceFieldElement : Element, IFormField
     /// side after the label for a horizontal field.
     /// </summary>
     private IReadOnlyList<RenderedLine> ChoiceLines(int width, List<(string Marker, ChoiceElement Choice, bool Bold)> items,
-        string? hint, TextStyle markerStyle, int indent)
+        string? hint, TextStyle markerStyle, int indent, IReadOnlyList<int>? choiceIndices = null)
     {
         var hintStyle = TextStyle.Plain.WithDecoration(TextDecoration.Dim);
 
@@ -516,8 +552,9 @@ public abstract class ChoiceFieldElement : Element, IFormField
 
         var lines = HeadingLines(width, hint);
 
-        foreach (var (marker, choice, bold) in items)
+        for (var item = 0; item < items.Count; item++)
         {
+            var (marker, choice, bold) = items[item];
             var prefixWidth = indent + TextWidth.Of(marker) + 1;
             var labelLines = choice.Layout(Math.Max(width - prefixWidth, 1), bold ? TextDecoration.Bold : TextDecoration.None);
 
@@ -527,7 +564,10 @@ public abstract class ChoiceFieldElement : Element, IFormField
                     ? [Span.Spaces(indent), new Span(marker, markerStyle), Span.Spaces(1)]
                     : [Span.Spaces(prefixWidth)];
 
-                lines.Add(labelLines[i].Surround(prefix, []).Clip(width));
+                var line = labelLines[i].Surround(prefix, []).Clip(width);
+                lines.Add(line);
+                if (choiceIndices is not null)
+                    _choiceOfLine[line] = choiceIndices[item];
             }
         }
 

@@ -94,6 +94,34 @@ public sealed class ScriptedInput : ITextInput
     }
 
     /// <summary>
+    /// Adds a left click at a place in the window, counted from 0 at the top left, as a terminal reports it. With
+    /// <c>builder.Mouse</c> on, clicking a menu option, a choice or a checkbox answers it.
+    /// </summary>
+    /// <param name="column">The column, from 0.</param>
+    /// <param name="row">The row, from 0 at the top of the screen.</param>
+    /// <returns>This script, for chaining.</returns>
+    /// <example><code>input.Click(2, 5); // the option on the sixth row</code></example>
+    public ScriptedInput Click(int column, int row) => Report(0, column, row);
+
+    /// <summary>Adds a turn of the mouse wheel, which scrolls like the Up or Down arrow.</summary>
+    /// <param name="down"><see langword="true"/> to scroll down.</param>
+    /// <returns>This script, for chaining.</returns>
+    /// <example><code>input.Wheel(down: true);</code></example>
+    public ScriptedInput Wheel(bool down) => Report(down ? 65 : 64, 0, 0);
+
+    /// <summary>Adds the keys of an SGR mouse report: ESC [ &lt; button ; column ; row M, then the release.</summary>
+    private ScriptedInput Report(int button, int column, int row)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(column);
+        ArgumentOutOfRangeException.ThrowIfNegative(row);
+
+        Key(KeyOf(ConsoleKey.Escape));
+        foreach (var c in $"[<{button};{column + 1};{row + 1}M")
+            Key(new ConsoleKeyInfo(c, ConsoleKey.NoName, shift: false, alt: false, control: false));
+        return this;
+    }
+
+    /// <summary>
     /// Adds a pause in which the user types nothing, long enough for a screen with <c>@refresh</c> (or
     /// <see cref="Mvc.ViewResult.RefreshEvery"/>) to be drawn again. The screen's <see cref="WaitForInput"/> uses it up.
     /// </summary>

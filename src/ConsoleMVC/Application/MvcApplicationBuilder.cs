@@ -261,6 +261,21 @@ public class MvcApplicationBuilder
     /// <example><code>builder.Localization.Culture = CultureInfo.GetCultureInfo("pl-PL");</code></example>
     public MvcLocalizationOptions Localization { get; } = new();
 
+    /// <summary>The setting that turns on <see cref="Mouse"/>: <c>--ConsoleMVC:Mouse=true</c> or <c>ConsoleMVC__Mouse=true</c>.</summary>
+    public const string MouseSetting = "ConsoleMVC:Mouse";
+
+    /// <summary>
+    /// Gets or sets whether the mouse can be used: clicking a menu option chooses it, clicking a choice or a checkbox
+    /// answers it, and the wheel scrolls lists and <c>&lt;scroll&gt;</c> like the arrow keys. Also on when the
+    /// <see cref="MouseSetting"/> setting is <c>true</c>. Needs a terminal that reports the mouse (most do; the legacy
+    /// Windows console does not); lines are then read key by key, as they are with keyboard shortcuts.
+    /// </summary>
+    /// <example><code>builder.Mouse = true;</code></example>
+    public bool Mouse { get; set; }
+
+    /// <summary>Gets whether mouse support is chosen in code or in the settings.</summary>
+    internal bool UsesMouse => Mouse || IsOn(MouseSetting);
+
     /// <summary>The setting that turns on <see cref="ScreenReader"/>: <c>--ConsoleMVC:ScreenReader=true</c> or <c>ConsoleMVC__ScreenReader=true</c>.</summary>
     public const string ScreenReaderSetting = "ConsoleMVC:ScreenReader";
 

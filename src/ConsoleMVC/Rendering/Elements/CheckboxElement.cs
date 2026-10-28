@@ -144,6 +144,7 @@ public sealed class CheckboxElement : Element, IFormField
     {
         _usingKeys = true;
         renderer.Render(this);
+        MapClicks(renderer);
 
         while (true)
         {
@@ -186,8 +187,13 @@ public sealed class CheckboxElement : Element, IFormField
             renderer.Rewrite(this);
             if (confirm)
                 return _ticked;
+            MapClicks(renderer);
         }
     }
+
+    /// <summary>Clicking the box (its first line) ticks or clears it, as Space does.</summary>
+    private static void MapClicks(IMarkupRenderer renderer) =>
+        renderer.MapClicks([new ClickTarget(0, [ClickTarget.Key(ConsoleKey.Spacebar)])]);
 
     /// <summary>The label as a question: "Send news?"; a label already ending in punctuation is kept as it is.</summary>
     private string Question() =>

@@ -52,6 +52,7 @@ The template includes working examples of:
 - **Full screen and scrolling**: `Program.cs` sets `builder.FullScreen = true`, so the app runs on the alternate screen and your scrollback comes back afterwards; the feature tour's table is paged with `<scroll height="12">`
 - **Markdown**: the about page's text is Markdown in `HomeController`, drawn with `<markdown>`
 - **Live screens**: the feature tour's live status option checks the services with a `<progress>` bar that updates while the action works (`ILiveDisplay`), then shows a status page that refreshes every second with `@refresh 1s`, with a `<sparkline>` of the load and a `<bar-chart>` of response times
+- **Mouse**: `builder.Mouse = true` in `Program.cs`: click menu options, the colour choices and the checkbox
 - **Keyboard shortcuts**: Esc goes back and Ctrl+X quits on every screen (`app.MapKey` in `Program.cs`), listed by `<shortcuts />` in the layout
 - **Dependency injection**: `GreetController` receives `IGreetingService` through its constructor and the result view reads it with `@inject`
 - **Form data posting with simple parameters**: a calculator with two `<number>` fields and a `<radio>` for the operator, posting individual values (`int a`, `int b`, `string op`) directly to action method parameters

@@ -90,6 +90,25 @@ once and follows the navigation. The description is optional; shortcuts with one
 In tests, press a shortcut with `new ScriptedInput().Keys(ConsoleKey.F1)` and map it with
 `host.ConfigureApplication = app => app.MapKey(...)` (see [Testing](testing.md)).
 
+## Mouse
+
+```csharp
+builder.Mouse = true;          // or let users choose: --ConsoleMVC:Mouse=true
+```
+
+In terminals that report the mouse (most do; the legacy Windows console does not):
+
+| Click | Does |
+|---|---|
+| a `<menu>` option | chooses it (whatever was typed is replaced) |
+| a `<select>` or vertical `<radio>` choice | chooses it (ticks it in a `<select multiple>`) |
+| a `<checkbox>` | ticks or clears it, as Space does |
+| the wheel | moves through lists and `<scroll>` like the arrow keys |
+
+Typing still works as before, and keyboard shortcuts work alongside the mouse. In tests, `ScriptedInput.Click(column,
+row)` and `Wheel(down)` send what a terminal would; see [Testing](testing.md). See the
+[design](https://github.com/MateuszPodeszwa/ConsoleMVC/blob/main/docs/design/mouse.md).
+
 ## Route values
 
 Pass the values an action needs in the navigation itself, like a query string, instead of building a form:

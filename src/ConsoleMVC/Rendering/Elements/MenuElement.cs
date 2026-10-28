@@ -102,8 +102,23 @@ public sealed class MenuElement : Element
     {
         var keyStyle = TextStyle.Plain.WithForeground(KeyColour).WithDecoration(TextDecoration.Bold);
         var lines = new List<RenderedLine>();
+        var targets = new List<ClickTarget>();
 
         foreach (var option in _options)
+        {
+            var first = lines.Count;
+            AddOption(option);
+
+            // Every line of an option answers with its key when clicked
+            var key = NormalisedKey(option) ?? "";
+            for (var line = first; line < lines.Count; line++)
+                targets.Add(ClickTarget.Typing(line, key));
+        }
+
+        _clickTargets = targets;
+        return lines;
+
+        void AddOption(MenuOptionElement option)
         {
             var prefixWidth = PrefixWidth(option);
 
@@ -112,7 +127,7 @@ public sealed class MenuElement : Element
                 // The [key] prefix leaves no room beside it: show it on its own line, then the label below
                 lines.Add(new RenderedLine([new Span(KeyLabel(option), keyStyle)]).Clip(Math.Max(width, 0)));
                 lines.AddRange(option.Layout(Math.Max(width, 1)).Select(l => l.Clip(Math.Max(width, 0))));
-                continue;
+                return;
             }
 
             var labelLines = option.Layout(width - prefixWidth);
@@ -126,9 +141,10 @@ public sealed class MenuElement : Element
                 lines.Add(labelLines[i].Surround(prefix, []));
             }
         }
-
-        return lines;
     }
+
+    /// <summary>The click targets of the last layout: each option's lines type its key.</summary>
+    private IReadOnlyList<ClickTarget> _clickTargets = [];
 
     /// <summary>
     /// Renders the menu, then prompts until the user types the key of an option.
@@ -143,6 +159,7 @@ public sealed class MenuElement : Element
         ArgumentNullException.ThrowIfNull(input);
 
         renderer.Render(this);
+        renderer.MapClicks(_clickTargets);
 
         while (true)
         {

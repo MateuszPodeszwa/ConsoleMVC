@@ -89,6 +89,13 @@ with `@refresh` or `RefreshEvery`: the screen uses it up and is drawn again. Els
 var run = Host().Run(new ScriptedInput("4").Wait().Line("q")); // the status page refreshes once, then quits
 ```
 
+With `builder.Mouse` on, `Click(column, row)` clicks a place on the screen (counted from 0 at the top left of the
+current screen) and `Wheel(down)` turns the wheel:
+
+```csharp
+var run = Host().Run(new ScriptedInput().Click(2, 3).Line("Ada")); // click the option on the fourth row
+```
+
 ## Snapshots
 
 `Snapshot.Match` compares text with a file in a `__snapshots__` folder beside the test file:

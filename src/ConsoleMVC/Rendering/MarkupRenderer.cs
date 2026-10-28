@@ -75,6 +75,30 @@ public interface IMarkupRenderer
     /// <returns><see langword="true"/> when the output switched; the default implementation returns <see langword="false"/>.</returns>
     /// <example><code>if (renderer.SetFullScreen(true)) { try { Run(); } finally { renderer.SetFullScreen(false); } }</code></example>
     bool SetFullScreen(bool on) => false;
+
+    /// <summary>
+    /// Records what clicking the lines of the element just drawn (with <see cref="Render"/> or <see cref="Rewrite"/>)
+    /// means. Interactive elements call this; the default implementation ignores it.
+    /// </summary>
+    /// <param name="targets">The lines and their keys.</param>
+    /// <example><code>renderer.Render(menu); renderer.MapClicks([ClickTarget.Typing(0, "1")]);</code></example>
+    void MapClicks(IReadOnlyList<ClickTarget> targets)
+    {
+    }
+
+    /// <summary>
+    /// Returns the keys of the click target on a row of the window, counted from 0 at the top, or <see langword="null"/>.
+    /// </summary>
+    /// <param name="row">The row that was clicked.</param>
+    /// <returns>The keys, or <see langword="null"/> when nothing clickable is there. The default implementation returns <see langword="null"/>.</returns>
+    /// <example><code>var keys = renderer.KeysAt(4);</code></example>
+    IReadOnlyList<ConsoleKeyInfo>? KeysAt(int row) => null;
+
+    /// <summary>Turns the terminal's mouse reports on or off, for <c>builder.Mouse</c>.</summary>
+    /// <param name="on"><see langword="true"/> to report clicks.</param>
+    /// <returns><see langword="true"/> when the output switched; the default implementation returns <see langword="false"/>.</returns>
+    /// <example><code>renderer.SetMouseReporting(true);</code></example>
+    bool SetMouseReporting(bool on) => false;
 }
 
 /// <summary>
@@ -117,6 +141,11 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     // The lines and width of the last element written, while nothing else has been written after it; -1 otherwise
     private int _lastElementLines = -1;
     private int _lastElementWidth;
+
+    // Rows written since the screen was cleared (the cursor's row), where the last element starts, and the click targets
+    private int _row;
+    private int _lastElementRow;
+    private readonly Dictionary<int, IReadOnlyList<ConsoleKeyInfo>> _clicks = [];
 
     /// <summary>
     /// Initialises a renderer.
@@ -192,6 +221,39 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     public int Height => Math.Max(_heightProvider(), 1);
 
     /// <inheritdoc />
+    public void MapClicks(IReadOnlyList<ClickTarget> targets)
+    {
+        ArgumentNullException.ThrowIfNull(targets);
+        lock (_sync)
+        {
+            foreach (var target in targets.Where(t => t.Line >= 0 && t.Line < Math.Max(_lastElementLines, 0)))
+                _clicks[_lastElementRow + target.Line] = target.Keys;
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>When more rows were written than the window holds, the top ones have scrolled away; the row is counted from what is visible.</remarks>
+    public IReadOnlyList<ConsoleKeyInfo>? KeysAt(int row)
+    {
+        lock (_sync)
+        {
+            var height = _heightProvider();
+            var scrolled = height == int.MaxValue ? 0 : Math.Max(_row + 1 - Math.Max(height, 1), 0);
+            return _clicks.TryGetValue(row + scrolled, out var keys) ? keys : null;
+        }
+    }
+
+    /// <inheritdoc />
+    public bool SetMouseReporting(bool on)
+    {
+        lock (_sync)
+        {
+            using (ForeignOutputTracker.Suppress())
+                return _target.TrySetMouseReporting(on);
+        }
+    }
+
+    /// <inheritdoc />
     /// <remarks>
     /// The screen history starts again on the new screen: the alternate screen starts empty, and the normal one is
     /// restored by the terminal as it was.
@@ -247,7 +309,10 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     public void RecordInput(string text)
     {
         lock (_sync)
+        {
             Remember(new ScreenEntry(null, null, default, TextSanitiser.Sanitise(text).Replace('\n', ' ')));
+            _row++; // the user pressed Enter: the prompt's row is finished
+        }
     }
 
     /// <inheritdoc />
@@ -264,6 +329,8 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
             _ownsScreen = true;
             _renderedWidth = Width;
             _lastElementLines = -1;
+            _row = 0;
+            _clicks.Clear();
         }
     }
 
@@ -296,6 +363,7 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
 
                 using (ForeignOutputTracker.Suppress())
                     _target.TryEraseLines(_lastElementLines);
+                _row -= _lastElementLines;
                 WriteElement(element, width);
                 _target.Flush();
                 return;
@@ -359,6 +427,8 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
     private void RedrawLocked(int width)
     {
         _renderedWidth = width;
+        _row = 0;
+        _clicks.Clear(); // the lines moved: elements map their clicks again when they next draw
         using (ForeignOutputTracker.Suppress())
         {
             _target.Clear();
@@ -373,7 +443,10 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
                 if (entry.Prompt is not null)
                     _target.WriteInline(new RenderedLine([new Span(entry.Prompt, entry.PromptStyle)]));
                 else
+                {
                     _target.Write(new RenderedLine([new Span(entry.Input!, TextStyle.Plain)]));
+                    _row++;
+                }
 
                 _lastElementLines = -1;
             }
@@ -391,6 +464,10 @@ public sealed class MarkupRenderer : IMarkupRenderer, IDisposable
                 _target.Write(line);
         }
 
+        _lastElementRow = _row;
+        _row += lines.Count;
+        foreach (var row in _clicks.Keys.Where(r => r >= _lastElementRow).ToList())
+            _clicks.Remove(row); // what was below the cursor has been drawn over
         _lastElementLines = lines.Count;
         _lastElementWidth = width;
     }
